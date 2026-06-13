@@ -151,11 +151,23 @@ button {
   gap: 14px;
 }
 
+.right-stack {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 14px;
+}
+
 .panel {
   min-height: 0;
   overflow: hidden;
   border-radius: 8px;
   padding: 14px;
+}
+
+.session-panel,
+.optics-panel {
+  overflow: auto;
 }
 
 .stack {
@@ -304,6 +316,146 @@ button {
   line-height: 1.1;
 }
 
+.session-score {
+  min-height: 76px;
+  display: grid;
+  gap: 4px;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(56, 214, 201, 0.16), rgba(255, 111, 145, 0.08)),
+    rgba(255, 255, 255, 0.045);
+  padding: 13px;
+}
+
+.session-score span,
+.field-row > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #8d95a8;
+  font-size: 12px;
+}
+
+.session-score strong {
+  color: #ffffff;
+  font-size: 20px;
+  line-height: 1.1;
+}
+
+.session-score em {
+  color: #38d6c9;
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.25;
+}
+
+.date-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+}
+
+.date-control button,
+.preset-grid button {
+  min-height: 37px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #dce4f2;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 0 10px;
+}
+
+.date-control button:hover,
+.preset-grid button:hover {
+  border-color: rgba(56, 214, 201, 0.55);
+  background: rgba(56, 214, 201, 0.09);
+}
+
+.field-row {
+  display: grid;
+  gap: 7px;
+}
+
+.field-row input,
+.field-row select {
+  width: 100%;
+  min-height: 37px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: #f5f7fb;
+  background: rgba(255, 255, 255, 0.055);
+  padding: 0 10px;
+}
+
+.field-row select {
+  appearance: none;
+}
+
+.field-row input:focus,
+.field-row select:focus {
+  border-color: rgba(56, 214, 201, 0.72);
+  outline: none;
+}
+
+.field-row select option {
+  background: #10131d;
+  color: #f5f7fb;
+}
+
+.sensor-card {
+  min-height: 72px;
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 12% 20%, rgba(247, 200, 115, 0.16), transparent 12rem),
+    rgba(255, 255, 255, 0.045);
+  padding: 12px;
+}
+
+.sensor-card span {
+  color: #8d95a8;
+  font-size: 12px;
+}
+
+.sensor-card strong {
+  color: #ffffff;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.sensor-card em {
+  color: #38d6c9;
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.25;
+}
+
+.preset-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.preset-grid button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.coordinate-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .control-row {
   display: grid;
   gap: 7px;
@@ -326,6 +478,16 @@ button {
 .control-row input {
   width: 100%;
   accent-color: #38d6c9;
+}
+
+.compact-control {
+  gap: 6px;
+}
+
+.inline-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
 }
 
 .metric-grid {
@@ -426,6 +588,10 @@ button {
     grid-template-columns: 1fr;
   }
 
+  .right-stack {
+    grid-template-rows: auto auto;
+  }
+
   .signal-strip,
   .mode-tabs {
     justify-content: flex-start;
@@ -447,6 +613,8 @@ button {
   }
 
   .target-list,
+  .coordinate-grid,
+  .preset-grid,
   .metric-grid,
   .timeline-track {
     grid-template-columns: 1fr;

@@ -3,9 +3,16 @@ import { Activity, Aperture, Gauge, LocateFixed, Moon, Radio, Telescope } from "
 import { SkyScene } from "./components/SkyScene";
 import { TargetRail } from "./components/TargetRail";
 import { FovConsole } from "./components/FovConsole";
+import { SessionControl } from "./components/SessionControl";
 import { SessionTimeline } from "./components/SessionTimeline";
 import { calculateFov } from "./lib/fov";
-import { createFallbackSessionPlan, fetchSessionPlan } from "./lib/session";
+import { sensorPresets } from "./lib/sensors";
+import {
+  createFallbackSessionPlan,
+  fetchSessionPlan,
+  getTodayIsoDate,
+  type SessionSettings
+} from "./lib/session";
 import { targets } from "./lib/targets";
 
 export function App() {
@@ -14,27 +21,60 @@ export function App() {
   const [sensorWidthMm, setSensorWidthMm] = useState(23.5);
   const [sensorHeightMm, setSensorHeightMm] = useState(15.7);
   const [pixelSizeUm, setPixelSizeUm] = useState(3.76);
+  const [selectedSensorId, setSelectedSensorId] = useState("imx571");
   const [reducer, setReducer] = useState(1);
   const [isPlanning, setIsPlanning] = useState(false);
+  const [sessionSettings, setSessionSettings] = useState<SessionSettings>({
+    date: getTodayIsoDate(),
+    latitudeDeg: 50.2649,
+    longitudeDeg: 19.0238,
+    bortle: 5
+  });
 
   const selectedTarget = targets.find((target) => target.id === selectedTargetId) ?? targets[0];
-  const [sessionPlan, setSessionPlan] = useState(() => createFallbackSessionPlan(selectedTarget));
+  const [sessionPlan, setSessionPlan] = useState(() =>
+    createFallbackSessionPlan(selectedTarget, sessionSettings)
+  );
   const fov = useMemo(
     () => calculateFov({ focalLengthMm, sensorWidthMm, sensorHeightMm, pixelSizeUm, reducer }),
     [focalLengthMm, sensorWidthMm, sensorHeightMm, pixelSizeUm, reducer]
   );
 
+  const selectSensorPreset = (sensorId: string) => {
+    setSelectedSensorId(sensorId);
+    const sensor = sensorPresets.find((item) => item.id === sensorId);
+    if (!sensor) return;
+    setSensorWidthMm(sensor.sensorWidthMm);
+    setSensorHeightMm(sensor.sensorHeightMm);
+    setPixelSizeUm(sensor.pixelSizeUm);
+  };
+
+  const changeSensorWidth = (value: number) => {
+    setSelectedSensorId("custom");
+    setSensorWidthMm(value);
+  };
+
+  const changeSensorHeight = (value: number) => {
+    setSelectedSensorId("custom");
+    setSensorHeightMm(value);
+  };
+
+  const changePixelSize = (value: number) => {
+    setSelectedSensorId("custom");
+    setPixelSizeUm(value);
+  };
+
   useEffect(() => {
     let ignore = false;
     setIsPlanning(true);
-    setSessionPlan(createFallbackSessionPlan(selectedTarget));
+    setSessionPlan(createFallbackSessionPlan(selectedTarget, sessionSettings));
 
-    fetchSessionPlan(selectedTarget.id)
+    fetchSessionPlan(selectedTarget.id, sessionSettings)
       .then((plan) => {
         if (!ignore) setSessionPlan(plan);
       })
       .catch(() => {
-        if (!ignore) setSessionPlan(createFallbackSessionPlan(selectedTarget));
+        if (!ignore) setSessionPlan(createFallbackSessionPlan(selectedTarget, sessionSettings));
       })
       .finally(() => {
         if (!ignore) setIsPlanning(false);
@@ -43,7 +83,7 @@ export function App() {
     return () => {
       ignore = true;
     };
-  }, [selectedTarget]);
+  }, [selectedTarget, sessionSettings]);
 
   return (
     <main className="app-shell">
@@ -115,20 +155,33 @@ export function App() {
           </div>
         </section>
 
-        <aside className="panel right-panel" aria-label="Imaging controls">
-          <FovConsole
-            fov={fov}
-            focalLengthMm={focalLengthMm}
-            sensorWidthMm={sensorWidthMm}
-            sensorHeightMm={sensorHeightMm}
-            pixelSizeUm={pixelSizeUm}
-            reducer={reducer}
-            onFocalLengthChange={setFocalLengthMm}
-            onSensorWidthChange={setSensorWidthMm}
-            onSensorHeightChange={setSensorHeightMm}
-            onPixelSizeChange={setPixelSizeUm}
-            onReducerChange={setReducer}
-          />
+        <aside className="right-stack" aria-label="Session and imaging controls">
+          <section className="panel session-panel" aria-label="Session controls">
+            <SessionControl
+              settings={sessionSettings}
+              plan={sessionPlan}
+              loading={isPlanning}
+              onChange={setSessionSettings}
+            />
+          </section>
+
+          <section className="panel optics-panel" aria-label="Imaging controls">
+            <FovConsole
+              fov={fov}
+              selectedSensorId={selectedSensorId}
+              focalLengthMm={focalLengthMm}
+              sensorWidthMm={sensorWidthMm}
+              sensorHeightMm={sensorHeightMm}
+              pixelSizeUm={pixelSizeUm}
+              reducer={reducer}
+              onSensorPresetChange={selectSensorPreset}
+              onFocalLengthChange={setFocalLengthMm}
+              onSensorWidthChange={changeSensorWidth}
+              onSensorHeightChange={changeSensorHeight}
+              onPixelSizeChange={changePixelSize}
+              onReducerChange={setReducer}
+            />
+          </section>
         </aside>
       </section>
 

@@ -1,12 +1,15 @@
 import type { FovResult } from "../lib/fov";
+import { customSensorPreset, sensorPresets } from "../lib/sensors";
 
 type FovConsoleProps = {
   fov: FovResult;
+  selectedSensorId: string;
   focalLengthMm: number;
   sensorWidthMm: number;
   sensorHeightMm: number;
   pixelSizeUm: number;
   reducer: number;
+  onSensorPresetChange: (sensorId: string) => void;
   onFocalLengthChange: (value: number) => void;
   onSensorWidthChange: (value: number) => void;
   onSensorHeightChange: (value: number) => void;
@@ -54,22 +57,48 @@ function Slider({
 
 export function FovConsole({
   fov,
+  selectedSensorId,
   focalLengthMm,
   sensorWidthMm,
   sensorHeightMm,
   pixelSizeUm,
   reducer,
+  onSensorPresetChange,
   onFocalLengthChange,
   onSensorWidthChange,
   onSensorHeightChange,
   onPixelSizeChange,
   onReducerChange
 }: FovConsoleProps) {
+  const sensorOptions = [customSensorPreset, ...sensorPresets];
+  const selectedSensor =
+    sensorOptions.find((sensor) => sensor.id === selectedSensorId) ?? customSensorPreset;
+
   return (
     <div className="stack">
       <div className="section-title">
         <span>Optics</span>
         <strong>{fov.effectiveFocalLengthMm.toFixed(0)}mm</strong>
+      </div>
+
+      <label className="field-row">
+        <span>Sensor catalog</span>
+        <select
+          value={selectedSensorId}
+          onChange={(event) => onSensorPresetChange(event.target.value)}
+        >
+          {sensorOptions.map((sensor) => (
+            <option key={sensor.id} value={sensor.id}>
+              {sensor.name} - {sensor.family}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <div className="sensor-card">
+        <span>{selectedSensor.resolution}</span>
+        <strong>{selectedSensor.name}</strong>
+        <em>{selectedSensor.note}</em>
       </div>
 
       <div className="readout">
@@ -136,4 +165,3 @@ export function FovConsole({
     </div>
   );
 }
-

@@ -46,8 +46,15 @@ class SessionPlanResponse(BaseModel):
     target_id: str
     target_name: str
     night_label: str
+    night_kind: str
+    night_kind_label: str
     start_time: str
     end_time: str
+    white_night: bool
+    min_sun_altitude_deg: float
+    civil_darkness_minutes: int
+    nautical_darkness_minutes: int
+    astronomical_darkness_minutes: int
     moon_illumination_percent: int
     max_altitude_deg: int
     transparency_percent: int

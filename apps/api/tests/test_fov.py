@@ -34,4 +34,23 @@ def test_plan_session_returns_visual_timeline() -> None:
     assert result.target_name == "Orion Nebula"
     assert result.condition_score > 0
     assert result.max_altitude_deg == 34
+    assert result.astronomical_darkness_minutes > 0
+    assert result.white_night is False
     assert len(result.slots) == 4
+
+
+def test_plan_session_marks_polish_white_night() -> None:
+    result = plan_session(
+        SessionPlanRequest(
+            target_id="m42",
+            date=date(2026, 6, 13),
+            latitude_deg=50.2649,
+            longitude_deg=19.0238,
+            bortle=4,
+        )
+    )
+
+    assert result.white_night is True
+    assert result.astronomical_darkness_minutes == 0
+    assert result.night_kind_label == "Nautical only"
+    assert "White night" in result.recommendation
