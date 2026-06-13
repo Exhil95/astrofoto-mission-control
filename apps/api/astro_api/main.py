@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .schemas import FovRequest, FovResponse, TargetResponse
-from .services import TARGETS, calculate_fov
+from .schemas import FovRequest, FovResponse, SessionPlanRequest, SessionPlanResponse, TargetResponse
+from .services import TARGETS, calculate_fov, plan_session
 from .settings import get_settings
 
 settings = get_settings()
@@ -32,3 +32,7 @@ def fov(payload: FovRequest) -> FovResponse:
 def targets() -> list[dict[str, str | float]]:
     return TARGETS
 
+
+@app.post("/api/session/plan", response_model=SessionPlanResponse)
+def session_plan(payload: SessionPlanRequest) -> SessionPlanResponse:
+    return plan_session(payload)

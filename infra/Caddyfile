@@ -1,7 +1,7 @@
 :80 {
   encode zstd gzip
 
-  handle_path /api/* {
+  handle /api/* {
     reverse_proxy api:8000
   }
 
@@ -9,4 +9,3 @@
     reverse_proxy web:5173
   }
 }
-

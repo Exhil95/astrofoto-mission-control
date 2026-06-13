@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Activity, Aperture, Gauge, LocateFixed, Moon, Radio, Telescope } from "lucide-react";
 import { SkyScene } from "./components/SkyScene";
 import { TargetRail } from "./components/TargetRail";
 import { FovConsole } from "./components/FovConsole";
 import { SessionTimeline } from "./components/SessionTimeline";
 import { calculateFov } from "./lib/fov";
+import { createFallbackSessionPlan, fetchSessionPlan } from "./lib/session";
 import { targets } from "./lib/targets";
 
 export function App() {
@@ -14,12 +15,35 @@ export function App() {
   const [sensorHeightMm, setSensorHeightMm] = useState(15.7);
   const [pixelSizeUm, setPixelSizeUm] = useState(3.76);
   const [reducer, setReducer] = useState(1);
+  const [isPlanning, setIsPlanning] = useState(false);
 
   const selectedTarget = targets.find((target) => target.id === selectedTargetId) ?? targets[0];
+  const [sessionPlan, setSessionPlan] = useState(() => createFallbackSessionPlan(selectedTarget));
   const fov = useMemo(
     () => calculateFov({ focalLengthMm, sensorWidthMm, sensorHeightMm, pixelSizeUm, reducer }),
     [focalLengthMm, sensorWidthMm, sensorHeightMm, pixelSizeUm, reducer]
   );
+
+  useEffect(() => {
+    let ignore = false;
+    setIsPlanning(true);
+    setSessionPlan(createFallbackSessionPlan(selectedTarget));
+
+    fetchSessionPlan(selectedTarget.id)
+      .then((plan) => {
+        if (!ignore) setSessionPlan(plan);
+      })
+      .catch(() => {
+        if (!ignore) setSessionPlan(createFallbackSessionPlan(selectedTarget));
+      })
+      .finally(() => {
+        if (!ignore) setIsPlanning(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [selectedTarget]);
 
   return (
     <main className="app-shell">
@@ -50,15 +74,15 @@ export function App() {
         <div className="signal-strip" aria-label="Session status">
           <span>
             <Moon size={16} aria-hidden="true" />
-            18%
+            {sessionPlan.moonIlluminationPercent}%
           </span>
           <span>
             <Gauge size={16} aria-hidden="true" />
-            Bortle 4
+            {sessionPlan.conditionScore}/100
           </span>
           <span>
             <Radio size={16} aria-hidden="true" />
-            Live
+            {isPlanning ? "Sync" : "Live"}
           </span>
         </div>
       </header>
@@ -108,7 +132,7 @@ export function App() {
         </aside>
       </section>
 
-      <SessionTimeline target={selectedTarget} />
+      <SessionTimeline target={selectedTarget} plan={sessionPlan} loading={isPlanning} />
     </main>
   );
 }

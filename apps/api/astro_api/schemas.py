@@ -1,3 +1,5 @@
+from datetime import date as Date
+
 from pydantic import BaseModel, Field
 
 
@@ -24,3 +26,32 @@ class TargetResponse(BaseModel):
     season: str
     magnitude: float
 
+
+class SessionPlanRequest(BaseModel):
+    target_id: str
+    date: Date | None = None
+    latitude_deg: float = Field(default=50.2649, ge=-90, le=90)
+    longitude_deg: float = Field(default=19.0238, ge=-180, le=180)
+    bortle: int = Field(default=4, ge=1, le=9)
+
+
+class TimelineSlot(BaseModel):
+    time: str
+    label: str
+    value: str
+    intensity: float = Field(ge=0, le=1)
+
+
+class SessionPlanResponse(BaseModel):
+    target_id: str
+    target_name: str
+    night_label: str
+    start_time: str
+    end_time: str
+    moon_illumination_percent: int
+    max_altitude_deg: int
+    transparency_percent: int
+    seeing_arcsec: float
+    condition_score: int = Field(ge=0, le=100)
+    recommendation: str
+    slots: list[TimelineSlot]
