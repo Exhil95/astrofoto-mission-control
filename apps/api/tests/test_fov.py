@@ -42,10 +42,11 @@ def test_plan_session_returns_visual_timeline() -> None:
 def test_plan_session_marks_polish_white_night() -> None:
     result = plan_session(
         SessionPlanRequest(
-            target_id="m42",
+            target_id="ngc7000",
             date=date(2026, 6, 13),
             latitude_deg=50.2649,
             longitude_deg=19.0238,
+            timezone="Europe/Warsaw",
             bortle=4,
         )
     )
@@ -54,3 +55,4 @@ def test_plan_session_marks_polish_white_night() -> None:
     assert result.astronomical_darkness_minutes == 0
     assert result.night_kind_label == "Nautical only"
     assert "White night" in result.recommendation
+    assert result.altitude_curve

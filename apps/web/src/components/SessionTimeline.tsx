@@ -20,6 +20,7 @@ export function SessionTimeline({
           <span style={{ width: `${plan.conditionScore}%` }} />
         </div>
       </div>
+      <AltitudeChart plan={plan} />
       <div className="timeline-track">
         {plan.slots.map((slot) => (
           <div className="timeline-slot" key={slot.time}>
@@ -32,4 +33,52 @@ export function SessionTimeline({
       </div>
     </footer>
   );
+}
+
+function AltitudeChart({ plan }: { plan: SessionPlan }) {
+  const points = plan.altitudeCurve.length ? plan.altitudeCurve : [];
+  const polyline = points
+    .map((point, index) => {
+      const x = points.length <= 1 ? 0 : (index / (points.length - 1)) * 100;
+      const y = 100 - normalizeAltitude(point.targetAltitudeDeg) * 100;
+      return `${x.toFixed(2)},${y.toFixed(2)}`;
+    })
+    .join(" ");
+  const peak = points.reduce(
+    (best, point) => (point.targetAltitudeDeg > best.targetAltitudeDeg ? point : best),
+    points[0] ?? { time: "--:--", targetAltitudeDeg: 0, sunAltitudeDeg: 0, darkness: "daylight" }
+  );
+
+  return (
+    <div className="altitude-chart" aria-label="Target altitude curve">
+      <div>
+        <span>Altitude</span>
+        <strong>
+          {peak.time} / {peak.targetAltitudeDeg.toFixed(0)} deg
+        </strong>
+      </div>
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img">
+        <path d="M 0 72 H 100" className="chart-threshold" />
+        <path d="M 0 42 H 100" className="chart-threshold bright" />
+        <polyline points={polyline} className="chart-line" />
+        {points.map((point, index) => {
+          const x = points.length <= 1 ? 0 : (index / (points.length - 1)) * 100;
+          const y = 100 - normalizeAltitude(point.targetAltitudeDeg) * 100;
+          return (
+            <circle
+              key={`${point.time}-${index}`}
+              cx={x}
+              cy={y}
+              r="1.55"
+              className={`chart-dot ${point.darkness}`}
+            />
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+function normalizeAltitude(value: number) {
+  return Math.max(0, Math.min(1, (value + 10) / 100));
 }

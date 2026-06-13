@@ -1,7 +1,8 @@
 from datetime import date
-from math import acos, asin, atan, cos, degrees, hypot, pi, radians, sin
+from math import atan, cos, degrees, hypot, pi
 
-from .schemas import FovRequest, FovResponse, SessionPlanRequest, SessionPlanResponse, TimelineSlot
+from .astro_engine import TargetProfile, build_astro_plan
+from .schemas import AltitudePoint, FovRequest, FovResponse, SessionPlanRequest, SessionPlanResponse, TimelineSlot
 
 
 TARGETS = [
@@ -74,125 +75,62 @@ def plan_session(payload: SessionPlanRequest) -> SessionPlanResponse:
     target = next((item for item in TARGETS if item["id"] == payload.target_id), TARGETS[0])
     session_date = payload.date or date.today()
 
-    max_altitude_deg = _estimate_culmination_altitude(payload.latitude_deg, target["dec_deg"])
-    night_darkness = _estimate_night_darkness(session_date, payload.latitude_deg)
+    astro_plan = build_astro_plan(
+        session_date=session_date,
+        latitude_deg=payload.latitude_deg,
+        longitude_deg=payload.longitude_deg,
+        timezone_name=payload.timezone,
+        target=TargetProfile(ra_hours=target["ra_hours"], dec_deg=target["dec_deg"]),
+    )
     moon_illumination_percent = _estimate_moon_illumination(session_date)
     transparency_percent = _estimate_transparency(payload.bortle, moon_illumination_percent)
-    seeing_arcsec = _estimate_seeing(payload.bortle, max_altitude_deg)
+    seeing_arcsec = _estimate_seeing(payload.bortle, astro_plan.max_altitude_deg)
     condition_score = _score_conditions(
-        max_altitude_deg=max_altitude_deg,
+        max_altitude_deg=astro_plan.max_altitude_deg,
         moon_illumination_percent=moon_illumination_percent,
         transparency_percent=transparency_percent,
         bortle=payload.bortle,
-        astronomical_darkness_minutes=night_darkness["astronomical_darkness_minutes"],
+        astronomical_darkness_minutes=astro_plan.astronomical_darkness_minutes,
     )
-    start_time, end_time = _season_window(target["season"])
     recommendation = _recommendation(
         condition_score,
         moon_illumination_percent,
         target["type"],
-        night_darkness["white_night"],
-        night_darkness["astronomical_darkness_minutes"],
+        astro_plan.white_night,
+        astro_plan.astronomical_darkness_minutes,
+        astro_plan.max_altitude_deg,
     )
 
     return SessionPlanResponse(
         target_id=target["id"],
         target_name=target["name"],
         night_label=session_date.strftime("%d %b %Y"),
-        night_kind=night_darkness["night_kind"],
-        night_kind_label=night_darkness["night_kind_label"],
-        start_time=start_time,
-        end_time=end_time,
-        white_night=night_darkness["white_night"],
-        min_sun_altitude_deg=night_darkness["min_sun_altitude_deg"],
-        civil_darkness_minutes=night_darkness["civil_darkness_minutes"],
-        nautical_darkness_minutes=night_darkness["nautical_darkness_minutes"],
-        astronomical_darkness_minutes=night_darkness["astronomical_darkness_minutes"],
+        night_kind=astro_plan.night_kind,
+        night_kind_label=astro_plan.night_kind_label,
+        start_time=astro_plan.best_start_time,
+        end_time=astro_plan.best_end_time,
+        white_night=astro_plan.white_night,
+        min_sun_altitude_deg=astro_plan.min_sun_altitude_deg,
+        civil_darkness_minutes=astro_plan.civil_darkness_minutes,
+        nautical_darkness_minutes=astro_plan.nautical_darkness_minutes,
+        astronomical_darkness_minutes=astro_plan.astronomical_darkness_minutes,
         moon_illumination_percent=moon_illumination_percent,
-        max_altitude_deg=max_altitude_deg,
+        max_altitude_deg=astro_plan.max_altitude_deg,
         transparency_percent=transparency_percent,
         seeing_arcsec=seeing_arcsec,
         condition_score=condition_score,
         recommendation=recommendation,
-        slots=[
-            TimelineSlot(time=start_time, label="Acquire", value=f"{max_altitude_deg - 18:+d} deg", intensity=0.35),
-            TimelineSlot(time="22:40", label="Guide", value=f"{seeing_arcsec:.1f} arcsec", intensity=0.55),
-            TimelineSlot(time="00:30", label="Peak", value=f"{max_altitude_deg} deg", intensity=0.95),
-            TimelineSlot(time=end_time, label="Wrap", value=f"{condition_score}/100", intensity=0.68),
+        slots=_timeline_slots(astro_plan, condition_score),
+        altitude_curve=[
+            AltitudePoint(
+                time=point.time,
+                target_altitude_deg=point.target_altitude_deg,
+                sun_altitude_deg=point.sun_altitude_deg,
+                darkness=point.darkness,
+            )
+            for point in astro_plan.altitude_curve
         ],
     )
-
-
-def _estimate_culmination_altitude(latitude_deg: float, dec_deg: float) -> int:
-    return round(max(0, min(90, 90 - abs(latitude_deg - dec_deg))))
-
-
-def _estimate_night_darkness(session_date: date, latitude_deg: float) -> dict[str, int | float | bool | str]:
-    solar_dec_deg = _estimate_solar_declination(session_date)
-    min_sun_altitude_deg = _solar_altitude_at_midnight(latitude_deg, solar_dec_deg)
-    civil_darkness_minutes = _minutes_below_solar_altitude(session_date, latitude_deg, -6)
-    nautical_darkness_minutes = _minutes_below_solar_altitude(session_date, latitude_deg, -12)
-    astronomical_darkness_minutes = _minutes_below_solar_altitude(session_date, latitude_deg, -18)
-    white_night = astronomical_darkness_minutes == 0
-
-    if astronomical_darkness_minutes >= 90:
-        night_kind = "astronomical"
-        night_kind_label = "Astronomical night"
-    elif nautical_darkness_minutes >= 90:
-        night_kind = "nautical"
-        night_kind_label = "Nautical only"
-    elif civil_darkness_minutes >= 90:
-        night_kind = "bright"
-        night_kind_label = "Bright night"
-    else:
-        night_kind = "white"
-        night_kind_label = "White night"
-
-    return {
-        "night_kind": night_kind,
-        "night_kind_label": night_kind_label,
-        "white_night": white_night,
-        "min_sun_altitude_deg": round(min_sun_altitude_deg, 1),
-        "civil_darkness_minutes": civil_darkness_minutes,
-        "nautical_darkness_minutes": nautical_darkness_minutes,
-        "astronomical_darkness_minutes": astronomical_darkness_minutes,
-    }
-
-
-def _estimate_solar_declination(session_date: date) -> float:
-    day_of_year = session_date.timetuple().tm_yday
-    return 23.44 * sin(2 * pi * (day_of_year - 81) / 365.2422)
-
-
-def _solar_altitude_at_midnight(latitude_deg: float, solar_dec_deg: float) -> float:
-    latitude = radians(latitude_deg)
-    declination = radians(solar_dec_deg)
-    sin_altitude = sin(latitude) * sin(declination) - cos(latitude) * cos(declination)
-    return degrees(asin(max(-1, min(1, sin_altitude))))
-
-
-def _minutes_below_solar_altitude(
-    session_date: date,
-    latitude_deg: float,
-    threshold_altitude_deg: float,
-) -> int:
-    latitude = radians(latitude_deg)
-    declination = radians(_estimate_solar_declination(session_date))
-    threshold = radians(threshold_altitude_deg)
-    denominator = cos(latitude) * cos(declination)
-
-    if abs(denominator) < 1e-9:
-        return 0
-
-    cos_hour_angle = (sin(threshold) - sin(latitude) * sin(declination)) / denominator
-
-    if cos_hour_angle <= -1:
-        return 0
-    if cos_hour_angle >= 1:
-        return 24 * 60
-
-    above_threshold_hours = (2 * acos(cos_hour_angle) / (2 * pi)) * 24
-    return round((24 - above_threshold_hours) * 60)
 
 
 def _estimate_moon_illumination(session_date: date) -> int:
@@ -228,6 +166,8 @@ def _score_conditions(
         score -= 24
     elif astronomical_darkness_minutes < 120:
         score -= 12
+    if max_altitude_deg < 20:
+        score -= (20 - max_altitude_deg) * 2.5
     return round(max(0, min(100, score)))
 
 
@@ -247,7 +187,12 @@ def _recommendation(
     target_type: str,
     white_night: bool,
     astronomical_darkness_minutes: int,
+    max_altitude_deg: int,
 ) -> str:
+    if max_altitude_deg < 12:
+        return "Target too low in darkness"
+    if max_altitude_deg < 20:
+        return "Low target: scout framing only"
     if white_night:
         if "nebula" in target_type.lower():
             return "White night: narrowband or calibration"
@@ -261,3 +206,34 @@ def _recommendation(
     if score >= 64:
         return "Good session with careful framing"
     return "Scout night or calibration run"
+
+
+def _timeline_slots(astro_plan, condition_score: int) -> list[TimelineSlot]:
+    if astro_plan.astronomical_darkness_minutes:
+        dark_label = "Astro start"
+        dark_value = f"{_format_duration(astro_plan.astronomical_darkness_minutes)}"
+    elif astro_plan.nautical_darkness_minutes:
+        dark_label = "Nautical"
+        dark_value = f"{_format_duration(astro_plan.nautical_darkness_minutes)}"
+    else:
+        dark_label = "Bright"
+        dark_value = f"{_format_duration(astro_plan.civil_darkness_minutes)}"
+
+    return [
+        TimelineSlot(time=astro_plan.best_start_time, label=dark_label, value=dark_value, intensity=0.45, kind="sky"),
+        TimelineSlot(time=astro_plan.meridian_time, label="Peak", value=f"{astro_plan.max_altitude_deg} deg", intensity=0.95, kind="target"),
+        TimelineSlot(time=astro_plan.best_end_time, label="End run", value=f"{condition_score}/100", intensity=0.7, kind="target"),
+        TimelineSlot(time="--:--", label=astro_plan.night_kind_label, value=f"{condition_score}/100", intensity=0.5, kind="sky"),
+    ]
+
+
+def _format_duration(minutes: int) -> str:
+    if minutes <= 0:
+        return "0 min"
+    hours = minutes // 60
+    rest = minutes % 60
+    if hours == 0:
+        return f"{rest} min"
+    if rest == 0:
+        return f"{hours}h"
+    return f"{hours}h {rest}m"

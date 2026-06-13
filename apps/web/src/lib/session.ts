@@ -5,6 +5,14 @@ export type SessionSlot = {
   label: string;
   value: string;
   intensity: number;
+  kind: string;
+};
+
+export type AltitudePoint = {
+  time: string;
+  targetAltitudeDeg: number;
+  sunAltitudeDeg: number;
+  darkness: string;
 };
 
 export type SessionPlan = {
@@ -27,12 +35,14 @@ export type SessionPlan = {
   conditionScore: number;
   recommendation: string;
   slots: SessionSlot[];
+  altitudeCurve: AltitudePoint[];
 };
 
 export type SessionSettings = {
   date: string;
   latitudeDeg: number;
   longitudeDeg: number;
+  timezone: string;
   bortle: number;
 };
 
@@ -56,6 +66,12 @@ type ApiSessionPlan = {
   condition_score: number;
   recommendation: string;
   slots: SessionSlot[];
+  altitude_curve: {
+    time: string;
+    target_altitude_deg: number;
+    sun_altitude_deg: number;
+    darkness: string;
+  }[];
 };
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
@@ -76,6 +92,7 @@ export async function fetchSessionPlan(
       date: settings.date,
       latitude_deg: settings.latitudeDeg,
       longitude_deg: settings.longitudeDeg,
+      timezone: settings.timezone,
       bortle: settings.bortle
     })
   });
@@ -123,11 +140,12 @@ export function createFallbackSessionPlan(target: Target, settings?: SessionSett
     conditionScore,
     recommendation: target.exposureHint,
     slots: [
-      { time: startTime, label: "Acquire", value: "+42 deg", intensity: 0.4 },
-      { time: "22:40", label: "Guide", value: "1.7 arcsec", intensity: 0.6 },
-      { time: "00:30", label: "Peak", value: "+61 deg", intensity: 0.95 },
-      { time: endTime, label: "Wrap", value: `${conditionScore}/100`, intensity: 0.7 }
-    ]
+      { time: startTime, label: "Acquire", value: "+42 deg", intensity: 0.4, kind: "target" },
+      { time: "22:40", label: "Guide", value: "1.7 arcsec", intensity: 0.6, kind: "target" },
+      { time: "00:30", label: "Peak", value: "+61 deg", intensity: 0.95, kind: "target" },
+      { time: endTime, label: "Wrap", value: `${conditionScore}/100`, intensity: 0.7, kind: "target" }
+    ],
+    altitudeCurve: createFallbackCurve()
   };
 }
 
@@ -151,6 +169,23 @@ function normalizeSessionPlan(plan: ApiSessionPlan): SessionPlan {
     seeingArcsec: plan.seeing_arcsec,
     conditionScore: plan.condition_score,
     recommendation: plan.recommendation,
-    slots: plan.slots
+    slots: plan.slots,
+    altitudeCurve: plan.altitude_curve.map((point) => ({
+      time: point.time,
+      targetAltitudeDeg: point.target_altitude_deg,
+      sunAltitudeDeg: point.sun_altitude_deg,
+      darkness: point.darkness
+    }))
   };
+}
+
+function createFallbackCurve(): AltitudePoint[] {
+  return [
+    { time: "18:00", targetAltitudeDeg: 16, sunAltitudeDeg: -4, darkness: "civil" },
+    { time: "20:00", targetAltitudeDeg: 28, sunAltitudeDeg: -10, darkness: "nautical" },
+    { time: "22:00", targetAltitudeDeg: 44, sunAltitudeDeg: -18, darkness: "astronomical" },
+    { time: "00:00", targetAltitudeDeg: 58, sunAltitudeDeg: -23, darkness: "astronomical" },
+    { time: "02:00", targetAltitudeDeg: 48, sunAltitudeDeg: -19, darkness: "astronomical" },
+    { time: "04:00", targetAltitudeDeg: 25, sunAltitudeDeg: -9, darkness: "nautical" }
+  ];
 }

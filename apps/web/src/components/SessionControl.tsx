@@ -2,9 +2,30 @@ import { CalendarDays, Gauge, LocateFixed, MapPin } from "lucide-react";
 import { getTodayIsoDate, type SessionPlan, type SessionSettings } from "../lib/session";
 
 const presets = [
-  { id: "katowice", label: "Katowice", latitudeDeg: 50.2649, longitudeDeg: 19.0238, bortle: 5 },
-  { id: "bieszczady", label: "Bieszczady", latitudeDeg: 49.2486, longitudeDeg: 22.5937, bortle: 2 },
-  { id: "tenerife", label: "Tenerife", latitudeDeg: 28.3003, longitudeDeg: -16.5118, bortle: 3 }
+  {
+    id: "katowice",
+    label: "Katowice",
+    latitudeDeg: 50.2649,
+    longitudeDeg: 19.0238,
+    timezone: "Europe/Warsaw",
+    bortle: 5
+  },
+  {
+    id: "bieszczady",
+    label: "Bieszczady",
+    latitudeDeg: 49.2486,
+    longitudeDeg: 22.5937,
+    timezone: "Europe/Warsaw",
+    bortle: 2
+  },
+  {
+    id: "tenerife",
+    label: "Tenerife",
+    latitudeDeg: 28.3003,
+    longitudeDeg: -16.5118,
+    timezone: "Atlantic/Canary",
+    bortle: 3
+  }
 ];
 
 type SessionControlProps = {
@@ -60,6 +81,7 @@ export function SessionControl({ settings, plan, loading, onChange }: SessionCon
                 ...settings,
                 latitudeDeg: preset.latitudeDeg,
                 longitudeDeg: preset.longitudeDeg,
+                timezone: preset.timezone,
                 bortle: preset.bortle
               })
             }
@@ -100,6 +122,15 @@ export function SessionControl({ settings, plan, loading, onChange }: SessionCon
           />
         </label>
       </div>
+
+      <label className="field-row">
+        <span>Timezone</span>
+        <input
+          type="text"
+          value={settings.timezone}
+          onChange={(event) => update({ timezone: event.target.value })}
+        />
+      </label>
 
       <label className="control-row compact-control">
         <span>

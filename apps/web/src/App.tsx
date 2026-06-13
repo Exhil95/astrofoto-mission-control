@@ -28,6 +28,7 @@ export function App() {
     date: getTodayIsoDate(),
     latitudeDeg: 50.2649,
     longitudeDeg: 19.0238,
+    timezone: "Europe/Warsaw",
     bortle: 5
   });
 

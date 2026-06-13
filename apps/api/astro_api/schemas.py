@@ -32,6 +32,7 @@ class SessionPlanRequest(BaseModel):
     date: Date | None = None
     latitude_deg: float = Field(default=50.2649, ge=-90, le=90)
     longitude_deg: float = Field(default=19.0238, ge=-180, le=180)
+    timezone: str = Field(default="Europe/Warsaw", min_length=1, max_length=64)
     bortle: int = Field(default=4, ge=1, le=9)
 
 
@@ -40,6 +41,14 @@ class TimelineSlot(BaseModel):
     label: str
     value: str
     intensity: float = Field(ge=0, le=1)
+    kind: str = "target"
+
+
+class AltitudePoint(BaseModel):
+    time: str
+    target_altitude_deg: float
+    sun_altitude_deg: float
+    darkness: str
 
 
 class SessionPlanResponse(BaseModel):
@@ -62,3 +71,4 @@ class SessionPlanResponse(BaseModel):
     condition_score: int = Field(ge=0, le=100)
     recommendation: str
     slots: list[TimelineSlot]
+    altitude_curve: list[AltitudePoint]
