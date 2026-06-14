@@ -154,7 +154,7 @@ button {
 .right-stack {
   min-height: 0;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
   gap: 14px;
 }
 
@@ -166,6 +166,7 @@ button {
 }
 
 .session-panel,
+.conditions-panel,
 .optics-panel {
   overflow: auto;
 }
@@ -633,6 +634,196 @@ button {
   background: #38d6c9;
 }
 
+.condition-score {
+  min-height: 76px;
+  display: grid;
+  gap: 4px;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(56, 214, 201, 0.15), rgba(123, 183, 255, 0.08)),
+    rgba(255, 255, 255, 0.045);
+  padding: 13px;
+}
+
+.condition-score.risk {
+  background:
+    linear-gradient(135deg, rgba(247, 200, 115, 0.17), rgba(123, 183, 255, 0.08)),
+    rgba(255, 255, 255, 0.045);
+}
+
+.condition-score.skip {
+  background:
+    linear-gradient(135deg, rgba(255, 111, 145, 0.18), rgba(247, 200, 115, 0.08)),
+    rgba(255, 255, 255, 0.045);
+}
+
+.condition-score span,
+.condition-source span {
+  display: block;
+  color: #8d95a8;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.condition-score strong {
+  color: #ffffff;
+  font-size: 18px;
+  line-height: 1.15;
+}
+
+.condition-score em {
+  color: #38d6c9;
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.25;
+}
+
+.condition-score.risk em {
+  color: #f7c873;
+}
+
+.condition-score.skip em {
+  color: #ff9ab3;
+}
+
+.condition-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.condition-metrics div {
+  min-height: 58px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 9px;
+}
+
+.condition-metrics span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #8d95a8;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.condition-metrics svg {
+  color: #7bb7ff;
+  flex: 0 0 auto;
+}
+
+.condition-metrics strong {
+  display: block;
+  margin-top: 7px;
+  color: #f5f7fb;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.cloud-strip {
+  display: grid;
+  grid-template-columns: repeat(13, minmax(30px, 1fr));
+  align-items: end;
+  gap: 6px;
+  min-height: 108px;
+  overflow: hidden;
+}
+
+.cloud-hour {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  color: #c8d0df;
+  text-align: center;
+}
+
+.cloud-bar {
+  position: relative;
+  height: 58px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.cloud-bar b {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 7px 7px 0 0;
+}
+
+.cloud-total {
+  background: linear-gradient(180deg, rgba(123, 183, 255, 0.7), rgba(56, 214, 201, 0.34));
+}
+
+.cloud-high {
+  opacity: 0.56;
+  background: linear-gradient(180deg, rgba(247, 200, 115, 0.7), rgba(247, 200, 115, 0.16));
+  mix-blend-mode: screen;
+}
+
+.cloud-hour.risk .cloud-total {
+  background: linear-gradient(180deg, rgba(247, 200, 115, 0.78), rgba(247, 200, 115, 0.3));
+}
+
+.cloud-hour.skip .cloud-total {
+  background: linear-gradient(180deg, rgba(255, 111, 145, 0.8), rgba(255, 111, 145, 0.3));
+}
+
+.cloud-hour span,
+.cloud-hour strong {
+  overflow: hidden;
+  font-size: 10px;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cloud-hour span {
+  color: #8d95a8;
+}
+
+.cloud-hour strong {
+  color: #f5f7fb;
+}
+
+.weather-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.weather-flags span {
+  min-height: 26px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(247, 200, 115, 0.2);
+  border-radius: 8px;
+  color: #f5f0dc;
+  background: rgba(247, 200, 115, 0.08);
+  padding: 0 8px;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.condition-source {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.condition-source strong {
+  color: #ffffff;
+  font-size: 12px;
+  line-height: 1.2;
+  text-align: right;
+}
+
 .timeline {
   min-height: 92px;
   display: grid;
@@ -813,8 +1004,14 @@ button {
   .coordinate-grid,
   .preset-grid,
   .metric-grid,
+  .condition-metrics,
   .timeline-track {
     grid-template-columns: 1fr;
+  }
+
+  .cloud-strip {
+    grid-template-columns: repeat(13, minmax(24px, 1fr));
+    gap: 4px;
   }
 
   .altitude-chart {

@@ -4,6 +4,12 @@ import { TargetRail } from "./components/TargetRail";
 import { FovConsole } from "./components/FovConsole";
 import { SessionControl } from "./components/SessionControl";
 import { SessionTimeline } from "./components/SessionTimeline";
+import { SkyConditions } from "./components/SkyConditions";
+import {
+  createFallbackSkyForecast,
+  fetchSkyForecast,
+  type SkyForecast
+} from "./lib/forecast";
 import { calculateFov } from "./lib/fov";
 import { sensorPresets } from "./lib/sensors";
 import {
@@ -27,6 +33,7 @@ export function App() {
   const [selectedSensorId, setSelectedSensorId] = useState("imx571");
   const [reducer, setReducer] = useState(1);
   const [isPlanning, setIsPlanning] = useState(false);
+  const [isForecastLoading, setIsForecastLoading] = useState(false);
   const [sessionSettings, setSessionSettings] = useState<SessionSettings>({
     date: getTodayIsoDate(),
     latitudeDeg: 50.2649,
@@ -38,6 +45,9 @@ export function App() {
   const selectedTarget = targets.find((target) => target.id === selectedTargetId) ?? targets[0];
   const [sessionPlan, setSessionPlan] = useState(() =>
     createFallbackSessionPlan(selectedTarget, sessionSettings)
+  );
+  const [skyForecast, setSkyForecast] = useState<SkyForecast>(() =>
+    createFallbackSkyForecast(sessionSettings)
   );
   const fov = useMemo(
     () => calculateFov({ focalLengthMm, sensorWidthMm, sensorHeightMm, pixelSizeUm, reducer }),
@@ -88,6 +98,27 @@ export function App() {
       ignore = true;
     };
   }, [selectedTarget, sessionSettings]);
+
+  useEffect(() => {
+    let ignore = false;
+    setIsForecastLoading(true);
+    setSkyForecast(createFallbackSkyForecast(sessionSettings));
+
+    fetchSkyForecast(sessionSettings)
+      .then((forecast) => {
+        if (!ignore) setSkyForecast(forecast);
+      })
+      .catch(() => {
+        if (!ignore) setSkyForecast(createFallbackSkyForecast(sessionSettings));
+      })
+      .finally(() => {
+        if (!ignore) setIsForecastLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [sessionSettings]);
 
   return (
     <main className="app-shell">
@@ -175,6 +206,14 @@ export function App() {
               plan={sessionPlan}
               loading={isPlanning}
               onChange={setSessionSettings}
+            />
+          </section>
+
+          <section className="panel conditions-panel" aria-label="Sky conditions">
+            <SkyConditions
+              forecast={skyForecast}
+              plan={sessionPlan}
+              loading={isForecastLoading}
             />
           </section>
 

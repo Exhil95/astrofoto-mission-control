@@ -1,7 +1,16 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .schemas import FovRequest, FovResponse, SessionPlanRequest, SessionPlanResponse, TargetResponse
+from .forecast import get_sky_forecast
+from .schemas import (
+    FovRequest,
+    FovResponse,
+    SessionPlanRequest,
+    SessionPlanResponse,
+    SkyForecastRequest,
+    SkyForecastResponse,
+    TargetResponse,
+)
 from .services import TARGETS, calculate_fov, plan_session
 from .settings import get_settings
 
@@ -36,3 +45,8 @@ def targets() -> list[dict[str, str | float]]:
 @app.post("/api/session/plan", response_model=SessionPlanResponse)
 def session_plan(payload: SessionPlanRequest) -> SessionPlanResponse:
     return plan_session(payload)
+
+
+@app.post("/api/forecast/sky", response_model=SkyForecastResponse)
+def sky_forecast(payload: SkyForecastRequest) -> SkyForecastResponse:
+    return get_sky_forecast(payload)

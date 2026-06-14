@@ -72,3 +72,37 @@ class SessionPlanResponse(BaseModel):
     recommendation: str
     slots: list[TimelineSlot]
     altitude_curve: list[AltitudePoint]
+
+
+class SkyForecastRequest(BaseModel):
+    date: Date | None = None
+    latitude_deg: float = Field(default=50.2649, ge=-90, le=90)
+    longitude_deg: float = Field(default=19.0238, ge=-180, le=180)
+    timezone: str = Field(default="Europe/Warsaw", min_length=1, max_length=64)
+
+
+class SkyForecastHour(BaseModel):
+    time: str
+    cloud_cover_percent: int
+    cloud_low_percent: int
+    cloud_mid_percent: int
+    cloud_high_percent: int
+    humidity_percent: int
+    temperature_c: float
+    dew_point_c: float
+    wind_speed_kmh: float
+    wind_gust_kmh: float
+    visibility_km: float
+    precipitation_probability_percent: int
+    imaging_score: int = Field(ge=0, le=100)
+    risk: str
+
+
+class SkyForecastResponse(BaseModel):
+    source: str
+    status: str
+    score: int = Field(ge=0, le=100)
+    summary: str
+    updated_at: str
+    warnings: list[str]
+    hours: list[SkyForecastHour]
