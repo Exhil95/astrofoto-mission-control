@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Activity, Aperture, Gauge, LocateFixed, Moon, Radio, Telescope } from "lucide-react";
-import { SkyScene } from "./components/SkyScene";
 import { TargetRail } from "./components/TargetRail";
 import { FovConsole } from "./components/FovConsole";
 import { SessionControl } from "./components/SessionControl";
@@ -14,6 +13,10 @@ import {
   type SessionSettings
 } from "./lib/session";
 import { targets } from "./lib/targets";
+
+const SkyScene = lazy(() =>
+  import("./components/SkyScene").then((module) => ({ default: module.SkyScene }))
+);
 
 export function App() {
   const [selectedTargetId, setSelectedTargetId] = useState("m42");
@@ -138,12 +141,21 @@ export function App() {
         </aside>
 
         <section className="sky-stage" aria-label="Interactive sky map">
-          <SkyScene
-            targets={targets}
-            selectedTarget={selectedTarget}
-            fov={fov}
-            onSelectTarget={setSelectedTargetId}
-          />
+          <Suspense
+            fallback={
+              <div className="sky-loading">
+                <span>Sky engine</span>
+                <strong>Initializing WebGL</strong>
+              </div>
+            }
+          >
+            <SkyScene
+              targets={targets}
+              selectedTarget={selectedTarget}
+              fov={fov}
+              onSelectTarget={setSelectedTargetId}
+            />
+          </Suspense>
           <div className="scene-hud top-left">
             <span>{selectedTarget.type}</span>
             <strong>{selectedTarget.name}</strong>

@@ -176,6 +176,48 @@ export function SessionControl({ settings, plan, loading, onChange }: SessionCon
           <strong>{plan.transparencyPercent}%</strong>
         </div>
       </div>
+
+      <NightProfile plan={plan} />
+    </div>
+  );
+}
+
+function NightProfile({ plan }: { plan: SessionPlan }) {
+  const darknessRows = [
+    { label: "Civil", minutes: plan.civilDarknessMinutes, kind: "civil" },
+    { label: "Nautical", minutes: plan.nauticalDarknessMinutes, kind: "nautical" },
+    { label: "Astro", minutes: plan.astronomicalDarknessMinutes, kind: "astro" }
+  ];
+  const maxMinutes = Math.max(1, ...darknessRows.map((row) => row.minutes));
+
+  return (
+    <div className={`night-profile ${plan.whiteNight ? "is-white-night" : ""}`}>
+      <div className="night-profile-head">
+        <span>Night profile</span>
+        <strong>{plan.nightKindLabel}</strong>
+      </div>
+
+      <div className="darkness-bars">
+        {darknessRows.map((row) => (
+          <div className="darkness-row" key={row.kind}>
+            <span>{row.label}</span>
+            <div className="darkness-meter" aria-hidden="true">
+              <b
+                className={`darkness-fill ${row.kind}`}
+                style={{
+                  width: row.minutes === 0 ? 0 : `${Math.max(3, (row.minutes / maxMinutes) * 100)}%`
+                }}
+              />
+            </div>
+            <strong>{formatMinutes(row.minutes)}</strong>
+          </div>
+        ))}
+      </div>
+
+      <div className="night-flags">
+        <span>{plan.whiteNight ? "White night" : "Astronomical night"}</span>
+        <strong>Sun {plan.minSunAltitudeDeg.toFixed(1)} deg</strong>
+      </div>
     </div>
   );
 }

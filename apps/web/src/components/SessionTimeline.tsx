@@ -23,7 +23,7 @@ export function SessionTimeline({
       <AltitudeChart plan={plan} />
       <div className="timeline-track">
         {plan.slots.map((slot) => (
-          <div className="timeline-slot" key={slot.time}>
+          <div className="timeline-slot" key={`${slot.time}-${slot.label}`}>
             <b style={{ opacity: 0.25 + slot.intensity * 0.75 }} />
             <span>{slot.time}</span>
             <strong>{slot.label}</strong>
@@ -48,13 +48,14 @@ function AltitudeChart({ plan }: { plan: SessionPlan }) {
     (best, point) => (point.targetAltitudeDeg > best.targetAltitudeDeg ? point : best),
     points[0] ?? { time: "--:--", targetAltitudeDeg: 0, sunAltitudeDeg: 0, darkness: "daylight" }
   );
+  const peakSlot = plan.slots.find((slot) => slot.label === "Peak");
 
   return (
     <div className="altitude-chart" aria-label="Target altitude curve">
       <div>
         <span>Altitude</span>
         <strong>
-          {peak.time} / {peak.targetAltitudeDeg.toFixed(0)} deg
+          {peakSlot?.time ?? peak.time} / {plan.maxAltitudeDeg.toFixed(0)} deg
         </strong>
       </div>
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img">

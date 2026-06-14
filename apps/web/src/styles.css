@@ -252,6 +252,34 @@ button {
   height: 100%;
 }
 
+.sky-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 7px;
+  min-height: inherit;
+  color: #f5f7fb;
+  text-align: center;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    #03040a;
+  background-size: 54px 54px;
+}
+
+.sky-loading span {
+  color: #8d95a8;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.sky-loading strong {
+  color: #ffffff;
+  font-size: 18px;
+  line-height: 1.15;
+}
+
 .sky-stage::before,
 .sky-stage::after {
   position: absolute;
@@ -510,6 +538,99 @@ button {
   color: #f5f7fb;
   font-size: 14px;
   line-height: 1.25;
+}
+
+.night-profile {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(123, 183, 255, 0.12), rgba(247, 200, 115, 0.08)),
+    rgba(255, 255, 255, 0.045);
+  padding: 12px;
+}
+
+.night-profile.is-white-night {
+  border-color: rgba(247, 200, 115, 0.28);
+  background:
+    linear-gradient(135deg, rgba(247, 200, 115, 0.15), rgba(255, 111, 145, 0.08)),
+    rgba(255, 255, 255, 0.045);
+}
+
+.night-profile-head,
+.night-flags {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.night-profile-head span,
+.night-flags span {
+  color: #8d95a8;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.night-profile-head strong,
+.night-flags strong {
+  color: #ffffff;
+  font-size: 13px;
+  line-height: 1.2;
+  text-align: right;
+}
+
+.darkness-bars {
+  display: grid;
+  gap: 8px;
+}
+
+.darkness-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) 58px;
+  align-items: center;
+  gap: 8px;
+}
+
+.darkness-row span,
+.darkness-row strong {
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.darkness-row span {
+  color: #c8d0df;
+}
+
+.darkness-row strong {
+  color: #f5f7fb;
+  text-align: right;
+}
+
+.darkness-meter {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.darkness-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.darkness-fill.civil {
+  background: #f7c873;
+}
+
+.darkness-fill.nautical {
+  background: #7bb7ff;
+}
+
+.darkness-fill.astro {
+  background: #38d6c9;
 }
 
 .timeline {
