@@ -1,10 +1,14 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from .forecast import get_sky_forecast
+from .profiles import create_profile, delete_profile, list_profiles, update_profile
 from .schemas import (
     FovRequest,
     FovResponse,
+    ProfileCreate,
+    ProfileResponse,
+    ProfileUpdate,
     SessionPlanRequest,
     SessionPlanResponse,
     SkyForecastRequest,
@@ -40,6 +44,31 @@ def fov(payload: FovRequest) -> FovResponse:
 @app.get("/api/targets", response_model=list[TargetResponse])
 def targets() -> list[dict[str, str | float]]:
     return TARGETS
+
+
+@app.get("/api/profiles", response_model=list[ProfileResponse])
+def profiles() -> list[ProfileResponse]:
+    return list_profiles()
+
+
+@app.post("/api/profiles", response_model=ProfileResponse)
+def profile_create(payload: ProfileCreate) -> ProfileResponse:
+    return create_profile(payload)
+
+
+@app.put("/api/profiles/{profile_id}", response_model=ProfileResponse)
+def profile_update(profile_id: int, payload: ProfileUpdate) -> ProfileResponse:
+    profile = update_profile(profile_id, payload)
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return profile
+
+
+@app.delete("/api/profiles/{profile_id}", status_code=204)
+def profile_delete(profile_id: int) -> Response:
+    if not delete_profile(profile_id):
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return Response(status_code=204)
 
 
 @app.post("/api/session/plan", response_model=SessionPlanResponse)

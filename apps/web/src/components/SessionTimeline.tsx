@@ -23,7 +23,7 @@ export function SessionTimeline({
       <AltitudeChart plan={plan} />
       <div className="timeline-track">
         {plan.slots.map((slot) => (
-          <div className="timeline-slot" key={`${slot.time}-${slot.label}`}>
+          <div className={`timeline-slot ${slot.kind}`} key={`${slot.time}-${slot.label}`}>
             <b style={{ opacity: 0.25 + slot.intensity * 0.75 }} />
             <span>{slot.time}</span>
             <strong>{slot.label}</strong>

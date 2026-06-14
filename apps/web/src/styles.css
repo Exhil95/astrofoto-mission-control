@@ -15,12 +15,14 @@
 html,
 body,
 #root {
-  min-height: 100%;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
   margin: 0;
 }
 
 body {
-  overflow-x: hidden;
+  overflow: hidden;
   background:
     radial-gradient(circle at 12% 18%, rgba(247, 200, 115, 0.16), transparent 30rem),
     radial-gradient(circle at 86% 12%, rgba(56, 214, 201, 0.13), transparent 28rem),
@@ -38,11 +40,13 @@ button {
 }
 
 .app-shell {
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 14px;
-  padding: 14px;
+  gap: 10px;
+  overflow: hidden;
+  padding: 10px;
 }
 
 .top-bar,
@@ -55,12 +59,12 @@ button {
 }
 
 .top-bar {
-  min-height: 68px;
+  min-height: 58px;
   display: grid;
   grid-template-columns: minmax(210px, 1fr) auto minmax(250px, 1fr);
   align-items: center;
-  gap: 18px;
-  padding: 12px 14px;
+  gap: 14px;
+  padding: 9px 12px;
   border-radius: 8px;
 }
 
@@ -147,24 +151,34 @@ button {
 .mission-grid {
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(250px, 310px) minmax(420px, 1fr) minmax(290px, 360px);
-  gap: 14px;
+  grid-template-columns: minmax(230px, 280px) minmax(380px, 1fr) minmax(280px, 340px);
+  gap: 10px;
+  overflow: hidden;
+}
+
+.left-stack {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 10px;
 }
 
 .right-stack {
   min-height: 0;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
-  gap: 14px;
+  grid-template-rows: minmax(0, 1.05fr) minmax(0, 0.9fr) minmax(0, 0.95fr);
+  gap: 10px;
 }
 
 .panel {
   min-height: 0;
   overflow: hidden;
   border-radius: 8px;
-  padding: 14px;
+  padding: 11px;
 }
 
+.left-panel,
+.profile-panel,
 .session-panel,
 .conditions-panel,
 .optics-panel {
@@ -175,7 +189,7 @@ button {
   height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
 }
 
 .section-title {
@@ -539,6 +553,7 @@ button {
   color: #f5f7fb;
   font-size: 14px;
   line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .night-profile {
@@ -632,6 +647,45 @@ button {
 
 .darkness-fill.astro {
   background: #38d6c9;
+}
+
+.session-blend {
+  display: grid;
+  gap: 8px;
+}
+
+.session-blend div {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) 58px;
+  align-items: center;
+  gap: 8px;
+}
+
+.session-blend span,
+.session-blend strong {
+  color: #c8d0df;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.session-blend strong {
+  color: #f5f7fb;
+  text-align: right;
+}
+
+.session-blend b {
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #7bb7ff, #38d6c9);
+}
+
+.session-blend b.risk {
+  background: linear-gradient(90deg, #f7c873, #38d6c9);
+}
+
+.session-blend b.skip {
+  background: linear-gradient(90deg, #ff6f91, #f7c873);
 }
 
 .condition-score {
@@ -931,6 +985,14 @@ button {
   inset: 0;
   background: linear-gradient(90deg, rgba(56, 214, 201, 0.18), transparent 64%);
   pointer-events: none;
+}
+
+.timeline-slot.weather b {
+  background: linear-gradient(90deg, rgba(247, 200, 115, 0.2), transparent 64%);
+}
+
+.timeline-slot.sky b {
+  background: linear-gradient(90deg, rgba(123, 183, 255, 0.18), transparent 64%);
 }
 
 .timeline-slot strong {

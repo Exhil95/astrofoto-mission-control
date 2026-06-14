@@ -2,7 +2,17 @@ from datetime import date
 from math import atan, cos, degrees, hypot, pi
 
 from .astro_engine import TargetProfile, build_astro_plan
-from .schemas import AltitudePoint, FovRequest, FovResponse, SessionPlanRequest, SessionPlanResponse, TimelineSlot
+from .forecast import get_sky_forecast
+from .schemas import (
+    AltitudePoint,
+    FovRequest,
+    FovResponse,
+    SessionPlanRequest,
+    SessionPlanResponse,
+    SkyForecastRequest,
+    SkyForecastResponse,
+    TimelineSlot,
+)
 
 
 TARGETS = [
@@ -83,14 +93,35 @@ def plan_session(payload: SessionPlanRequest) -> SessionPlanResponse:
         target=TargetProfile(ra_hours=target["ra_hours"], dec_deg=target["dec_deg"]),
     )
     moon_illumination_percent = _estimate_moon_illumination(session_date)
+    forecast = get_sky_forecast(
+        SkyForecastRequest(
+            date=session_date,
+            latitude_deg=payload.latitude_deg,
+            longitude_deg=payload.longitude_deg,
+            timezone=payload.timezone,
+        )
+    )
     transparency_percent = _estimate_transparency(payload.bortle, moon_illumination_percent)
     seeing_arcsec = _estimate_seeing(payload.bortle, astro_plan.max_altitude_deg)
-    condition_score = _score_conditions(
+    astro_score = _score_astronomy(
         max_altitude_deg=astro_plan.max_altitude_deg,
         moon_illumination_percent=moon_illumination_percent,
         transparency_percent=transparency_percent,
         bortle=payload.bortle,
         astronomical_darkness_minutes=astro_plan.astronomical_darkness_minutes,
+    )
+    condition_score = _score_conditions(
+        astro_score=astro_score,
+        weather_score=forecast.score,
+        weather_status=forecast.status,
+    )
+    recommended_mode = _recommended_mode(
+        target_type=target["type"],
+        white_night=astro_plan.white_night,
+        astronomical_darkness_minutes=astro_plan.astronomical_darkness_minutes,
+        moon_illumination_percent=moon_illumination_percent,
+        weather_status=forecast.status,
+        max_altitude_deg=astro_plan.max_altitude_deg,
     )
     recommendation = _recommendation(
         condition_score,
@@ -99,6 +130,8 @@ def plan_session(payload: SessionPlanRequest) -> SessionPlanResponse:
         astro_plan.white_night,
         astro_plan.astronomical_darkness_minutes,
         astro_plan.max_altitude_deg,
+        forecast,
+        recommended_mode,
     )
 
     return SessionPlanResponse(
@@ -118,9 +151,14 @@ def plan_session(payload: SessionPlanRequest) -> SessionPlanResponse:
         max_altitude_deg=astro_plan.max_altitude_deg,
         transparency_percent=transparency_percent,
         seeing_arcsec=seeing_arcsec,
+        astronomy_score=astro_score,
+        weather_score=forecast.score,
+        weather_status=forecast.status,
+        weather_summary=forecast.summary,
+        recommended_mode=recommended_mode,
         condition_score=condition_score,
         recommendation=recommendation,
-        slots=_timeline_slots(astro_plan, condition_score),
+        slots=_timeline_slots(astro_plan, forecast, condition_score),
         altitude_curve=[
             AltitudePoint(
                 time=point.time,
@@ -151,7 +189,7 @@ def _estimate_seeing(bortle: int, max_altitude_deg: int) -> float:
     return round(1.35 + bortle * 0.08 + altitude_penalty, 2)
 
 
-def _score_conditions(
+def _score_astronomy(
     max_altitude_deg: int,
     moon_illumination_percent: int,
     transparency_percent: int,
@@ -168,6 +206,15 @@ def _score_conditions(
         score -= 12
     if max_altitude_deg < 20:
         score -= (20 - max_altitude_deg) * 2.5
+    return round(max(0, min(100, score)))
+
+
+def _score_conditions(astro_score: int, weather_score: int, weather_status: str) -> int:
+    score = astro_score * 0.58 + weather_score * 0.42
+    if weather_status == "skip":
+        score -= 18
+    elif weather_status == "risk":
+        score -= 6
     return round(max(0, min(100, score)))
 
 
@@ -188,27 +235,70 @@ def _recommendation(
     white_night: bool,
     astronomical_darkness_minutes: int,
     max_altitude_deg: int,
+    forecast: SkyForecastResponse,
+    recommended_mode: str,
 ) -> str:
     if max_altitude_deg < 12:
         return "Target too low in darkness"
     if max_altitude_deg < 20:
         return "Low target: scout framing only"
+    if forecast.status == "skip":
+        return "Weather skip: calibration only"
     if white_night:
         if "nebula" in target_type.lower():
-            return "White night: narrowband or calibration"
+            return f"White night: {recommended_mode}"
         return "White night: prefer lunar/planetary"
     if astronomical_darkness_minutes < 120:
-        return "Short astro dark window"
+        return f"Short astro dark: {recommended_mode}"
     if score >= 82:
-        return "Prime imaging window"
+        return f"Prime window: {recommended_mode}"
     if "nebula" in target_type.lower() and moon_illumination_percent > 45:
         return "Prefer narrowband filters"
+    if forecast.status == "risk":
+        return f"Weather risk: {recommended_mode}"
     if score >= 64:
-        return "Good session with careful framing"
+        return f"Good session: {recommended_mode}"
     return "Scout night or calibration run"
 
 
-def _timeline_slots(astro_plan, condition_score: int) -> list[TimelineSlot]:
+def _recommended_mode(
+    target_type: str,
+    white_night: bool,
+    astronomical_darkness_minutes: int,
+    moon_illumination_percent: int,
+    weather_status: str,
+    max_altitude_deg: int,
+) -> str:
+    target_type_lower = target_type.lower()
+    is_nebula = "nebula" in target_type_lower
+    is_lunar_or_planetary = "lunar" in target_type_lower or "planetary" in target_type_lower
+
+    if weather_status == "skip":
+        return "Calibration"
+    if max_altitude_deg < 20:
+        return "Scout framing"
+    if is_lunar_or_planetary:
+        return "Lunar/planetary"
+    if white_night and is_nebula:
+        return "Narrowband"
+    if white_night:
+        return "Calibration"
+    if astronomical_darkness_minutes < 120 and is_nebula:
+        return "Narrowband"
+    if moon_illumination_percent > 45 and is_nebula:
+        return "Narrowband"
+    if moon_illumination_percent > 55:
+        return "Luminance later"
+    if weather_status == "risk":
+        return "Short subs"
+    return "RGB/Luminance"
+
+
+def _timeline_slots(
+    astro_plan,
+    forecast: SkyForecastResponse,
+    condition_score: int,
+) -> list[TimelineSlot]:
     if astro_plan.astronomical_darkness_minutes:
         dark_label = "Astro start"
         dark_value = f"{_format_duration(astro_plan.astronomical_darkness_minutes)}"
@@ -219,11 +309,23 @@ def _timeline_slots(astro_plan, condition_score: int) -> list[TimelineSlot]:
         dark_label = "Bright"
         dark_value = f"{_format_duration(astro_plan.civil_darkness_minutes)}"
 
+    best_weather_hour = max(
+        forecast.hours,
+        key=lambda hour: hour.imaging_score,
+        default=None,
+    )
+    weather_time = best_weather_hour.time if best_weather_hour else "--:--"
+    weather_value = (
+        f"{forecast.status.title()} {forecast.score}/100"
+        if not best_weather_hour
+        else f"{best_weather_hour.imaging_score}/100"
+    )
+
     return [
         TimelineSlot(time=astro_plan.best_start_time, label=dark_label, value=dark_value, intensity=0.45, kind="sky"),
+        TimelineSlot(time=weather_time, label="Weather", value=weather_value, intensity=forecast.score / 100, kind="weather"),
         TimelineSlot(time=astro_plan.meridian_time, label="Peak", value=f"{astro_plan.max_altitude_deg} deg", intensity=0.95, kind="target"),
         TimelineSlot(time=astro_plan.best_end_time, label="End run", value=f"{condition_score}/100", intensity=0.7, kind="target"),
-        TimelineSlot(time="--:--", label=astro_plan.night_kind_label, value=f"{condition_score}/100", intensity=0.5, kind="sky"),
     ]
 
 

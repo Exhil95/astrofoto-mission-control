@@ -32,6 +32,11 @@ export type SessionPlan = {
   maxAltitudeDeg: number;
   transparencyPercent: number;
   seeingArcsec: number;
+  astronomyScore: number;
+  weatherScore: number;
+  weatherStatus: string;
+  weatherSummary: string;
+  recommendedMode: string;
   conditionScore: number;
   recommendation: string;
   slots: SessionSlot[];
@@ -63,6 +68,11 @@ type ApiSessionPlan = {
   max_altitude_deg: number;
   transparency_percent: number;
   seeing_arcsec: number;
+  astronomy_score: number;
+  weather_score: number;
+  weather_status: string;
+  weather_summary: string;
+  recommended_mode: string;
   condition_score: number;
   recommendation: string;
   slots: SessionSlot[];
@@ -137,6 +147,11 @@ export function createFallbackSessionPlan(target: Target, settings?: SessionSett
     maxAltitudeDeg: target.season === "Winter" ? 61 : 54,
     transparencyPercent: 82,
     seeingArcsec: 1.7,
+    astronomyScore: conditionScore,
+    weatherScore: 72,
+    weatherStatus: "risk",
+    weatherSummary: "Offline weather estimate",
+    recommendedMode: target.season === "Summer" ? "Narrowband" : "RGB/Luminance",
     conditionScore,
     recommendation: target.exposureHint,
     slots: [
@@ -167,6 +182,11 @@ function normalizeSessionPlan(plan: ApiSessionPlan): SessionPlan {
     maxAltitudeDeg: plan.max_altitude_deg,
     transparencyPercent: plan.transparency_percent,
     seeingArcsec: plan.seeing_arcsec,
+    astronomyScore: plan.astronomy_score,
+    weatherScore: plan.weather_score,
+    weatherStatus: plan.weather_status,
+    weatherSummary: plan.weather_summary,
+    recommendedMode: plan.recommended_mode,
     conditionScore: plan.condition_score,
     recommendation: plan.recommendation,
     slots: plan.slots,

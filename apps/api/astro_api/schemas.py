@@ -27,6 +27,36 @@ class TargetResponse(BaseModel):
     magnitude: float
 
 
+class ProfileBase(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    site_name: str = Field(min_length=1, max_length=80)
+    latitude_deg: float = Field(ge=-90, le=90)
+    longitude_deg: float = Field(ge=-180, le=180)
+    timezone: str = Field(min_length=1, max_length=64)
+    bortle: int = Field(ge=1, le=9)
+    telescope_name: str = Field(min_length=1, max_length=80)
+    focal_length_mm: float = Field(gt=0, le=5000)
+    reducer: float = Field(gt=0, le=3)
+    sensor_id: str = Field(min_length=1, max_length=48)
+    sensor_name: str = Field(min_length=1, max_length=80)
+    sensor_width_mm: float = Field(gt=0, le=80)
+    sensor_height_mm: float = Field(gt=0, le=80)
+    pixel_size_um: float = Field(gt=0, le=20)
+
+
+class ProfileCreate(ProfileBase):
+    pass
+
+
+class ProfileUpdate(ProfileBase):
+    pass
+
+
+class ProfileResponse(ProfileBase):
+    id: int
+    updated_at: str
+
+
 class SessionPlanRequest(BaseModel):
     target_id: str
     date: Date | None = None
@@ -68,6 +98,11 @@ class SessionPlanResponse(BaseModel):
     max_altitude_deg: int
     transparency_percent: int
     seeing_arcsec: float
+    astronomy_score: int = Field(ge=0, le=100)
+    weather_score: int = Field(ge=0, le=100)
+    weather_status: str
+    weather_summary: str
+    recommended_mode: str
     condition_score: int = Field(ge=0, le=100)
     recommendation: str
     slots: list[TimelineSlot]

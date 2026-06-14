@@ -1,0 +1,213 @@
+from __future__ import annotations
+
+import sqlite3
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
+
+from .schemas import ProfileCreate, ProfileResponse, ProfileUpdate
+from .settings import get_settings
+
+PROFILE_COLUMNS = [
+    "id",
+    "name",
+    "site_name",
+    "latitude_deg",
+    "longitude_deg",
+    "timezone",
+    "bortle",
+    "telescope_name",
+    "focal_length_mm",
+    "reducer",
+    "sensor_id",
+    "sensor_name",
+    "sensor_width_mm",
+    "sensor_height_mm",
+    "pixel_size_um",
+    "updated_at",
+]
+
+DEFAULT_PROFILES = [
+    {
+        "name": "Backyard APS-C",
+        "site_name": "Katowice",
+        "latitude_deg": 50.2649,
+        "longitude_deg": 19.0238,
+        "timezone": "Europe/Warsaw",
+        "bortle": 5,
+        "telescope_name": "80ED Refractor",
+        "focal_length_mm": 480,
+        "reducer": 1,
+        "sensor_id": "imx571",
+        "sensor_name": "Sony IMX571",
+        "sensor_width_mm": 23.5,
+        "sensor_height_mm": 15.7,
+        "pixel_size_um": 3.76,
+    },
+    {
+        "name": "Dark Site Wide",
+        "site_name": "Bieszczady",
+        "latitude_deg": 49.2486,
+        "longitude_deg": 22.5937,
+        "timezone": "Europe/Warsaw",
+        "bortle": 2,
+        "telescope_name": "RedCat Class",
+        "focal_length_mm": 250,
+        "reducer": 1,
+        "sensor_id": "imx571",
+        "sensor_name": "Sony IMX571",
+        "sensor_width_mm": 23.5,
+        "sensor_height_mm": 15.7,
+        "pixel_size_um": 3.76,
+    },
+    {
+        "name": "Tenerife Full Frame",
+        "site_name": "Tenerife",
+        "latitude_deg": 28.3003,
+        "longitude_deg": -16.5118,
+        "timezone": "Atlantic/Canary",
+        "bortle": 3,
+        "telescope_name": "Fast Astrograph",
+        "focal_length_mm": 420,
+        "reducer": 0.8,
+        "sensor_id": "imx455",
+        "sensor_name": "Sony IMX455",
+        "sensor_width_mm": 36,
+        "sensor_height_mm": 24,
+        "pixel_size_um": 3.76,
+    },
+]
+
+
+def list_profiles() -> list[ProfileResponse]:
+    _ensure_store()
+    with _connect() as connection:
+        rows = connection.execute(
+            f"SELECT {', '.join(PROFILE_COLUMNS)} FROM equipment_profiles ORDER BY id"
+        ).fetchall()
+    return [_row_to_profile(row) for row in rows]
+
+
+def create_profile(payload: ProfileCreate) -> ProfileResponse:
+    _ensure_store()
+    values = payload.model_dump()
+    values["updated_at"] = _now_iso()
+    fields = list(values)
+    placeholders = ", ".join("?" for _ in fields)
+
+    with _connect() as connection:
+        cursor = connection.execute(
+            f"INSERT INTO equipment_profiles ({', '.join(fields)}) VALUES ({placeholders})",
+            [values[field] for field in fields],
+        )
+        connection.commit()
+        profile_id = int(cursor.lastrowid)
+    profile = get_profile(profile_id)
+    if profile is None:
+        raise RuntimeError("Profile was not persisted")
+    return profile
+
+
+def update_profile(profile_id: int, payload: ProfileUpdate) -> ProfileResponse | None:
+    _ensure_store()
+    values = payload.model_dump()
+    values["updated_at"] = _now_iso()
+    assignments = ", ".join(f"{field} = ?" for field in values)
+
+    with _connect() as connection:
+        cursor = connection.execute(
+            f"UPDATE equipment_profiles SET {assignments} WHERE id = ?",
+            [*values.values(), profile_id],
+        )
+        connection.commit()
+        if cursor.rowcount == 0:
+            return None
+    return get_profile(profile_id)
+
+
+def delete_profile(profile_id: int) -> bool:
+    _ensure_store()
+    with _connect() as connection:
+        cursor = connection.execute("DELETE FROM equipment_profiles WHERE id = ?", (profile_id,))
+        connection.commit()
+    return cursor.rowcount > 0
+
+
+def get_profile(profile_id: int) -> ProfileResponse | None:
+    _ensure_store()
+    with _connect() as connection:
+        row = connection.execute(
+            f"SELECT {', '.join(PROFILE_COLUMNS)} FROM equipment_profiles WHERE id = ?",
+            (profile_id,),
+        ).fetchone()
+    return _row_to_profile(row) if row else None
+
+
+def _ensure_store() -> None:
+    with _connect() as connection:
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS equipment_profiles (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                site_name TEXT NOT NULL,
+                latitude_deg REAL NOT NULL,
+                longitude_deg REAL NOT NULL,
+                timezone TEXT NOT NULL,
+                bortle INTEGER NOT NULL,
+                telescope_name TEXT NOT NULL,
+                focal_length_mm REAL NOT NULL,
+                reducer REAL NOT NULL,
+                sensor_id TEXT NOT NULL,
+                sensor_name TEXT NOT NULL,
+                sensor_width_mm REAL NOT NULL,
+                sensor_height_mm REAL NOT NULL,
+                pixel_size_um REAL NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        count = connection.execute("SELECT COUNT(*) FROM equipment_profiles").fetchone()[0]
+        if count == 0:
+            _seed_defaults(connection)
+        connection.commit()
+
+
+def _seed_defaults(connection: sqlite3.Connection) -> None:
+    for profile in DEFAULT_PROFILES:
+        values = {**profile, "updated_at": _now_iso()}
+        fields = list(values)
+        placeholders = ", ".join("?" for _ in fields)
+        connection.execute(
+            f"INSERT INTO equipment_profiles ({', '.join(fields)}) VALUES ({placeholders})",
+            [values[field] for field in fields],
+        )
+
+
+def _connect() -> sqlite3.Connection:
+    path = _database_path()
+    if path != ":memory:":
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+    connection = sqlite3.connect(path)
+    connection.row_factory = sqlite3.Row
+    return connection
+
+
+def _database_path() -> str:
+    url = get_settings().profile_database_url
+    if url == "sqlite:///:memory:":
+        return ":memory:"
+    if url.startswith("sqlite:///"):
+        return url.removeprefix("sqlite:///")
+    if url.startswith("sqlite://"):
+        return url.removeprefix("sqlite://")
+    return "./astrofoto.sqlite3"
+
+
+def _row_to_profile(row: sqlite3.Row) -> ProfileResponse:
+    data: dict[str, Any] = {column: row[column] for column in PROFILE_COLUMNS}
+    return ProfileResponse(**data)
+
+
+def _now_iso() -> str:
+    return datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")

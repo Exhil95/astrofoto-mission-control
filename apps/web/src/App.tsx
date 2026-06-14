@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Activity, Aperture, Gauge, LocateFixed, Moon, Radio, Telescope } from "lucide-react";
 import { TargetRail } from "./components/TargetRail";
 import { FovConsole } from "./components/FovConsole";
+import { ProfileDock } from "./components/ProfileDock";
 import { SessionControl } from "./components/SessionControl";
 import { SessionTimeline } from "./components/SessionTimeline";
 import { SkyConditions } from "./components/SkyConditions";
@@ -11,6 +12,14 @@ import {
   type SkyForecast
 } from "./lib/forecast";
 import { calculateFov } from "./lib/fov";
+import {
+  createFallbackProfiles,
+  createProfile,
+  fetchProfiles,
+  profileToSessionSettings,
+  type EquipmentProfile,
+  type ProfilePayload
+} from "./lib/profiles";
 import { sensorPresets } from "./lib/sensors";
 import {
   createFallbackSessionPlan,
@@ -34,6 +43,9 @@ export function App() {
   const [reducer, setReducer] = useState(1);
   const [isPlanning, setIsPlanning] = useState(false);
   const [isForecastLoading, setIsForecastLoading] = useState(false);
+  const [isProfileSaving, setIsProfileSaving] = useState(false);
+  const [profiles, setProfiles] = useState<EquipmentProfile[]>(() => createFallbackProfiles());
+  const [selectedProfileId, setSelectedProfileId] = useState<number | null>(1);
   const [sessionSettings, setSessionSettings] = useState<SessionSettings>({
     date: getTodayIsoDate(),
     latitudeDeg: 50.2649,
@@ -77,6 +89,77 @@ export function App() {
     setSelectedSensorId("custom");
     setPixelSizeUm(value);
   };
+
+  const applyProfile = (profile: EquipmentProfile) => {
+    setSelectedProfileId(profile.id);
+    setSessionSettings(profileToSessionSettings(profile, sessionSettings.date));
+    setFocalLengthMm(profile.focalLengthMm);
+    setReducer(profile.reducer);
+    setSelectedSensorId(profile.sensorId);
+    setSensorWidthMm(profile.sensorWidthMm);
+    setSensorHeightMm(profile.sensorHeightMm);
+    setPixelSizeUm(profile.pixelSizeUm);
+  };
+
+  const selectProfile = (profileId: number) => {
+    const profile = profiles.find((item) => item.id === profileId);
+    if (profile) applyProfile(profile);
+  };
+
+  const saveCurrentProfile = () => {
+    const sensor = sensorPresets.find((item) => item.id === selectedSensorId);
+    const payload: ProfilePayload = {
+      name: `${sessionSettings.bortle <= 3 ? "Dark" : "Home"} ${focalLengthMm.toFixed(0)}mm`,
+      siteName: sessionSettings.timezone.includes("Canary") ? "Tenerife" : "Custom site",
+      latitudeDeg: sessionSettings.latitudeDeg,
+      longitudeDeg: sessionSettings.longitudeDeg,
+      timezone: sessionSettings.timezone,
+      bortle: sessionSettings.bortle,
+      telescopeName: `${focalLengthMm.toFixed(0)}mm imaging rig`,
+      focalLengthMm,
+      reducer,
+      sensorId: selectedSensorId,
+      sensorName: sensor?.name ?? "Custom sensor",
+      sensorWidthMm,
+      sensorHeightMm,
+      pixelSizeUm
+    };
+
+    setIsProfileSaving(true);
+    createProfile(payload)
+      .then((profile) => {
+        setProfiles((items) => [...items, profile]);
+        applyProfile(profile);
+      })
+      .catch(() => {
+        const fallbackProfile: EquipmentProfile = {
+          ...payload,
+          id: Date.now(),
+          updatedAt: new Date().toISOString()
+        };
+        setProfiles((items) => [...items, fallbackProfile]);
+        applyProfile(fallbackProfile);
+      })
+      .finally(() => setIsProfileSaving(false));
+  };
+
+  useEffect(() => {
+    let ignore = false;
+
+    fetchProfiles()
+      .then((loadedProfiles) => {
+        if (ignore || !loadedProfiles.length) return;
+        setProfiles(loadedProfiles);
+        applyProfile(loadedProfiles[0]);
+      })
+      .catch(() => {
+        if (!ignore) setProfiles(createFallbackProfiles());
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   useEffect(() => {
     let ignore = false;
@@ -163,12 +246,24 @@ export function App() {
       </header>
 
       <section className="mission-grid">
-        <aside className="panel left-panel" aria-label="Target selector">
-          <TargetRail
-            targets={targets}
-            selectedTarget={selectedTarget}
-            onSelectTarget={setSelectedTargetId}
-          />
+        <aside className="left-stack" aria-label="Targets and profiles">
+          <section className="panel left-panel" aria-label="Target selector">
+            <TargetRail
+              targets={targets}
+              selectedTarget={selectedTarget}
+              onSelectTarget={setSelectedTargetId}
+            />
+          </section>
+
+          <section className="panel profile-panel" aria-label="Equipment profiles">
+            <ProfileDock
+              profiles={profiles}
+              selectedProfileId={selectedProfileId}
+              saving={isProfileSaving}
+              onSelectProfile={selectProfile}
+              onSaveCurrent={saveCurrentProfile}
+            />
+          </section>
         </aside>
 
         <section className="sky-stage" aria-label="Interactive sky map">

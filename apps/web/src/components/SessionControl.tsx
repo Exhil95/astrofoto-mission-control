@@ -175,6 +175,14 @@ export function SessionControl({ settings, plan, loading, onChange }: SessionCon
           <span>Transparency</span>
           <strong>{plan.transparencyPercent}%</strong>
         </div>
+        <div>
+          <span>Weather</span>
+          <strong>{statusLabel(plan.weatherStatus)} {plan.weatherScore}/100</strong>
+        </div>
+        <div>
+          <span>Mode</span>
+          <strong>{plan.recommendedMode}</strong>
+        </div>
       </div>
 
       <NightProfile plan={plan} />
@@ -218,8 +226,27 @@ function NightProfile({ plan }: { plan: SessionPlan }) {
         <span>{plan.whiteNight ? "White night" : "Astronomical night"}</span>
         <strong>Sun {plan.minSunAltitudeDeg.toFixed(1)} deg</strong>
       </div>
+
+      <div className="session-blend">
+        <div>
+          <span>Astro</span>
+          <b style={{ width: `${plan.astronomyScore}%` }} />
+          <strong>{plan.astronomyScore}/100</strong>
+        </div>
+        <div>
+          <span>Weather</span>
+          <b className={plan.weatherStatus} style={{ width: `${plan.weatherScore}%` }} />
+          <strong>{plan.weatherScore}/100</strong>
+        </div>
+      </div>
     </div>
   );
+}
+
+function statusLabel(status: string) {
+  if (status === "shoot") return "Shoot";
+  if (status === "risk") return "Risk";
+  return "Skip";
 }
 
 function formatMinutes(minutes: number) {

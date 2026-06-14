@@ -1,7 +1,36 @@
 from datetime import date
 
-from astro_api.schemas import FovRequest, SessionPlanRequest
+from astro_api.schemas import FovRequest, SessionPlanRequest, SkyForecastHour, SkyForecastResponse
 from astro_api.services import calculate_fov, plan_session
+
+
+def _forecast(score: int = 86, status: str = "shoot") -> SkyForecastResponse:
+    return SkyForecastResponse(
+        source="test",
+        status=status,
+        score=score,
+        summary="Test forecast",
+        updated_at="2026-01-01T00:00:00Z",
+        warnings=["No major weather flags"],
+        hours=[
+            SkyForecastHour(
+                time="22:00",
+                cloud_cover_percent=12,
+                cloud_low_percent=2,
+                cloud_mid_percent=4,
+                cloud_high_percent=8,
+                humidity_percent=64,
+                temperature_c=2.0,
+                dew_point_c=-4.0,
+                wind_speed_kmh=8.0,
+                wind_gust_kmh=14.0,
+                visibility_km=24.0,
+                precipitation_probability_percent=0,
+                imaging_score=score,
+                risk=status,
+            )
+        ],
+    )
 
 
 def test_calculate_fov_returns_expected_scale() -> None:
@@ -20,7 +49,9 @@ def test_calculate_fov_returns_expected_scale() -> None:
     assert round(result.pixel_scale_arcsec, 2) == 1.62
 
 
-def test_plan_session_returns_visual_timeline() -> None:
+def test_plan_session_returns_visual_timeline(monkeypatch) -> None:
+    monkeypatch.setattr("astro_api.services.get_sky_forecast", lambda payload: _forecast())
+
     result = plan_session(
         SessionPlanRequest(
             target_id="m42",
@@ -36,10 +67,16 @@ def test_plan_session_returns_visual_timeline() -> None:
     assert result.max_altitude_deg == 34
     assert result.astronomical_darkness_minutes > 0
     assert result.white_night is False
+    assert result.astronomy_score > 0
+    assert result.weather_score == 86
+    assert result.weather_status == "shoot"
+    assert result.recommended_mode
     assert len(result.slots) == 4
 
 
-def test_plan_session_marks_polish_white_night() -> None:
+def test_plan_session_marks_polish_white_night(monkeypatch) -> None:
+    monkeypatch.setattr("astro_api.services.get_sky_forecast", lambda payload: _forecast())
+
     result = plan_session(
         SessionPlanRequest(
             target_id="ngc7000",
@@ -55,4 +92,27 @@ def test_plan_session_marks_polish_white_night() -> None:
     assert result.astronomical_darkness_minutes == 0
     assert result.night_kind_label == "Nautical only"
     assert "White night" in result.recommendation
+    assert result.recommended_mode == "Narrowband"
     assert result.altitude_curve
+
+
+def test_plan_session_weather_skip_overrides_good_astronomy(monkeypatch) -> None:
+    monkeypatch.setattr("astro_api.services.get_sky_forecast", lambda payload: _forecast(18, "skip"))
+
+    result = plan_session(
+        SessionPlanRequest(
+            target_id="m31",
+            date=date(2026, 10, 12),
+            latitude_deg=50.2649,
+            longitude_deg=19.0238,
+            timezone="Europe/Warsaw",
+            bortle=3,
+        )
+    )
+
+    assert result.weather_status == "skip"
+    assert result.weather_score == 18
+    assert result.recommended_mode == "Calibration"
+    assert result.condition_score < 55
+    assert result.recommendation == "Weather skip: calibration only"
+    assert any(slot.label == "Weather" for slot in result.slots)

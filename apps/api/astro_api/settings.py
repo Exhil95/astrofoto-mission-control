@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     app_env: str = "local"
     cors_origins: str = "http://localhost,http://localhost:5173"
     database_url: str = "sqlite:///./astrofoto.sqlite3"
+    profile_database_url: str = "sqlite:///./astrofoto.sqlite3"
     redis_url: str = "redis://localhost:6379/0"
     open_meteo_forecast_url: str = "https://api.open-meteo.com/v1/forecast"
     forecast_cache_ttl_seconds: int = 900
