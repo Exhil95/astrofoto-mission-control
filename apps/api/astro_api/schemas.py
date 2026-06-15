@@ -21,10 +21,18 @@ class FovResponse(BaseModel):
 
 class TargetResponse(BaseModel):
     id: str
+    catalog_id: str
     name: str
     type: str
+    constellation: str
     season: str
     magnitude: float
+    angular_width_arcmin: float
+    angular_height_arcmin: float
+    best_months: str
+    difficulty: str
+    framing: str
+    exposure_hint: str
 
 
 class ProfileBase(BaseModel):

@@ -325,6 +325,7 @@ export function App() {
             <TargetRail
               targets={targets}
               selectedTarget={selectedTarget}
+              fov={fov}
               onSelectTarget={setSelectedTargetId}
             />
           </section>

@@ -39,6 +39,6 @@ See [docs/HOMELAB.md](docs/HOMELAB.md) for persistent SQLite profiles, healthche
 ## First tools
 
 - Live field-of-view simulator
-- Visual target selector
+- Searchable target catalog with FOV fit, size, season, and magnitude filters
 - Session timeline mock for planning panels
 - API endpoints for FOV calculations and curated target data

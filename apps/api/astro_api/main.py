@@ -42,7 +42,7 @@ def fov(payload: FovRequest) -> FovResponse:
 
 
 @app.get("/api/targets", response_model=list[TargetResponse])
-def targets() -> list[dict[str, str | float]]:
+def targets() -> list[dict[str, object]]:
     return TARGETS
 
 
