@@ -68,6 +68,7 @@ export function App() {
   });
 
   const selectedTarget = targets.find((target) => target.id === selectedTargetId) ?? targets[0];
+  const selectedProfile = profiles.find((profile) => profile.id === selectedProfileId) ?? null;
   const [sessionPlan, setSessionPlan] = useState(() =>
     createFallbackSessionPlan(selectedTarget, sessionSettings)
   );
@@ -136,14 +137,24 @@ export function App() {
       longitudeDeg: sessionSettings.longitudeDeg,
       timezone: sessionSettings.timezone,
       bortle: sessionSettings.bortle,
-      telescopeName: `${focalLengthMm.toFixed(0)}mm imaging rig`,
+      telescopeName: selectedProfile?.telescopeName ?? `${focalLengthMm.toFixed(0)}mm imaging rig`,
+      telescopeType: selectedProfile?.telescopeType ?? "Refractor",
+      apertureMm: selectedProfile?.apertureMm ?? estimateAperture(focalLengthMm),
       focalLengthMm,
+      reducerName: selectedProfile?.reducerName ?? (reducer === 1 ? "Native / flattener" : `${reducer.toFixed(2)}x reducer`),
       reducer,
+      cameraName: selectedProfile?.cameraName ?? `${sensor?.name ?? "Custom sensor"} camera`,
       sensorId: selectedSensorId,
       sensorName: sensor?.name ?? "Custom sensor",
       sensorWidthMm,
       sensorHeightMm,
-      pixelSizeUm
+      pixelSizeUm,
+      filterSet: selectedProfile?.filterSet ?? "LRGB + Ha/OIII/SII",
+      filterWheel: selectedProfile?.filterWheel ?? "Filter drawer",
+      guidingSetup: selectedProfile?.guidingSetup ?? "50mm guide scope",
+      guideCameraName: selectedProfile?.guideCameraName ?? "ASI120MM class",
+      focuserName: selectedProfile?.focuserName ?? "Manual focuser",
+      mountName: selectedProfile?.mountName ?? "Equatorial mount"
     };
   };
 
@@ -451,6 +462,7 @@ export function App() {
           <section className="panel optics-panel" aria-label="Imaging controls">
             <FovConsole
               fov={fov}
+              profile={selectedProfile}
               selectedSensorId={selectedSensorId}
               focalLengthMm={focalLengthMm}
               sensorWidthMm={sensorWidthMm}
@@ -480,4 +492,8 @@ export function App() {
       </section>
     </main>
   );
+}
+
+function estimateAperture(focalLengthMm: number) {
+  return Math.round(Math.max(40, Math.min(300, focalLengthMm / 6)));
 }

@@ -1,8 +1,10 @@
 import type { FovResult } from "../lib/fov";
+import type { EquipmentProfile } from "../lib/profiles";
 import { customSensorPreset, sensorPresets } from "../lib/sensors";
 
 type FovConsoleProps = {
   fov: FovResult;
+  profile: EquipmentProfile | null;
   selectedSensorId: string;
   focalLengthMm: number;
   sensorWidthMm: number;
@@ -57,6 +59,7 @@ function Slider({
 
 export function FovConsole({
   fov,
+  profile,
   selectedSensorId,
   focalLengthMm,
   sensorWidthMm,
@@ -100,6 +103,27 @@ export function FovConsole({
         <strong>{selectedSensor.name}</strong>
         <em>{selectedSensor.note}</em>
       </div>
+
+      {profile && (
+        <div className="equipment-grid" aria-label="Optical profile metadata">
+          <div>
+            <span>Camera</span>
+            <strong>{profile.cameraName}</strong>
+          </div>
+          <div>
+            <span>Filters</span>
+            <strong>{profile.filterSet}</strong>
+          </div>
+          <div>
+            <span>Guide</span>
+            <strong>{profile.guidingSetup}</strong>
+          </div>
+          <div>
+            <span>Focuser</span>
+            <strong>{profile.focuserName}</strong>
+          </div>
+        </div>
+      )}
 
       <div className="readout">
         <span>Image scale</span>

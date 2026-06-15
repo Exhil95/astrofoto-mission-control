@@ -43,6 +43,10 @@ curl http://localhost/health
 - `minio-data`: object storage.
 - `caddy-data` and `caddy-config`: certificates and Caddy state.
 
+The API automatically adds new equipment profile columns on startup, so existing
+SQLite profile databases can keep telescope, reducer, camera, filter, guiding,
+focuser, and mount metadata without a manual migration step.
+
 ## Backup Profiles
 
 ```powershell

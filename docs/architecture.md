@@ -4,12 +4,12 @@ Astrofoto Mission Control is a visual-first monorepo.
 
 ## Web
 
-The web app owns the mission-control interface, 3D target map, equipment controls, and session timeline.
+The web app owns the mission-control interface, 3D target map, rich equipment profiles, and session timeline.
 It calls the API for calculations that should remain canonical on the backend.
 
 ## API
 
-The API owns astrophotography formulas, future catalog imports, FITS metadata, and long-running jobs.
+The API owns astrophotography formulas, persisted equipment profile metadata, future catalog imports, FITS metadata, and long-running jobs.
 Astropy-related code belongs here, not in the browser.
 
 ## Homelab
@@ -22,4 +22,3 @@ Docker Compose runs the full stack:
 - PostgreSQL for relational data
 - Valkey for queues/cache
 - MinIO for large frames and generated assets
-

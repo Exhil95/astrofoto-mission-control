@@ -819,6 +819,39 @@ button {
   line-height: 1.25;
 }
 
+.equipment-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.equipment-grid div {
+  min-height: 46px;
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 8px;
+}
+
+.equipment-grid span {
+  display: block;
+  color: #8d95a8;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.equipment-grid strong {
+  display: block;
+  overflow: hidden;
+  margin-top: 6px;
+  color: #ffffff;
+  font-size: 12px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .preset-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1765,6 +1798,7 @@ button {
   .profile-metrics,
   .profile-form-grid,
   .condition-metrics,
+  .equipment-grid,
   .timeline-track {
     grid-template-columns: 1fr;
   }

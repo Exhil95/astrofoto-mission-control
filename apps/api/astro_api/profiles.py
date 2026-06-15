@@ -17,15 +17,38 @@ PROFILE_COLUMNS = [
     "timezone",
     "bortle",
     "telescope_name",
+    "telescope_type",
+    "aperture_mm",
     "focal_length_mm",
+    "reducer_name",
     "reducer",
+    "camera_name",
     "sensor_id",
     "sensor_name",
     "sensor_width_mm",
     "sensor_height_mm",
     "pixel_size_um",
+    "filter_set",
+    "filter_wheel",
+    "guiding_setup",
+    "guide_camera_name",
+    "focuser_name",
+    "mount_name",
     "updated_at",
 ]
+
+PROFILE_COLUMN_MIGRATIONS = {
+    "telescope_type": "TEXT NOT NULL DEFAULT 'Refractor'",
+    "aperture_mm": "REAL NOT NULL DEFAULT 80",
+    "reducer_name": "TEXT NOT NULL DEFAULT 'None'",
+    "camera_name": "TEXT NOT NULL DEFAULT 'Dedicated astro camera'",
+    "filter_set": "TEXT NOT NULL DEFAULT 'LRGB + Ha/OIII/SII'",
+    "filter_wheel": "TEXT NOT NULL DEFAULT 'Manual drawer'",
+    "guiding_setup": "TEXT NOT NULL DEFAULT '50mm guide scope'",
+    "guide_camera_name": "TEXT NOT NULL DEFAULT 'ASI120MM class'",
+    "focuser_name": "TEXT NOT NULL DEFAULT 'Manual focuser'",
+    "mount_name": "TEXT NOT NULL DEFAULT 'Equatorial mount'",
+}
 
 DEFAULT_PROFILES = [
     {
@@ -36,13 +59,23 @@ DEFAULT_PROFILES = [
         "timezone": "Europe/Warsaw",
         "bortle": 5,
         "telescope_name": "80ED Refractor",
+        "telescope_type": "Doublet refractor",
+        "aperture_mm": 80,
         "focal_length_mm": 480,
+        "reducer_name": "1.0x field flattener",
         "reducer": 1,
+        "camera_name": "ASI2600MC Pro",
         "sensor_id": "imx571",
         "sensor_name": "Sony IMX571",
         "sensor_width_mm": 23.5,
         "sensor_height_mm": 15.7,
         "pixel_size_um": 3.76,
+        "filter_set": "UV/IR cut + dual narrowband",
+        "filter_wheel": "2 inch filter drawer",
+        "guiding_setup": "50mm guide scope",
+        "guide_camera_name": "ASI120MM Mini",
+        "focuser_name": "EAF on Crayford",
+        "mount_name": "HEQ5 class",
     },
     {
         "name": "Dark Site Wide",
@@ -52,13 +85,23 @@ DEFAULT_PROFILES = [
         "timezone": "Europe/Warsaw",
         "bortle": 2,
         "telescope_name": "RedCat Class",
+        "telescope_type": "Petzval refractor",
+        "aperture_mm": 51,
         "focal_length_mm": 250,
+        "reducer_name": "Native flat field",
         "reducer": 1,
+        "camera_name": "ASI2600MC Pro",
         "sensor_id": "imx571",
         "sensor_name": "Sony IMX571",
         "sensor_width_mm": 23.5,
         "sensor_height_mm": 15.7,
         "pixel_size_um": 3.76,
+        "filter_set": "UV/IR cut + L-eXtreme",
+        "filter_wheel": "Filter drawer",
+        "guiding_setup": "30mm mini guide scope",
+        "guide_camera_name": "ASI120MM Mini",
+        "focuser_name": "Helical focuser",
+        "mount_name": "Travel harmonic mount",
     },
     {
         "name": "Tenerife Full Frame",
@@ -68,13 +111,23 @@ DEFAULT_PROFILES = [
         "timezone": "Atlantic/Canary",
         "bortle": 3,
         "telescope_name": "Fast Astrograph",
+        "telescope_type": "Corrected astrograph",
+        "aperture_mm": 150,
         "focal_length_mm": 420,
+        "reducer_name": "0.8x reducer/corrector",
         "reducer": 0.8,
+        "camera_name": "ASI6200MM Pro",
         "sensor_id": "imx455",
         "sensor_name": "Sony IMX455",
         "sensor_width_mm": 36,
         "sensor_height_mm": 24,
         "pixel_size_um": 3.76,
+        "filter_set": "LRGB + 3nm SHO",
+        "filter_wheel": "7x2 inch EFW",
+        "guiding_setup": "OAG",
+        "guide_camera_name": "ASI174MM Mini",
+        "focuser_name": "High-torque EAF",
+        "mount_name": "EQ8 class",
     },
 ]
 
@@ -156,21 +209,41 @@ def _ensure_store() -> None:
                 timezone TEXT NOT NULL,
                 bortle INTEGER NOT NULL,
                 telescope_name TEXT NOT NULL,
+                telescope_type TEXT NOT NULL,
+                aperture_mm REAL NOT NULL,
                 focal_length_mm REAL NOT NULL,
+                reducer_name TEXT NOT NULL,
                 reducer REAL NOT NULL,
+                camera_name TEXT NOT NULL,
                 sensor_id TEXT NOT NULL,
                 sensor_name TEXT NOT NULL,
                 sensor_width_mm REAL NOT NULL,
                 sensor_height_mm REAL NOT NULL,
                 pixel_size_um REAL NOT NULL,
+                filter_set TEXT NOT NULL,
+                filter_wheel TEXT NOT NULL,
+                guiding_setup TEXT NOT NULL,
+                guide_camera_name TEXT NOT NULL,
+                focuser_name TEXT NOT NULL,
+                mount_name TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             )
             """
         )
+        _ensure_columns(connection)
         count = connection.execute("SELECT COUNT(*) FROM equipment_profiles").fetchone()[0]
         if count == 0:
             _seed_defaults(connection)
         connection.commit()
+
+
+def _ensure_columns(connection: sqlite3.Connection) -> None:
+    existing_columns = {
+        row["name"] for row in connection.execute("PRAGMA table_info(equipment_profiles)")
+    }
+    for column, definition in PROFILE_COLUMN_MIGRATIONS.items():
+        if column not in existing_columns:
+            connection.execute(f"ALTER TABLE equipment_profiles ADD COLUMN {column} {definition}")
 
 
 def _seed_defaults(connection: sqlite3.Connection) -> None:

@@ -43,13 +43,23 @@ class ProfileBase(BaseModel):
     timezone: str = Field(min_length=1, max_length=64)
     bortle: int = Field(ge=1, le=9)
     telescope_name: str = Field(min_length=1, max_length=80)
+    telescope_type: str = Field(default="Refractor", min_length=1, max_length=80)
+    aperture_mm: float = Field(default=80, gt=0, le=1500)
     focal_length_mm: float = Field(gt=0, le=5000)
+    reducer_name: str = Field(default="None", min_length=1, max_length=80)
     reducer: float = Field(gt=0, le=3)
+    camera_name: str = Field(default="Dedicated astro camera", min_length=1, max_length=80)
     sensor_id: str = Field(min_length=1, max_length=48)
     sensor_name: str = Field(min_length=1, max_length=80)
     sensor_width_mm: float = Field(gt=0, le=80)
     sensor_height_mm: float = Field(gt=0, le=80)
     pixel_size_um: float = Field(gt=0, le=20)
+    filter_set: str = Field(default="LRGB + Ha/OIII/SII", min_length=1, max_length=120)
+    filter_wheel: str = Field(default="Manual drawer", min_length=1, max_length=80)
+    guiding_setup: str = Field(default="50mm guide scope", min_length=1, max_length=100)
+    guide_camera_name: str = Field(default="ASI120MM class", min_length=1, max_length=80)
+    focuser_name: str = Field(default="Manual focuser", min_length=1, max_length=80)
+    mount_name: str = Field(default="Equatorial mount", min_length=1, max_length=80)
 
 
 class ProfileCreate(ProfileBase):

@@ -10,6 +10,7 @@ import {
   X
 } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { createPortal } from "react-dom";
 import { profileToPayload, type EquipmentProfile, type ProfilePayload } from "../lib/profiles";
 import { sensorPresets } from "../lib/sensors";
 
@@ -140,10 +141,12 @@ export function ProfileDock({
       {selectedProfile && (
         <>
           <div className="profile-card">
-            <span>{selectedProfile.siteName}</span>
+            <span>
+              {selectedProfile.siteName} / {selectedProfile.mountName}
+            </span>
             <strong>{selectedProfile.name}</strong>
             <em>
-              {selectedProfile.telescopeName} / {selectedProfile.sensorName}
+              {selectedProfile.telescopeName} / {selectedProfile.cameraName}
             </em>
           </div>
 
@@ -163,8 +166,20 @@ export function ProfileDock({
               <strong>{selectedProfile.focalLengthMm.toFixed(0)}mm</strong>
             </div>
             <div>
+              <span>Aperture</span>
+              <strong>{selectedProfile.apertureMm.toFixed(0)}mm</strong>
+            </div>
+            <div>
               <span>Sensor</span>
               <strong>{selectedProfile.sensorWidthMm.toFixed(1)}mm</strong>
+            </div>
+            <div>
+              <span>Filters</span>
+              <strong>{selectedProfile.filterSet}</strong>
+            </div>
+            <div>
+              <span>Guide</span>
+              <strong>{selectedProfile.guidingSetup}</strong>
             </div>
           </div>
 
@@ -202,7 +217,7 @@ export function ProfileDock({
         {busy ? "Saving" : "Save current"}
       </button>
 
-      {editorOpen && selectedProfile && (
+      {editorOpen && selectedProfile && createPortal(
         <div className="profile-editor-backdrop" role="dialog" aria-modal="true">
           <form className="profile-editor" onSubmit={submitProfile}>
             <div className="profile-editor-head">
@@ -249,6 +264,14 @@ export function ProfileDock({
                 />
               </label>
               <label className="field-row">
+                <span>Telescope type</span>
+                <input
+                  value={draft.telescopeType}
+                  maxLength={80}
+                  onChange={(event) => updateDraft("telescopeType", event.target.value)}
+                />
+              </label>
+              <label className="field-row">
                 <span>Timezone</span>
                 <input
                   value={draft.timezone}
@@ -291,6 +314,17 @@ export function ProfileDock({
                 />
               </label>
               <label className="field-row">
+                <span>Aperture</span>
+                <input
+                  type="number"
+                  value={draft.apertureMm}
+                  min={1}
+                  max={1500}
+                  step={1}
+                  onChange={(event) => updateDraftNumber("apertureMm", event.target.value)}
+                />
+              </label>
+              <label className="field-row">
                 <span>Focal length</span>
                 <input
                   type="number"
@@ -302,6 +336,14 @@ export function ProfileDock({
                 />
               </label>
               <label className="field-row">
+                <span>Reducer name</span>
+                <input
+                  value={draft.reducerName}
+                  maxLength={80}
+                  onChange={(event) => updateDraft("reducerName", event.target.value)}
+                />
+              </label>
+              <label className="field-row">
                 <span>Reducer</span>
                 <input
                   type="number"
@@ -310,6 +352,14 @@ export function ProfileDock({
                   max={3}
                   step={0.01}
                   onChange={(event) => updateDraftNumber("reducer", event.target.value)}
+                />
+              </label>
+              <label className="field-row">
+                <span>Camera</span>
+                <input
+                  value={draft.cameraName}
+                  maxLength={80}
+                  onChange={(event) => updateDraft("cameraName", event.target.value)}
                 />
               </label>
               <label className="field-row">
@@ -365,6 +415,54 @@ export function ProfileDock({
                   onChange={(event) => updateDraftNumber("pixelSizeUm", event.target.value)}
                 />
               </label>
+              <label className="field-row">
+                <span>Filter set</span>
+                <input
+                  value={draft.filterSet}
+                  maxLength={120}
+                  onChange={(event) => updateDraft("filterSet", event.target.value)}
+                />
+              </label>
+              <label className="field-row">
+                <span>Filter wheel</span>
+                <input
+                  value={draft.filterWheel}
+                  maxLength={80}
+                  onChange={(event) => updateDraft("filterWheel", event.target.value)}
+                />
+              </label>
+              <label className="field-row">
+                <span>Guiding</span>
+                <input
+                  value={draft.guidingSetup}
+                  maxLength={100}
+                  onChange={(event) => updateDraft("guidingSetup", event.target.value)}
+                />
+              </label>
+              <label className="field-row">
+                <span>Guide camera</span>
+                <input
+                  value={draft.guideCameraName}
+                  maxLength={80}
+                  onChange={(event) => updateDraft("guideCameraName", event.target.value)}
+                />
+              </label>
+              <label className="field-row">
+                <span>Focuser</span>
+                <input
+                  value={draft.focuserName}
+                  maxLength={80}
+                  onChange={(event) => updateDraft("focuserName", event.target.value)}
+                />
+              </label>
+              <label className="field-row">
+                <span>Mount</span>
+                <input
+                  value={draft.mountName}
+                  maxLength={80}
+                  onChange={(event) => updateDraft("mountName", event.target.value)}
+                />
+              </label>
             </div>
 
             {error && <p className="profile-editor-error">{error}</p>}
@@ -380,7 +478,8 @@ export function ProfileDock({
               </button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -399,13 +498,23 @@ function createEmptyDraft(): ProfilePayload {
     timezone: "Europe/Warsaw",
     bortle: 5,
     telescopeName: "",
+    telescopeType: "Refractor",
+    apertureMm: 80,
     focalLengthMm: 480,
+    reducerName: "Native / flattener",
     reducer: 1,
+    cameraName: "Dedicated astro camera",
     sensorId: "imx571",
     sensorName: "Sony IMX571",
     sensorWidthMm: 23.5,
     sensorHeightMm: 15.7,
-    pixelSizeUm: 3.76
+    pixelSizeUm: 3.76,
+    filterSet: "LRGB + Ha/OIII/SII",
+    filterWheel: "Filter drawer",
+    guidingSetup: "50mm guide scope",
+    guideCameraName: "ASI120MM class",
+    focuserName: "Manual focuser",
+    mountName: "Equatorial mount"
   };
 }
 
@@ -416,7 +525,16 @@ function sanitizeDraft(draft: ProfilePayload): ProfilePayload {
     siteName: draft.siteName.trim(),
     timezone: draft.timezone.trim(),
     telescopeName: draft.telescopeName.trim(),
+    telescopeType: draft.telescopeType.trim() || "Refractor",
+    reducerName: draft.reducerName.trim() || "None",
+    cameraName: draft.cameraName.trim() || "Dedicated astro camera",
     sensorId: draft.sensorId.trim() || "custom",
-    sensorName: draft.sensorName.trim()
+    sensorName: draft.sensorName.trim() || "Custom sensor",
+    filterSet: draft.filterSet.trim() || "LRGB + Ha/OIII/SII",
+    filterWheel: draft.filterWheel.trim() || "Manual drawer",
+    guidingSetup: draft.guidingSetup.trim() || "50mm guide scope",
+    guideCameraName: draft.guideCameraName.trim() || "ASI120MM class",
+    focuserName: draft.focuserName.trim() || "Manual focuser",
+    mountName: draft.mountName.trim() || "Equatorial mount"
   };
 }
