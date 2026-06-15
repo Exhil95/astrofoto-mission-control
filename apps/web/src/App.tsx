@@ -1,5 +1,16 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { Activity, Aperture, Gauge, LocateFixed, Moon, Radio, RotateCw, Telescope } from "lucide-react";
+import {
+  Activity,
+  Aperture,
+  GalleryHorizontal,
+  Gauge,
+  LocateFixed,
+  Moon,
+  Radio,
+  RotateCw,
+  SlidersHorizontal,
+  Telescope
+} from "lucide-react";
 import { TargetRail } from "./components/TargetRail";
 import { FovConsole } from "./components/FovConsole";
 import { ProfileDock } from "./components/ProfileDock";
@@ -44,6 +55,9 @@ const SkyScene = lazy(() =>
   import("./components/SkyScene").then((module) => ({ default: module.SkyScene }))
 );
 
+type SkyDisplayMode = "focus" | "tonight" | "showcase" | "catalog";
+type SkyFitFilter = "All" | "Small" | "Fits" | "Tight" | "Mosaic";
+
 export function App() {
   const [selectedTargetId, setSelectedTargetId] = useState("ngc7000");
   const [focalLengthMm, setFocalLengthMm] = useState(480);
@@ -60,6 +74,14 @@ export function App() {
   const [skyAutoRotate, setSkyAutoRotate] = useState(() => {
     return window.localStorage.getItem("astrofoto-sky-auto-rotate") !== "false";
   });
+  const [skyDisplayMode, setSkyDisplayMode] = useState<SkyDisplayMode>(() => {
+    const storedMode = window.localStorage.getItem("astrofoto-sky-display-mode");
+    return isSkyDisplayMode(storedMode) ? storedMode : "tonight";
+  });
+  const [skyTypeFilter, setSkyTypeFilter] = useState("All");
+  const [skySeasonFilter, setSkySeasonFilter] = useState("All");
+  const [skyFitFilter, setSkyFitFilter] = useState<SkyFitFilter>("All");
+  const [showcaseIndex, setShowcaseIndex] = useState(0);
   const [profiles, setProfiles] = useState<EquipmentProfile[]>(() => createFallbackProfiles());
   const [selectedProfileId, setSelectedProfileId] = useState<number | null>(1);
   const [targetCatalog, setTargetCatalog] = useState(() => fallbackTargets);
@@ -90,6 +112,48 @@ export function App() {
   const [capturePlan, setCapturePlan] = useState<CapturePlanModel>(() =>
     createFallbackCapturePlan(selectedTarget, sessionSettings, fov)
   );
+  const skyTargetTypes = useMemo(
+    () => uniqueValues(targetCatalog.map((target) => target.type)),
+    [targetCatalog]
+  );
+  const skySeasons = useMemo(
+    () => uniqueValues(targetCatalog.map((target) => target.season)),
+    [targetCatalog]
+  );
+  const filteredSkyTargets = useMemo(
+    () => filterSkyTargets(targetCatalog, fov, skyTypeFilter, skySeasonFilter, skyFitFilter),
+    [targetCatalog, fov, skyTypeFilter, skySeasonFilter, skyFitFilter]
+  );
+  const visibleSkyTargets = useMemo(
+    () =>
+      curateSkyTargets({
+        mode: skyDisplayMode,
+        selectedTarget,
+        allTargets: targetCatalog,
+        filteredTargets: filteredSkyTargets,
+        tonightTargetIds: tonightBoard.items.map((item) => item.targetId),
+        showcaseIndex
+      }),
+    [
+      skyDisplayMode,
+      selectedTarget,
+      targetCatalog,
+      filteredSkyTargets,
+      tonightBoard.items,
+      showcaseIndex
+    ]
+  );
+  const skySceneSummary = useMemo(
+    () =>
+      sceneSummary({
+        mode: skyDisplayMode,
+        visibleCount: visibleSkyTargets.length,
+        filteredCount: filteredSkyTargets.length,
+        totalCount: targetCatalog.length
+      }),
+    [skyDisplayMode, visibleSkyTargets.length, filteredSkyTargets.length, targetCatalog.length]
+  );
+  const framingAdvice = useMemo(() => analyzeFraming(selectedTarget, fov), [selectedTarget, fov]);
 
   const selectSensorPreset = (sensorId: string) => {
     setSelectedSensorId(sensorId);
@@ -255,6 +319,18 @@ export function App() {
       skyAutoRotate ? "true" : "false"
     );
   }, [skyAutoRotate]);
+
+  useEffect(() => {
+    window.localStorage.setItem("astrofoto-sky-display-mode", skyDisplayMode);
+  }, [skyDisplayMode]);
+
+  useEffect(() => {
+    if (skyDisplayMode !== "showcase") return undefined;
+    const timer = window.setInterval(() => {
+      setShowcaseIndex((currentIndex) => currentIndex + 1);
+    }, 5600);
+    return () => window.clearInterval(timer);
+  }, [skyDisplayMode]);
 
   useEffect(() => {
     let ignore = false;
@@ -451,13 +527,94 @@ export function App() {
             }
           >
             <SkyScene
-              targets={targetCatalog}
+              targets={visibleSkyTargets}
               selectedTarget={selectedTarget}
               fov={fov}
               autoRotate={skyAutoRotate}
+              layoutMode={skyDisplayMode === "showcase" || skyDisplayMode === "catalog" ? "showcase" : "sky"}
               onSelectTarget={setSelectedTargetId}
             />
           </Suspense>
+          <div className="scene-controls" aria-label="Sky display controls">
+            <div className="scene-mode-tabs">
+              <button
+                className={skyDisplayMode === "focus" ? "is-active" : ""}
+                type="button"
+                title="Show selected target only"
+                onClick={() => setSkyDisplayMode("focus")}
+              >
+                <LocateFixed size={14} aria-hidden="true" />
+                Focus
+              </button>
+              <button
+                className={skyDisplayMode === "tonight" ? "is-active" : ""}
+                type="button"
+                title="Show selected target and Tonight Board objects"
+                onClick={() => setSkyDisplayMode("tonight")}
+              >
+                <Moon size={14} aria-hidden="true" />
+                Tonight
+              </button>
+              <button
+                className={skyDisplayMode === "showcase" ? "is-active" : ""}
+                type="button"
+                title="Rotate through a filtered target showcase"
+                onClick={() => setSkyDisplayMode("showcase")}
+              >
+                <GalleryHorizontal size={14} aria-hidden="true" />
+                Show
+              </button>
+              <button
+                className={skyDisplayMode === "catalog" ? "is-active" : ""}
+                type="button"
+                title="Show filtered catalog targets"
+                onClick={() => setSkyDisplayMode("catalog")}
+              >
+                <SlidersHorizontal size={14} aria-hidden="true" />
+                Filter
+              </button>
+            </div>
+
+            {(skyDisplayMode === "showcase" || skyDisplayMode === "catalog") && (
+              <div className="scene-filter-row">
+                <label>
+                  <span>Type</span>
+                  <select value={skyTypeFilter} onChange={(event) => setSkyTypeFilter(event.target.value)}>
+                    <option value="All">All</option>
+                    {skyTargetTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>Season</span>
+                  <select value={skySeasonFilter} onChange={(event) => setSkySeasonFilter(event.target.value)}>
+                    <option value="All">All</option>
+                    {skySeasons.map((season) => (
+                      <option key={season} value={season}>
+                        {season}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>FOV</span>
+                  <select
+                    value={skyFitFilter}
+                    onChange={(event) => setSkyFitFilter(event.target.value as SkyFitFilter)}
+                  >
+                    <option value="All">All</option>
+                    <option value="Small">Small</option>
+                    <option value="Fits">Fits</option>
+                    <option value="Tight">Tight</option>
+                    <option value="Mosaic">Mosaic</option>
+                  </select>
+                </label>
+              </div>
+            )}
+          </div>
           <button
             className={`scene-toggle ${skyAutoRotate ? "is-active" : ""}`}
             type="button"
@@ -471,10 +628,12 @@ export function App() {
           <div className="scene-hud top-left">
             <span>{selectedTarget.type}</span>
             <strong>{selectedTarget.name}</strong>
+            <em>{skySceneSummary}</em>
           </div>
           <div className="scene-hud bottom-left">
             <span>Object scale</span>
             <strong>{formatObjectFootprint(selectedTarget, fov)}</strong>
+            <em>{framingAdvice}</em>
           </div>
           <div className="scene-hud bottom-right">
             <span>FOV</span>
@@ -541,6 +700,132 @@ function formatObjectFootprint(target: Target, fov: FovResult) {
   const widthPercent = Math.round((target.angularWidthArcmin / (fov.horizontalDeg * 60)) * 100);
   const heightPercent = Math.round((target.angularHeightArcmin / (fov.verticalDeg * 60)) * 100);
   return `${target.angularWidthArcmin} x ${target.angularHeightArcmin}' / ${widthPercent}% x ${heightPercent}%`;
+}
+
+function isSkyDisplayMode(value: string | null): value is SkyDisplayMode {
+  return value === "focus" || value === "tonight" || value === "showcase" || value === "catalog";
+}
+
+function filterSkyTargets(
+  targets: Target[],
+  fov: FovResult,
+  typeFilter: string,
+  seasonFilter: string,
+  fitFilter: SkyFitFilter
+) {
+  return targets.filter((target) => {
+    const fit = calculateFitLabel(target, fov);
+    return (
+      (typeFilter === "All" || target.type === typeFilter) &&
+      (seasonFilter === "All" || target.season === seasonFilter) &&
+      (fitFilter === "All" || fit === fitFilter)
+    );
+  });
+}
+
+function curateSkyTargets({
+  mode,
+  selectedTarget,
+  allTargets,
+  filteredTargets,
+  tonightTargetIds,
+  showcaseIndex
+}: {
+  mode: SkyDisplayMode;
+  selectedTarget: Target;
+  allTargets: Target[];
+  filteredTargets: Target[];
+  tonightTargetIds: string[];
+  showcaseIndex: number;
+}) {
+  if (mode === "focus") return [selectedTarget];
+
+  if (mode === "tonight") {
+    const tonightTargets = tonightTargetIds
+      .map((targetId) => allTargets.find((target) => target.id === targetId))
+      .filter((target): target is Target => Boolean(target));
+    return uniqueTargets([selectedTarget, ...tonightTargets]).slice(0, 6);
+  }
+
+  if (mode === "showcase") {
+    const showcasedTargets = rotatingWindow(filteredTargets, showcaseIndex, 7);
+    return uniqueTargets([selectedTarget, ...showcasedTargets]).slice(0, 8);
+  }
+
+  return uniqueTargets([selectedTarget, ...filteredTargets]).slice(0, 12);
+}
+
+function rotatingWindow(targets: Target[], index: number, limit: number) {
+  if (!targets.length) return [];
+  return Array.from({ length: Math.min(limit, targets.length) }, (_, offset) => {
+    return targets[(index + offset) % targets.length];
+  });
+}
+
+function uniqueTargets(targets: Target[]) {
+  const seenTargetIds = new Set<string>();
+  return targets.filter((target) => {
+    if (seenTargetIds.has(target.id)) return false;
+    seenTargetIds.add(target.id);
+    return true;
+  });
+}
+
+function sceneSummary({
+  mode,
+  visibleCount,
+  filteredCount,
+  totalCount
+}: {
+  mode: SkyDisplayMode;
+  visibleCount: number;
+  filteredCount: number;
+  totalCount: number;
+}) {
+  if (mode === "focus") return "Focus / 1 object";
+  if (mode === "tonight") return `Tonight / ${visibleCount} objects`;
+  if (mode === "showcase") return `Showcase / ${visibleCount} of ${filteredCount}`;
+  return `Filtered / ${visibleCount} of ${totalCount}`;
+}
+
+function analyzeFraming(target: Target, fov: FovResult) {
+  const fovWidthArcmin = fov.horizontalDeg * 60;
+  const fovHeightArcmin = fov.verticalDeg * 60;
+  const load = Math.max(
+    target.angularWidthArcmin / fovWidthArcmin,
+    target.angularHeightArcmin / fovHeightArcmin
+  );
+  const swappedLoad = Math.max(
+    target.angularWidthArcmin / fovHeightArcmin,
+    target.angularHeightArcmin / fovWidthArcmin
+  );
+
+  if (load > 1.05) {
+    const columns = Math.max(1, Math.ceil(target.angularWidthArcmin / (fovWidthArcmin * 0.82)));
+    const rows = Math.max(1, Math.ceil(target.angularHeightArcmin / (fovHeightArcmin * 0.82)));
+    return `${columns} x ${rows} mosaic / 18% overlap`;
+  }
+
+  if (swappedLoad + 0.05 < load) return "Rotate 90 deg for better margin";
+  if (load > 0.78) return "Tight frame / check rotation";
+
+  const marginPercent = Math.round((1 - load) * 100);
+  return `Margin +${marginPercent}% / single panel`;
+}
+
+function calculateFitLabel(target: Target, fov: FovResult): SkyFitFilter {
+  const load = Math.max(
+    target.angularWidthArcmin / (fov.horizontalDeg * 60),
+    target.angularHeightArcmin / (fov.verticalDeg * 60)
+  );
+  if (load <= 0.18) return "Small";
+  if (load <= 0.78) return "Fits";
+  if (load <= 1.05) return "Tight";
+  return "Mosaic";
+}
+
+function uniqueValues(values: string[]) {
+  return Array.from(new Set(values)).sort((left, right) => left.localeCompare(right));
 }
 
 function estimateAperture(focalLengthMm: number) {

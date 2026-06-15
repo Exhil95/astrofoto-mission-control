@@ -11,6 +11,7 @@ type SkySceneProps = {
   selectedTarget: Target;
   fov: FovResult;
   autoRotate: boolean;
+  layoutMode: "sky" | "showcase";
   onSelectTarget: (targetId: string) => void;
 };
 
@@ -63,10 +64,12 @@ function NebulaField({ tint, autoRotate }: { tint: string; autoRotate: boolean }
 
 function TargetMarker({
   target,
+  position,
   selected,
   onSelect
 }: {
   target: Target;
+  position: [number, number, number];
   selected: boolean;
   onSelect: () => void;
 }) {
@@ -79,7 +82,7 @@ function TargetMarker({
   });
 
   return (
-    <group ref={groupRef} position={target.position} onClick={onSelect}>
+    <group ref={groupRef} position={position} onClick={onSelect}>
       <Html center transform sprite distanceFactor={selected ? 7.6 : 9.6}>
         <button
           className={`sky-object-thumb ${selected ? "is-selected" : ""}`}
@@ -102,7 +105,17 @@ function TargetMarker({
   );
 }
 
-function TargetFootprint({ target, fov, autoRotate }: { target: Target; fov: FovResult; autoRotate: boolean }) {
+function TargetFootprint({
+  target,
+  position,
+  fov,
+  autoRotate
+}: {
+  target: Target;
+  position: [number, number, number];
+  fov: FovResult;
+  autoRotate: boolean;
+}) {
   const footprintRef = useRef<THREE.Group>(null);
   const { targetWidth, targetHeight } = useMemo(() => calculateComparisonSize(target, fov), [target, fov]);
 
@@ -112,7 +125,7 @@ function TargetFootprint({ target, fov, autoRotate }: { target: Target; fov: Fov
   });
 
   return (
-    <group ref={footprintRef} position={[target.position[0], target.position[1], target.position[2] + 0.025]}>
+    <group ref={footprintRef} position={[position[0], position[1], position[2] + 0.025]}>
       <lineSegments>
         <edgesGeometry args={[new THREE.PlaneGeometry(targetWidth, targetHeight)]} />
         <lineBasicMaterial color={target.tint} transparent opacity={0.86} />
@@ -125,7 +138,17 @@ function TargetFootprint({ target, fov, autoRotate }: { target: Target; fov: Fov
   );
 }
 
-function FovFrame({ target, fov, autoRotate }: { target: Target; fov: FovResult; autoRotate: boolean }) {
+function FovFrame({
+  target,
+  position,
+  fov,
+  autoRotate
+}: {
+  target: Target;
+  position: [number, number, number];
+  fov: FovResult;
+  autoRotate: boolean;
+}) {
   const frameRef = useRef<THREE.Group>(null);
   const { fovWidth, fovHeight } = useMemo(() => calculateComparisonSize(target, fov), [target, fov]);
 
@@ -135,7 +158,7 @@ function FovFrame({ target, fov, autoRotate }: { target: Target; fov: FovResult;
   });
 
   return (
-    <group ref={frameRef} position={[target.position[0], target.position[1], target.position[2] + 0.03]}>
+    <group ref={frameRef} position={[position[0], position[1], position[2] + 0.03]}>
       <lineSegments>
         <edgesGeometry args={[new THREE.PlaneGeometry(fovWidth, fovHeight)]} />
         <lineBasicMaterial color="#f7c873" transparent opacity={0.95} />
@@ -148,8 +171,19 @@ function FovFrame({ target, fov, autoRotate }: { target: Target; fov: FovResult;
   );
 }
 
-function SkyObjects({ targets, selectedTarget, fov, autoRotate, onSelectTarget }: SkySceneProps) {
+function SkyObjects({ targets, selectedTarget, fov, autoRotate, layoutMode, onSelectTarget }: SkySceneProps) {
   const groupRef = useRef<THREE.Group>(null);
+  const sceneTargets = useMemo(
+    () =>
+      targets.map((target, index) => ({
+        target,
+        position: scenePosition(target, index, targets.length, target.id === selectedTarget.id, layoutMode)
+      })),
+    [targets, selectedTarget.id, layoutMode]
+  );
+  const selectedScenePosition =
+    sceneTargets.find((item) => item.target.id === selectedTarget.id)?.position ??
+    scenePosition(selectedTarget, 0, 1, true, layoutMode);
 
   useFrame((state) => {
     if (!groupRef.current || !autoRotate) return;
@@ -160,18 +194,56 @@ function SkyObjects({ targets, selectedTarget, fov, autoRotate, onSelectTarget }
   return (
     <group ref={groupRef}>
       <NebulaField tint={selectedTarget.tint} autoRotate={autoRotate} />
-      <TargetFootprint target={selectedTarget} fov={fov} autoRotate={autoRotate} />
-      {targets.map((target) => (
+      <TargetFootprint
+        target={selectedTarget}
+        position={selectedScenePosition}
+        fov={fov}
+        autoRotate={autoRotate}
+      />
+      {sceneTargets.map(({ target, position }) => (
         <TargetMarker
           key={target.id}
           target={target}
+          position={position}
           selected={target.id === selectedTarget.id}
           onSelect={() => onSelectTarget(target.id)}
         />
       ))}
-      <FovFrame target={selectedTarget} fov={fov} autoRotate={autoRotate} />
+      <FovFrame
+        target={selectedTarget}
+        position={selectedScenePosition}
+        fov={fov}
+        autoRotate={autoRotate}
+      />
     </group>
   );
+}
+
+function scenePosition(
+  target: Target,
+  index: number,
+  total: number,
+  selected: boolean,
+  layoutMode: "sky" | "showcase"
+): [number, number, number] {
+  if (layoutMode === "sky") return target.position;
+  if (selected) return [0, 0, 0.65];
+
+  const safeTotal = Math.max(1, total - 1);
+  const angle = (index / safeTotal) * Math.PI * 2 - Math.PI / 2;
+  const radiusX = total > 8 ? 2.45 : 2.15;
+  const radiusY = total > 8 ? 1.42 : 1.2;
+  const depth = index % 2 === 0 ? -0.18 : 0.1;
+
+  return [
+    roundPosition(Math.cos(angle) * radiusX),
+    roundPosition(Math.sin(angle) * radiusY),
+    roundPosition(depth)
+  ];
+}
+
+function roundPosition(value: number) {
+  return Math.round(value * 100) / 100;
 }
 
 export function SkyScene(props: SkySceneProps) {
