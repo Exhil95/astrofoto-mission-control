@@ -135,7 +135,9 @@ export function TargetRail({ targets, selectedTarget, fov, onSelectTarget }: Tar
             type="button"
             onClick={() => onSelectTarget(target.id)}
           >
-            <span className="target-swatch" style={{ background: target.tint }} />
+            <span className="target-thumb" style={{ backgroundColor: target.tint }}>
+              <img src={target.imageUrl} alt="" loading="lazy" />
+            </span>
             <span>
               <strong>{target.name}</strong>
               <small>
@@ -171,6 +173,10 @@ export function TargetRail({ targets, selectedTarget, fov, onSelectTarget }: Tar
           <strong>{selectedFit.label} {Math.round(selectedFit.load * 100)}%</strong>
         </div>
         <div>
+          <span>Footprint</span>
+          <strong>{formatFootprint(selectedTarget, fov)}</strong>
+        </div>
+        <div>
           <span>Season</span>
           <strong>{selectedTarget.bestMonths}</strong>
         </div>
@@ -200,6 +206,12 @@ function calculateTargetFit(target: Target, fov: FovResult): TargetFit {
 
 function formatArcmin(target: Target) {
   return `${target.angularWidthArcmin} x ${target.angularHeightArcmin}'`;
+}
+
+function formatFootprint(target: Target, fov: FovResult) {
+  const widthPercent = Math.round((target.angularWidthArcmin / (fov.horizontalDeg * 60)) * 100);
+  const heightPercent = Math.round((target.angularHeightArcmin / (fov.verticalDeg * 60)) * 100);
+  return `${widthPercent}% x ${heightPercent}%`;
 }
 
 function uniqueValues(values: string[]) {

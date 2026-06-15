@@ -17,11 +17,12 @@
 
 ## Phase 2 Roadmap
 
-- [ ] Expand target catalog: add more Messier, NGC, IC, Sharpless, Barnard, and seasonal showcase objects.
+- [x] Expand target catalog: add more Messier, NGC, IC, Sharpless, Barnard, and seasonal showcase objects.
 - [x] Sky map rotation control: add an auto-rotate on/off toggle and remember the user preference.
-- [ ] Object imagery: replace abstract spheres/rings with real object thumbnails or generated preview plates.
-- [ ] Realistic object scale: render target apparent size against the current FOV so framing feels physically meaningful.
-- [ ] FOV/object comparison tools: show object footprint, fit margin, mosaic hints, and rotation guidance in the sky view.
+- [x] Object imagery: replace abstract spheres/rings with real object thumbnails or generated preview plates.
+- [x] Realistic object scale: render target apparent size against the current FOV so framing feels physically meaningful.
+- [ ] FOV/object comparison tools: add fit margin, mosaic hints, and rotation guidance in the sky view.
+- [ ] Homelab image cache: proxy/cache generated DSS2 target plates locally for faster offline-friendly browsing.
 - [ ] Session Archive / Capture Logs: save planned/captured sessions with filters, integration, weather, profile, and notes.
 - [ ] Processing Planner: recommend calibration matching, stack strategy, drizzle/binning, and gradient risk.
 - [ ] FITS metadata ingest: scan uploaded or mounted frame folders and read capture metadata from FITS headers.

@@ -13,7 +13,7 @@ import {
   fetchSkyForecast,
   type SkyForecast
 } from "./lib/forecast";
-import { calculateFov } from "./lib/fov";
+import { calculateFov, type FovResult } from "./lib/fov";
 import {
   createFallbackProfiles,
   createProfile,
@@ -38,7 +38,7 @@ import {
   type TonightBoard as TonightBoardModel,
   type SessionSettings
 } from "./lib/session";
-import { fallbackTargets, fetchTargets } from "./lib/targets";
+import { fallbackTargets, fetchTargets, type Target } from "./lib/targets";
 
 const SkyScene = lazy(() =>
   import("./components/SkyScene").then((module) => ({ default: module.SkyScene }))
@@ -472,6 +472,10 @@ export function App() {
             <span>{selectedTarget.type}</span>
             <strong>{selectedTarget.name}</strong>
           </div>
+          <div className="scene-hud bottom-left">
+            <span>Object scale</span>
+            <strong>{formatObjectFootprint(selectedTarget, fov)}</strong>
+          </div>
           <div className="scene-hud bottom-right">
             <span>FOV</span>
             <strong>
@@ -531,6 +535,12 @@ export function App() {
       </section>
     </main>
   );
+}
+
+function formatObjectFootprint(target: Target, fov: FovResult) {
+  const widthPercent = Math.round((target.angularWidthArcmin / (fov.horizontalDeg * 60)) * 100);
+  const heightPercent = Math.round((target.angularHeightArcmin / (fov.verticalDeg * 60)) * 100);
+  return `${target.angularWidthArcmin} x ${target.angularHeightArcmin}' / ${widthPercent}% x ${heightPercent}%`;
 }
 
 function estimateAperture(focalLengthMm: number) {

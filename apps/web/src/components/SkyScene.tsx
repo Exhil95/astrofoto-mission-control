@@ -1,7 +1,7 @@
 import { useFrame } from "@react-three/fiber";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Stars } from "@react-three/drei";
-import { useMemo, useRef } from "react";
+import { Html, OrbitControls, Stars } from "@react-three/drei";
+import { useMemo, useRef, type CSSProperties } from "react";
 import * as THREE from "three";
 import type { FovResult } from "../lib/fov";
 import type { Target } from "../lib/targets";
@@ -13,6 +13,36 @@ type SkySceneProps = {
   autoRotate: boolean;
   onSelectTarget: (targetId: string) => void;
 };
+
+const MAX_COMPARISON_WIDTH = 2.9;
+const MAX_COMPARISON_HEIGHT = 2.0;
+const DEFAULT_DEGREE_SCALE = 0.62;
+
+type ComparisonSize = {
+  fovWidth: number;
+  fovHeight: number;
+  targetWidth: number;
+  targetHeight: number;
+};
+
+function calculateComparisonSize(target: Target, fov: FovResult): ComparisonSize {
+  const targetWidthDeg = target.angularWidthArcmin / 60;
+  const targetHeightDeg = target.angularHeightArcmin / 60;
+  const widestDeg = Math.max(fov.horizontalDeg, targetWidthDeg, 0.1);
+  const tallestDeg = Math.max(fov.verticalDeg, targetHeightDeg, 0.1);
+  const degreeScale = Math.min(
+    DEFAULT_DEGREE_SCALE,
+    MAX_COMPARISON_WIDTH / widestDeg,
+    MAX_COMPARISON_HEIGHT / tallestDeg
+  );
+
+  return {
+    fovWidth: Math.max(0.03, fov.horizontalDeg * degreeScale),
+    fovHeight: Math.max(0.03, fov.verticalDeg * degreeScale),
+    targetWidth: Math.max(0.025, targetWidthDeg * degreeScale),
+    targetHeight: Math.max(0.025, targetHeightDeg * degreeScale)
+  };
+}
 
 function NebulaField({ tint, autoRotate }: { tint: string; autoRotate: boolean }) {
   const meshRef = useRef<THREE.Mesh>(null);
@@ -41,7 +71,6 @@ function TargetMarker({
   onSelect: () => void;
 }) {
   const groupRef = useRef<THREE.Group>(null);
-  const color = useMemo(() => new THREE.Color(target.tint), [target.tint]);
 
   useFrame((state) => {
     if (!groupRef.current) return;
@@ -51,27 +80,54 @@ function TargetMarker({
 
   return (
     <group ref={groupRef} position={target.position} onClick={onSelect}>
-      <mesh>
-        <sphereGeometry args={[selected ? 0.11 : 0.075, 24, 24]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={selected ? 2.5 : 1.1} />
-      </mesh>
+      <Html center transform sprite distanceFactor={selected ? 7.6 : 9.6}>
+        <button
+          className={`sky-object-thumb ${selected ? "is-selected" : ""}`}
+          style={{ "--target-tint": target.tint } as CSSProperties}
+          type="button"
+          title={`${target.catalogId} ${target.name}`}
+          onClick={(event) => {
+            event.stopPropagation();
+            onSelect();
+          }}
+        >
+          <img src={target.imageUrl} alt="" draggable={false} />
+          {selected && <span>{target.catalogId}</span>}
+        </button>
+      </Html>
       {selected && (
-        <>
-          <mesh rotation={[Math.PI / 2, 0, 0]}>
-            <torusGeometry args={[0.38, 0.01, 8, 80]} />
-            <meshBasicMaterial color={target.tint} transparent opacity={0.9} />
-          </mesh>
-          <pointLight color={target.tint} intensity={2.2} distance={3.6} />
-        </>
+        <pointLight color={target.tint} intensity={2.2} distance={3.6} />
       )}
+    </group>
+  );
+}
+
+function TargetFootprint({ target, fov, autoRotate }: { target: Target; fov: FovResult; autoRotate: boolean }) {
+  const footprintRef = useRef<THREE.Group>(null);
+  const { targetWidth, targetHeight } = useMemo(() => calculateComparisonSize(target, fov), [target, fov]);
+
+  useFrame((state) => {
+    if (!footprintRef.current || !autoRotate) return;
+    footprintRef.current.rotation.z = Math.sin(state.clock.elapsedTime * 0.35) * 0.035;
+  });
+
+  return (
+    <group ref={footprintRef} position={[target.position[0], target.position[1], target.position[2] + 0.025]}>
+      <lineSegments>
+        <edgesGeometry args={[new THREE.PlaneGeometry(targetWidth, targetHeight)]} />
+        <lineBasicMaterial color={target.tint} transparent opacity={0.86} />
+      </lineSegments>
+      <mesh>
+        <planeGeometry args={[targetWidth, targetHeight]} />
+        <meshBasicMaterial color={target.tint} transparent opacity={0.16} side={THREE.DoubleSide} />
+      </mesh>
     </group>
   );
 }
 
 function FovFrame({ target, fov, autoRotate }: { target: Target; fov: FovResult; autoRotate: boolean }) {
   const frameRef = useRef<THREE.Group>(null);
-  const width = Math.max(0.55, Math.min(2.9, fov.horizontalDeg * 0.62));
-  const height = Math.max(0.38, Math.min(2.0, fov.verticalDeg * 0.62));
+  const { fovWidth, fovHeight } = useMemo(() => calculateComparisonSize(target, fov), [target, fov]);
 
   useFrame((state) => {
     if (!frameRef.current || !autoRotate) return;
@@ -81,11 +137,11 @@ function FovFrame({ target, fov, autoRotate }: { target: Target; fov: FovResult;
   return (
     <group ref={frameRef} position={[target.position[0], target.position[1], target.position[2] + 0.03]}>
       <lineSegments>
-        <edgesGeometry args={[new THREE.PlaneGeometry(width, height)]} />
+        <edgesGeometry args={[new THREE.PlaneGeometry(fovWidth, fovHeight)]} />
         <lineBasicMaterial color="#f7c873" transparent opacity={0.95} />
       </lineSegments>
       <mesh>
-        <planeGeometry args={[width, height]} />
+        <planeGeometry args={[fovWidth, fovHeight]} />
         <meshBasicMaterial color="#f7c873" transparent opacity={0.055} side={THREE.DoubleSide} />
       </mesh>
     </group>
@@ -104,6 +160,7 @@ function SkyObjects({ targets, selectedTarget, fov, autoRotate, onSelectTarget }
   return (
     <group ref={groupRef}>
       <NebulaField tint={selectedTarget.tint} autoRotate={autoRotate} />
+      <TargetFootprint target={selectedTarget} fov={fov} autoRotate={autoRotate} />
       {targets.map((target) => (
         <TargetMarker
           key={target.id}

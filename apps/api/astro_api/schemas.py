@@ -37,6 +37,9 @@ class TargetResponse(BaseModel):
     dec_deg: float = Field(ge=-90, le=90)
     position: tuple[float, float, float]
     tint: str = Field(pattern=r"^#[0-9a-fA-F]{6}$")
+    image_url: str | None = None
+    image_credit: str | None = None
+    image_source_url: str | None = None
 
 
 class ProfileBase(BaseModel):
