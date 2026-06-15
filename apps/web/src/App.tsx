@@ -92,7 +92,9 @@ export function App() {
 
   const applyProfile = (profile: EquipmentProfile) => {
     setSelectedProfileId(profile.id);
-    setSessionSettings(profileToSessionSettings(profile, sessionSettings.date));
+    setSessionSettings((currentSettings) =>
+      profileToSessionSettings(profile, currentSettings.date)
+    );
     setFocalLengthMm(profile.focalLengthMm);
     setReducer(profile.reducer);
     setSelectedSensorId(profile.sensorId);

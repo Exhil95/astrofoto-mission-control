@@ -33,7 +33,10 @@ export function ProfileDock({
         </span>
         <select
           value={selectedProfile?.id ?? ""}
-          onChange={(event) => onSelectProfile(Number(event.target.value))}
+          onChange={(event) => {
+            const profileId = Number(event.target.value);
+            if (Number.isFinite(profileId)) onSelectProfile(profileId);
+          }}
         >
           {profiles.map((profile) => (
             <option key={profile.id} value={profile.id}>
@@ -76,7 +79,12 @@ export function ProfileDock({
         </>
       )}
 
-      <button className="profile-save-button" type="button" onClick={onSaveCurrent}>
+      <button
+        className="profile-save-button"
+        type="button"
+        onClick={onSaveCurrent}
+        disabled={saving}
+      >
         <Save size={15} aria-hidden="true" />
         {saving ? "Saving" : "Save current"}
       </button>

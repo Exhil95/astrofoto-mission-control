@@ -159,7 +159,7 @@ button {
 .left-stack {
   min-height: 0;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr) minmax(190px, 230px);
   gap: 10px;
 }
 
@@ -205,13 +205,117 @@ button {
   font-size: 13px;
 }
 
-.target-list {
-  display: grid;
+.profile-dock {
   gap: 9px;
 }
 
+.profile-card {
+  min-height: 60px;
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(247, 200, 115, 0.14), rgba(56, 214, 201, 0.08)),
+    rgba(255, 255, 255, 0.045);
+  padding: 10px;
+}
+
+.profile-card span {
+  color: #8d95a8;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.profile-card strong {
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 14px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-card em {
+  overflow: hidden;
+  color: #38d6c9;
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.profile-metrics div {
+  min-height: 48px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 8px;
+}
+
+.profile-metrics span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #8d95a8;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.profile-metrics svg {
+  flex: 0 0 auto;
+  color: #f7c873;
+}
+
+.profile-metrics strong {
+  display: block;
+  overflow: hidden;
+  margin-top: 6px;
+  color: #f5f7fb;
+  font-size: 13px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-save-button {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  border: 1px solid rgba(56, 214, 201, 0.32);
+  border-radius: 8px;
+  color: #e9fffb;
+  background: rgba(56, 214, 201, 0.08);
+  padding: 0 10px;
+}
+
+.profile-save-button:hover {
+  border-color: rgba(56, 214, 201, 0.68);
+  background: rgba(56, 214, 201, 0.13);
+}
+
+.profile-save-button:disabled {
+  cursor: progress;
+  opacity: 0.72;
+}
+
+.target-list {
+  display: grid;
+  gap: 7px;
+}
+
 .target-row {
-  min-height: 68px;
+  min-height: 56px;
   display: grid;
   grid-template-columns: 14px minmax(0, 1fr) auto;
   align-items: center;
@@ -221,7 +325,7 @@ button {
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.045);
   color: #f5f7fb;
-  padding: 10px;
+  padding: 8px;
   text-align: left;
 }
 
@@ -248,14 +352,14 @@ button {
 
 .target-swatch {
   width: 12px;
-  height: 38px;
+  height: 30px;
   border-radius: 999px;
   box-shadow: 0 0 24px currentColor;
 }
 
 .sky-stage {
   position: relative;
-  min-height: 620px;
+  min-height: 0;
   overflow: hidden;
   border-radius: 8px;
   background: #03040a;
@@ -341,7 +445,7 @@ button {
 }
 
 .readout {
-  min-height: 74px;
+  min-height: 58px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -349,25 +453,25 @@ button {
   background:
     linear-gradient(135deg, rgba(247, 200, 115, 0.18), rgba(56, 214, 201, 0.1)),
     rgba(255, 255, 255, 0.045);
-  padding: 14px;
+  padding: 11px;
 }
 
 .readout strong {
   margin-top: 4px;
   color: #ffffff;
-  font-size: 22px;
+  font-size: 19px;
   line-height: 1.1;
 }
 
 .session-score {
-  min-height: 76px;
+  min-height: 66px;
   display: grid;
   gap: 4px;
   border-radius: 8px;
   background:
     linear-gradient(135deg, rgba(56, 214, 201, 0.16), rgba(255, 111, 145, 0.08)),
     rgba(255, 255, 255, 0.045);
-  padding: 13px;
+  padding: 11px;
 }
 
 .session-score span,
@@ -381,7 +485,7 @@ button {
 
 .session-score strong {
   color: #ffffff;
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1.1;
 }
 
@@ -401,7 +505,7 @@ button {
 
 .date-control button,
 .preset-grid button {
-  min-height: 37px;
+  min-height: 32px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   color: #dce4f2;
@@ -423,7 +527,7 @@ button {
 .field-row input,
 .field-row select {
   width: 100%;
-  min-height: 37px;
+  min-height: 32px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   color: #f5f7fb;
@@ -447,7 +551,7 @@ button {
 }
 
 .sensor-card {
-  min-height: 72px;
+  min-height: 60px;
   display: grid;
   gap: 4px;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -455,7 +559,7 @@ button {
   background:
     radial-gradient(circle at 12% 20%, rgba(247, 200, 115, 0.16), transparent 12rem),
     rgba(255, 255, 255, 0.045);
-  padding: 12px;
+  padding: 10px;
 }
 
 .sensor-card span {
@@ -536,20 +640,20 @@ button {
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .metric-grid div {
-  min-height: 70px;
+  min-height: 56px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.045);
-  padding: 11px;
+  padding: 9px;
 }
 
 .metric-grid strong {
   display: block;
-  margin-top: 6px;
+  margin-top: 4px;
   color: #f5f7fb;
   font-size: 14px;
   line-height: 1.25;
@@ -558,13 +662,13 @@ button {
 
 .night-profile {
   display: grid;
-  gap: 12px;
+  gap: 9px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   background:
     linear-gradient(135deg, rgba(123, 183, 255, 0.12), rgba(247, 200, 115, 0.08)),
     rgba(255, 255, 255, 0.045);
-  padding: 12px;
+  padding: 10px;
 }
 
 .night-profile.is-white-night {
@@ -689,14 +793,14 @@ button {
 }
 
 .condition-score {
-  min-height: 76px;
+  min-height: 62px;
   display: grid;
   gap: 4px;
   border-radius: 8px;
   background:
     linear-gradient(135deg, rgba(56, 214, 201, 0.15), rgba(123, 183, 255, 0.08)),
     rgba(255, 255, 255, 0.045);
-  padding: 13px;
+  padding: 10px;
 }
 
 .condition-score.risk {
@@ -721,7 +825,7 @@ button {
 
 .condition-score strong {
   color: #ffffff;
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1.15;
 }
 
@@ -747,11 +851,11 @@ button {
 }
 
 .condition-metrics div {
-  min-height: 58px;
+  min-height: 48px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.045);
-  padding: 9px;
+  padding: 8px;
 }
 
 .condition-metrics span {
@@ -781,7 +885,7 @@ button {
   grid-template-columns: repeat(13, minmax(30px, 1fr));
   align-items: end;
   gap: 6px;
-  min-height: 108px;
+  min-height: 86px;
   overflow: hidden;
 }
 
@@ -795,7 +899,7 @@ button {
 
 .cloud-bar {
   position: relative;
-  height: 58px;
+  height: 42px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 7px;
@@ -879,17 +983,17 @@ button {
 }
 
 .timeline {
-  min-height: 92px;
+  min-height: 78px;
   display: grid;
   grid-template-columns: minmax(180px, 260px) minmax(220px, 340px) minmax(0, 1fr);
   align-items: center;
-  gap: 18px;
+  gap: 12px;
   border-radius: 8px;
-  padding: 14px;
+  padding: 10px;
 }
 
 .altitude-chart {
-  min-height: 74px;
+  min-height: 58px;
   display: grid;
   grid-template-columns: minmax(80px, 108px) minmax(0, 1fr);
   align-items: center;
@@ -917,7 +1021,7 @@ button {
 
 .altitude-chart svg {
   width: 100%;
-  height: 54px;
+  height: 42px;
   overflow: visible;
 }
 
@@ -973,11 +1077,11 @@ button {
 .timeline-slot {
   position: relative;
   overflow: hidden;
-  min-height: 62px;
+  min-height: 54px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.045);
-  padding: 10px;
+  padding: 8px;
 }
 
 .timeline-slot b {
@@ -1032,14 +1136,29 @@ button {
 }
 
 @media (max-width: 1180px) {
+  body {
+    overflow: auto;
+  }
+
+  .app-shell {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
   .top-bar,
   .mission-grid,
   .timeline {
     grid-template-columns: 1fr;
   }
 
+  .mission-grid {
+    overflow: visible;
+  }
+
+  .left-stack,
   .right-stack {
-    grid-template-rows: auto auto;
+    grid-template-rows: auto;
   }
 
   .signal-strip,
@@ -1050,6 +1169,10 @@ button {
 
   .mission-grid {
     grid-template-rows: auto minmax(560px, 1fr) auto;
+  }
+
+  .sky-stage {
+    min-height: 560px;
   }
 
   .target-list {
@@ -1066,6 +1189,7 @@ button {
   .coordinate-grid,
   .preset-grid,
   .metric-grid,
+  .profile-metrics,
   .condition-metrics,
   .timeline-track {
     grid-template-columns: 1fr;
