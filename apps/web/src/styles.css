@@ -848,6 +848,82 @@ button {
   line-height: 1;
 }
 
+.selected-scale-plate {
+  position: relative;
+  width: var(--stage-width);
+  height: var(--stage-height);
+  pointer-events: none;
+}
+
+.selected-object-image,
+.selected-object-outline,
+.selected-fov-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.selected-object-image {
+  width: var(--target-width);
+  height: var(--target-height);
+  overflow: hidden;
+  border-radius: 5px;
+  opacity: 0.88;
+  box-shadow:
+    0 0 34px color-mix(in srgb, var(--target-tint), transparent 28%),
+    inset 0 0 22px rgba(0, 0, 0, 0.34);
+}
+
+.selected-object-image img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  filter: saturate(1.08) contrast(1.04);
+}
+
+.selected-object-outline {
+  z-index: 1;
+  width: var(--target-width);
+  height: var(--target-height);
+  min-width: 1px;
+  min-height: 1px;
+  border: 1px solid color-mix(in srgb, var(--target-tint), white 28%);
+  border-radius: 5px;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--target-tint), transparent 18%);
+}
+
+.selected-fov-overlay {
+  z-index: 2;
+  width: var(--fov-width);
+  height: var(--fov-height);
+  border: 2px solid #f7c873;
+  border-radius: 4px;
+  background:
+    linear-gradient(rgba(247, 200, 115, 0.22) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(247, 200, 115, 0.22) 1px, transparent 1px),
+    rgba(247, 200, 115, 0.035);
+  background-size: 25% 25%;
+  box-shadow:
+    0 0 0 1px rgba(3, 4, 10, 0.84),
+    0 0 22px rgba(247, 200, 115, 0.32);
+}
+
+.selected-fov-overlay span {
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  border: 1px solid rgba(247, 200, 115, 0.44);
+  border-radius: 5px;
+  color: #fff6d6;
+  background: rgba(5, 7, 13, 0.76);
+  padding: 2px 5px;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+}
+
 .sky-object-thumb {
   position: relative;
   width: 32px;

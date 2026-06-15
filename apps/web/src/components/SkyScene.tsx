@@ -81,11 +81,19 @@ function TargetMarker({
     groupRef.current.scale.setScalar(pulse);
   });
 
+  if (selected) {
+    return (
+      <group ref={groupRef} position={position} onClick={onSelect}>
+        <pointLight color={target.tint} intensity={2.2} distance={3.6} />
+      </group>
+    );
+  }
+
   return (
     <group ref={groupRef} position={position} onClick={onSelect}>
-      <Html center transform sprite distanceFactor={selected ? 7.6 : 9.6}>
+      <Html center transform sprite distanceFactor={9.6}>
         <button
-          className={`sky-object-thumb ${selected ? "is-selected" : ""}`}
+          className="sky-object-thumb"
           style={{ "--target-tint": target.tint } as CSSProperties}
           type="button"
           title={`${target.catalogId} ${target.name}`}
@@ -95,46 +103,73 @@ function TargetMarker({
           }}
         >
           <img src={target.imageUrl} alt="" draggable={false} />
-          {selected && <span>{target.catalogId}</span>}
         </button>
       </Html>
-      {selected && (
-        <pointLight color={target.tint} intensity={2.2} distance={3.6} />
-      )}
     </group>
   );
 }
 
-function TargetFootprint({
+function SelectedScalePlate({
   target,
   position,
-  fov,
-  autoRotate
+  fov
 }: {
   target: Target;
   position: [number, number, number];
   fov: FovResult;
-  autoRotate: boolean;
 }) {
-  const footprintRef = useRef<THREE.Group>(null);
-  const { targetWidth, targetHeight } = useMemo(() => calculateComparisonSize(target, fov), [target, fov]);
+  const plate = useMemo(() => {
+    const comparison = calculateComparisonSize(target, fov);
+    const pixelsPerUnit = 150;
+    const fovWidthPx = comparison.fovWidth * pixelsPerUnit;
+    const fovHeightPx = comparison.fovHeight * pixelsPerUnit;
+    const targetWidthPx = Math.max(1, comparison.targetWidth * pixelsPerUnit);
+    const targetHeightPx = Math.max(1, comparison.targetHeight * pixelsPerUnit);
+    const stageWidthPx = Math.max(fovWidthPx, targetWidthPx) + 34;
+    const stageHeightPx = Math.max(fovHeightPx, targetHeightPx) + 34;
 
-  useFrame((state) => {
-    if (!footprintRef.current || !autoRotate) return;
-    footprintRef.current.rotation.z = Math.sin(state.clock.elapsedTime * 0.35) * 0.035;
-  });
+    return {
+      fovWidthPx,
+      fovHeightPx,
+      targetWidthPx,
+      targetHeightPx,
+      stageWidthPx,
+      stageHeightPx
+    };
+  }, [target, fov]);
 
   return (
-    <group ref={footprintRef} position={[position[0], position[1], position[2] + 0.025]}>
-      <lineSegments>
-        <edgesGeometry args={[new THREE.PlaneGeometry(targetWidth, targetHeight)]} />
-        <lineBasicMaterial color={target.tint} transparent opacity={0.86} />
-      </lineSegments>
-      <mesh>
-        <planeGeometry args={[targetWidth, targetHeight]} />
-        <meshBasicMaterial color={target.tint} transparent opacity={0.16} side={THREE.DoubleSide} />
-      </mesh>
-    </group>
+    <Html
+      center
+      transform
+      sprite
+      distanceFactor={7.4}
+      position={[position[0], position[1], position[2] + 0.01]}
+      zIndexRange={[12, 4]}
+    >
+      <div
+        className="selected-scale-plate"
+        style={
+          {
+            "--target-tint": target.tint,
+            "--stage-width": `${plate.stageWidthPx}px`,
+            "--stage-height": `${plate.stageHeightPx}px`,
+            "--target-width": `${plate.targetWidthPx}px`,
+            "--target-height": `${plate.targetHeightPx}px`,
+            "--fov-width": `${plate.fovWidthPx}px`,
+            "--fov-height": `${plate.fovHeightPx}px`
+          } as CSSProperties
+        }
+      >
+        <div className="selected-object-image">
+          <img src={target.imageUrl} alt="" draggable={false} />
+        </div>
+        <div className="selected-object-outline" />
+        <div className="selected-fov-overlay">
+          <span>FOV</span>
+        </div>
+      </div>
+    </Html>
   );
 }
 
@@ -194,11 +229,10 @@ function SkyObjects({ targets, selectedTarget, fov, autoRotate, layoutMode, onSe
   return (
     <group ref={groupRef}>
       <NebulaField tint={selectedTarget.tint} autoRotate={autoRotate} />
-      <TargetFootprint
+      <SelectedScalePlate
         target={selectedTarget}
         position={selectedScenePosition}
         fov={fov}
-        autoRotate={autoRotate}
       />
       {sceneTargets.map(({ target, position }) => (
         <TargetMarker
