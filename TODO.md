@@ -13,4 +13,4 @@
 - [x] Export Capture Plan: Markdown-first export for phone/tablet use at the rig.
 - [x] Rich optical profiles: telescopes, reducers, cameras, filters, guiding, and focuser metadata.
 - [x] Target data source: move curated targets from code into JSON or SQLite-backed catalog data.
-- [ ] Homelab ops tasks: one-command dev/test/backup/restore/deploy scripts.
+- [x] Homelab ops tasks: one-command dev/test/backup/restore/deploy scripts.

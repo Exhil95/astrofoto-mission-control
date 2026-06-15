@@ -9,29 +9,31 @@ Visual-first web tools for astrophotography planning, imaging setup, and data in
 - Data: JSON target catalog, SQLite equipment profiles
 - Homelab: Docker Compose, Caddy, PostgreSQL, Valkey, MinIO
 
-## Local web dev
+## Local dev
 
 ```powershell
-cd apps/web
-npm install
-npm run dev
+.\scripts\dev.ps1 -Install
 ```
 
-## Local API dev
+After dependencies are installed, start both dev servers with:
 
 ```powershell
-cd apps/api
-py -3.13 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -e ".[dev]"
-uvicorn astro_api.main:app --reload
+.\scripts\dev.ps1
+```
+
+The dev script starts the API on `http://127.0.0.1:8000` and the web app on
+`http://127.0.0.1:5173`. Logs are written to `.codex-logs/dev`.
+
+## Checks
+
+```powershell
+.\scripts\test.ps1
 ```
 
 ## Homelab compose
 
 ```powershell
-copy .env.example .env
-docker compose up --build
+.\scripts\deploy.ps1
 ```
 
 Caddy exposes the web UI on `http://localhost` and proxies API calls through `/api`.

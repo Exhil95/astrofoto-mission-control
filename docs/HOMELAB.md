@@ -7,12 +7,26 @@ The API stores equipment profiles in SQLite at `/data/astrofoto.sqlite3`, backed
 ## First Run
 
 ```powershell
-copy .env.example .env
-docker compose up -d --build
-docker compose ps
+.\scripts\deploy.ps1
 ```
 
 Open `http://localhost` unless you changed `CADDY_SITE_ADDRESS`.
+
+## Ops Scripts
+
+Run these from the repository root:
+
+```powershell
+.\scripts\dev.ps1 -Install       # local API + web dev servers
+.\scripts\test.ps1               # API pytest/ruff and web production build
+.\scripts\deploy.ps1             # docker compose up -d --build
+.\scripts\backup-profiles.ps1    # copy /data/astrofoto.sqlite3 to backups/
+.\scripts\restore-profiles.ps1 -Path .\backups\astrofoto-YYYYMMDD-HHMMSS.sqlite3
+```
+
+Use `.\scripts\dev.ps1 -Restart` when a stale local process is holding ports
+`8000` or `5173`. Use `.\scripts\deploy.ps1 -NoBuild` for a fast restart after
+configuration-only changes.
 
 ## Required `.env` Review
 
@@ -50,17 +64,14 @@ focuser, and mount metadata without a manual migration step.
 ## Backup Profiles
 
 ```powershell
-New-Item -ItemType Directory -Force backups
-$stamp = Get-Date -Format "yyyyMMdd-HHmmss"
-docker compose cp api:/data/astrofoto.sqlite3 "backups/astrofoto-$stamp.sqlite3"
+.\scripts\backup-profiles.ps1
 ```
 
 ## Restore Profiles
 
 ```powershell
-docker compose stop api
-docker compose cp .\backups\astrofoto-YYYYMMDD-HHMMSS.sqlite3 api:/data/astrofoto.sqlite3
-docker compose start api
+.\scripts\restore-profiles.ps1 -Path .\backups\astrofoto-YYYYMMDD-HHMMSS.sqlite3
 ```
 
-Use the exact backup filename you want to restore.
+Use the exact backup filename you want to restore. The restore script asks for
+confirmation and attempts to create a pre-restore backup first.
