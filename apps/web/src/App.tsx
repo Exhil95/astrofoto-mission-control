@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { Activity, Aperture, Gauge, LocateFixed, Moon, Radio, Telescope } from "lucide-react";
+import { Activity, Aperture, Gauge, LocateFixed, Moon, Radio, RotateCw, Telescope } from "lucide-react";
 import { TargetRail } from "./components/TargetRail";
 import { FovConsole } from "./components/FovConsole";
 import { ProfileDock } from "./components/ProfileDock";
@@ -57,6 +57,9 @@ export function App() {
   const [isBoardLoading, setIsBoardLoading] = useState(false);
   const [isCaptureLoading, setIsCaptureLoading] = useState(false);
   const [isProfileSaving, setIsProfileSaving] = useState(false);
+  const [skyAutoRotate, setSkyAutoRotate] = useState(() => {
+    return window.localStorage.getItem("astrofoto-sky-auto-rotate") !== "false";
+  });
   const [profiles, setProfiles] = useState<EquipmentProfile[]>(() => createFallbackProfiles());
   const [selectedProfileId, setSelectedProfileId] = useState<number | null>(1);
   const [targetCatalog, setTargetCatalog] = useState(() => fallbackTargets);
@@ -245,6 +248,13 @@ export function App() {
       setIsProfileSaving(false);
     }
   };
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      "astrofoto-sky-auto-rotate",
+      skyAutoRotate ? "true" : "false"
+    );
+  }, [skyAutoRotate]);
 
   useEffect(() => {
     let ignore = false;
@@ -444,9 +454,20 @@ export function App() {
               targets={targetCatalog}
               selectedTarget={selectedTarget}
               fov={fov}
+              autoRotate={skyAutoRotate}
               onSelectTarget={setSelectedTargetId}
             />
           </Suspense>
+          <button
+            className={`scene-toggle ${skyAutoRotate ? "is-active" : ""}`}
+            type="button"
+            title={skyAutoRotate ? "Disable sky auto-rotate" : "Enable sky auto-rotate"}
+            aria-pressed={skyAutoRotate}
+            onClick={() => setSkyAutoRotate((current) => !current)}
+          >
+            <RotateCw size={15} aria-hidden="true" />
+            <span>{skyAutoRotate ? "Auto" : "Still"}</span>
+          </button>
           <div className="scene-hud top-left">
             <span>{selectedTarget.type}</span>
             <strong>{selectedTarget.name}</strong>

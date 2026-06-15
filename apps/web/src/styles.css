@@ -683,6 +683,40 @@ button {
   text-align: right;
 }
 
+.scene-toggle {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 3;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 8px;
+  color: #dce4f2;
+  background: rgba(5, 7, 13, 0.66);
+  padding: 0 10px;
+  backdrop-filter: blur(16px);
+}
+
+.scene-toggle:hover,
+.scene-toggle.is-active {
+  border-color: rgba(56, 214, 201, 0.62);
+  color: #e9fffb;
+  background: rgba(56, 214, 201, 0.1);
+}
+
+.scene-toggle svg {
+  color: #38d6c9;
+}
+
+.scene-toggle span {
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1;
+}
+
 .readout {
   min-height: 58px;
   display: flex;

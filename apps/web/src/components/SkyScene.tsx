@@ -10,14 +10,15 @@ type SkySceneProps = {
   targets: Target[];
   selectedTarget: Target;
   fov: FovResult;
+  autoRotate: boolean;
   onSelectTarget: (targetId: string) => void;
 };
 
-function NebulaField({ tint }: { tint: string }) {
+function NebulaField({ tint, autoRotate }: { tint: string; autoRotate: boolean }) {
   const meshRef = useRef<THREE.Mesh>(null);
 
   useFrame((state) => {
-    if (!meshRef.current) return;
+    if (!meshRef.current || !autoRotate) return;
     meshRef.current.rotation.z = state.clock.elapsedTime * 0.04;
     meshRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.2) * 0.08;
   });
@@ -67,13 +68,13 @@ function TargetMarker({
   );
 }
 
-function FovFrame({ target, fov }: { target: Target; fov: FovResult }) {
+function FovFrame({ target, fov, autoRotate }: { target: Target; fov: FovResult; autoRotate: boolean }) {
   const frameRef = useRef<THREE.Group>(null);
   const width = Math.max(0.55, Math.min(2.9, fov.horizontalDeg * 0.62));
   const height = Math.max(0.38, Math.min(2.0, fov.verticalDeg * 0.62));
 
   useFrame((state) => {
-    if (!frameRef.current) return;
+    if (!frameRef.current || !autoRotate) return;
     frameRef.current.rotation.z = Math.sin(state.clock.elapsedTime * 0.35) * 0.06;
   });
 
@@ -91,18 +92,18 @@ function FovFrame({ target, fov }: { target: Target; fov: FovResult }) {
   );
 }
 
-function SkyObjects({ targets, selectedTarget, fov, onSelectTarget }: SkySceneProps) {
+function SkyObjects({ targets, selectedTarget, fov, autoRotate, onSelectTarget }: SkySceneProps) {
   const groupRef = useRef<THREE.Group>(null);
 
   useFrame((state) => {
-    if (!groupRef.current) return;
+    if (!groupRef.current || !autoRotate) return;
     groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.12) * 0.1;
     groupRef.current.rotation.x = Math.cos(state.clock.elapsedTime * 0.09) * 0.04;
   });
 
   return (
     <group ref={groupRef}>
-      <NebulaField tint={selectedTarget.tint} />
+      <NebulaField tint={selectedTarget.tint} autoRotate={autoRotate} />
       {targets.map((target) => (
         <TargetMarker
           key={target.id}
@@ -111,7 +112,7 @@ function SkyObjects({ targets, selectedTarget, fov, onSelectTarget }: SkyScenePr
           onSelect={() => onSelectTarget(target.id)}
         />
       ))}
-      <FovFrame target={selectedTarget} fov={fov} />
+      <FovFrame target={selectedTarget} fov={fov} autoRotate={autoRotate} />
     </group>
   );
 }
@@ -127,9 +128,15 @@ export function SkyScene(props: SkySceneProps) {
       <fog attach="fog" args={["#03040a", 6, 12]} />
       <ambientLight intensity={0.36} />
       <directionalLight position={[2, 2, 4]} intensity={1.2} color="#fff3d4" />
-      <Stars radius={72} depth={36} count={2600} factor={4} saturation={0.55} fade speed={0.65} />
+      <Stars radius={72} depth={36} count={2600} factor={4} saturation={0.55} fade speed={props.autoRotate ? 0.65 : 0} />
       <SkyObjects {...props} />
-      <OrbitControls enablePan={false} enableZoom={false} rotateSpeed={0.25} autoRotate autoRotateSpeed={0.35} />
+      <OrbitControls
+        enablePan={false}
+        enableZoom={false}
+        rotateSpeed={0.25}
+        autoRotate={props.autoRotate}
+        autoRotateSpeed={0.35}
+      />
     </Canvas>
   );
 }
