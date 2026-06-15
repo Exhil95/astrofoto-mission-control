@@ -11,6 +11,7 @@ It calls the API for calculations that should remain canonical on the backend.
 
 The API owns astrophotography formulas, persisted equipment profile metadata, future catalog imports, FITS metadata, and long-running jobs.
 Astropy-related code belongs here, not in the browser.
+The curated target catalog lives in `apps/api/astro_api/data/targets.json`; API services validate it with Pydantic and the web app imports the same file for its offline fallback.
 
 ## Homelab
 

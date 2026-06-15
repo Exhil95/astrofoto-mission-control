@@ -38,7 +38,7 @@ import {
   type TonightBoard as TonightBoardModel,
   type SessionSettings
 } from "./lib/session";
-import { targets } from "./lib/targets";
+import { fallbackTargets, fetchTargets } from "./lib/targets";
 
 const SkyScene = lazy(() =>
   import("./components/SkyScene").then((module) => ({ default: module.SkyScene }))
@@ -59,6 +59,7 @@ export function App() {
   const [isProfileSaving, setIsProfileSaving] = useState(false);
   const [profiles, setProfiles] = useState<EquipmentProfile[]>(() => createFallbackProfiles());
   const [selectedProfileId, setSelectedProfileId] = useState<number | null>(1);
+  const [targetCatalog, setTargetCatalog] = useState(() => fallbackTargets);
   const [sessionSettings, setSessionSettings] = useState<SessionSettings>({
     date: getTodayIsoDate(),
     latitudeDeg: 50.2649,
@@ -67,7 +68,8 @@ export function App() {
     bortle: 5
   });
 
-  const selectedTarget = targets.find((target) => target.id === selectedTargetId) ?? targets[0];
+  const selectedTarget =
+    targetCatalog.find((target) => target.id === selectedTargetId) ?? targetCatalog[0];
   const selectedProfile = profiles.find((profile) => profile.id === selectedProfileId) ?? null;
   const [sessionPlan, setSessionPlan] = useState(() =>
     createFallbackSessionPlan(selectedTarget, sessionSettings)
@@ -80,7 +82,7 @@ export function App() {
     [focalLengthMm, sensorWidthMm, sensorHeightMm, pixelSizeUm, reducer]
   );
   const [tonightBoard, setTonightBoard] = useState<TonightBoardModel>(() =>
-    createFallbackTonightBoard(targets, sessionSettings, fov)
+    createFallbackTonightBoard(targetCatalog, sessionSettings, fov)
   );
   const [capturePlan, setCapturePlan] = useState<CapturePlanModel>(() =>
     createFallbackCapturePlan(selectedTarget, sessionSettings, fov)
@@ -247,6 +249,22 @@ export function App() {
   useEffect(() => {
     let ignore = false;
 
+    fetchTargets()
+      .then((loadedTargets) => {
+        if (!ignore && loadedTargets.length) setTargetCatalog(loadedTargets);
+      })
+      .catch(() => {
+        if (!ignore) setTargetCatalog(fallbackTargets);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let ignore = false;
+
     fetchProfiles()
       .then((loadedProfiles) => {
         if (ignore || !loadedProfiles.length) return;
@@ -307,14 +325,14 @@ export function App() {
   useEffect(() => {
     let ignore = false;
     setIsBoardLoading(true);
-    setTonightBoard(createFallbackTonightBoard(targets, sessionSettings, fov));
+    setTonightBoard(createFallbackTonightBoard(targetCatalog, sessionSettings, fov));
 
     fetchTonightBoard(sessionSettings, fov)
       .then((board) => {
         if (!ignore) setTonightBoard(board);
       })
       .catch(() => {
-        if (!ignore) setTonightBoard(createFallbackTonightBoard(targets, sessionSettings, fov));
+        if (!ignore) setTonightBoard(createFallbackTonightBoard(targetCatalog, sessionSettings, fov));
       })
       .finally(() => {
         if (!ignore) setIsBoardLoading(false);
@@ -323,7 +341,7 @@ export function App() {
     return () => {
       ignore = true;
     };
-  }, [sessionSettings, fov]);
+  }, [sessionSettings, fov, targetCatalog]);
 
   useEffect(() => {
     let ignore = false;
@@ -392,7 +410,7 @@ export function App() {
         <aside className="left-stack" aria-label="Targets and profiles">
           <section className="panel left-panel" aria-label="Target selector">
             <TargetRail
-              targets={targets}
+              targets={targetCatalog}
               selectedTarget={selectedTarget}
               fov={fov}
               onSelectTarget={setSelectedTargetId}
@@ -423,7 +441,7 @@ export function App() {
             }
           >
             <SkyScene
-              targets={targets}
+              targets={targetCatalog}
               selectedTarget={selectedTarget}
               fov={fov}
               onSelectTarget={setSelectedTargetId}

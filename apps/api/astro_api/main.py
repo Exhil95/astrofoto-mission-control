@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 
+from .catalog import TARGETS
 from .forecast import get_sky_forecast
 from .profiles import create_profile, delete_profile, list_profiles, update_profile
 from .schemas import (
@@ -19,7 +20,7 @@ from .schemas import (
     TonightBoardRequest,
     TonightBoardResponse,
 )
-from .services import TARGETS, build_capture_plan, calculate_fov, plan_session, rank_tonight_targets
+from .services import build_capture_plan, calculate_fov, plan_session, rank_tonight_targets
 from .settings import get_settings
 
 settings = get_settings()

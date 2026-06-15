@@ -12,5 +12,5 @@
 - [x] Capture Plan / Session Runbook: filters, exposure lengths, sub counts, dithering, autofocus, and calibration frames.
 - [x] Export Capture Plan: Markdown-first export for phone/tablet use at the rig.
 - [x] Rich optical profiles: telescopes, reducers, cameras, filters, guiding, and focuser metadata.
-- [ ] Target data source: move curated targets from code into JSON or SQLite-backed catalog data.
+- [x] Target data source: move curated targets from code into JSON or SQLite-backed catalog data.
 - [ ] Homelab ops tasks: one-command dev/test/backup/restore/deploy scripts.

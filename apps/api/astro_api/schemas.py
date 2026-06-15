@@ -33,6 +33,10 @@ class TargetResponse(BaseModel):
     difficulty: str
     framing: str
     exposure_hint: str
+    ra_hours: float = Field(ge=0, lt=24)
+    dec_deg: float = Field(ge=-90, le=90)
+    position: tuple[float, float, float]
+    tint: str = Field(pattern=r"^#[0-9a-fA-F]{6}$")
 
 
 class ProfileBase(BaseModel):
