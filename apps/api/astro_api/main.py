@@ -4,6 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from .forecast import get_sky_forecast
 from .profiles import create_profile, delete_profile, list_profiles, update_profile
 from .schemas import (
+    CapturePlanRequest,
+    CapturePlanResponse,
     FovRequest,
     FovResponse,
     ProfileCreate,
@@ -17,7 +19,7 @@ from .schemas import (
     TonightBoardRequest,
     TonightBoardResponse,
 )
-from .services import TARGETS, calculate_fov, plan_session, rank_tonight_targets
+from .services import TARGETS, build_capture_plan, calculate_fov, plan_session, rank_tonight_targets
 from .settings import get_settings
 
 settings = get_settings()
@@ -76,6 +78,11 @@ def profile_delete(profile_id: int) -> Response:
 @app.post("/api/session/plan", response_model=SessionPlanResponse)
 def session_plan(payload: SessionPlanRequest) -> SessionPlanResponse:
     return plan_session(payload)
+
+
+@app.post("/api/session/capture-plan", response_model=CapturePlanResponse)
+def capture_plan(payload: CapturePlanRequest) -> CapturePlanResponse:
+    return build_capture_plan(payload)
 
 
 @app.post("/api/session/tonight-board", response_model=TonightBoardResponse)

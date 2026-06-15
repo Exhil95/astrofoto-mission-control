@@ -81,6 +81,44 @@ export type TonightBoard = {
   items: TonightBoardItem[];
 };
 
+export type CaptureExposureStep = {
+  filterName: string;
+  exposureSeconds: number;
+  frames: number;
+  integrationMinutes: number;
+  binning: string;
+  gain: string;
+  note: string;
+};
+
+export type CaptureCalibrationStep = {
+  frameType: string;
+  frames: number;
+  exposure: string;
+  note: string;
+};
+
+export type CapturePlan = {
+  targetId: string;
+  targetName: string;
+  date: string;
+  windowStart: string;
+  windowEnd: string;
+  imagingMode: string;
+  totalIntegrationMinutes: number;
+  guiding: string;
+  ditheringEveryFrames: number;
+  autofocusEveryMinutes: number;
+  meridianAction: string;
+  framingNote: string;
+  moonWarning: string;
+  weatherNote: string;
+  exposureSteps: CaptureExposureStep[];
+  calibrationFrames: CaptureCalibrationStep[];
+  checklist: string[];
+  exportMarkdown: string;
+};
+
 type ApiSessionPlan = {
   target_id: string;
   target_name: string;
@@ -141,6 +179,40 @@ type ApiTonightBoard = {
   }[];
 };
 
+type ApiCapturePlan = {
+  target_id: string;
+  target_name: string;
+  date: string;
+  window_start: string;
+  window_end: string;
+  imaging_mode: string;
+  total_integration_minutes: number;
+  guiding: string;
+  dithering_every_frames: number;
+  autofocus_every_minutes: number;
+  meridian_action: string;
+  framing_note: string;
+  moon_warning: string;
+  weather_note: string;
+  exposure_steps: {
+    filter_name: string;
+    exposure_seconds: number;
+    frames: number;
+    integration_minutes: number;
+    binning: string;
+    gain: string;
+    note: string;
+  }[];
+  calibration_frames: {
+    frame_type: string;
+    frames: number;
+    exposure: string;
+    note: string;
+  }[];
+  checklist: string[];
+  export_markdown: string;
+};
+
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
 
 export function getTodayIsoDate() {
@@ -195,6 +267,34 @@ export async function fetchTonightBoard(
   }
 
   return normalizeTonightBoard((await response.json()) as ApiTonightBoard);
+}
+
+export async function fetchCapturePlan(
+  targetId: string,
+  settings: SessionSettings,
+  fov: FovResult
+): Promise<CapturePlan> {
+  const response = await fetch(`${apiBaseUrl}/api/session/capture-plan`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      target_id: targetId,
+      date: settings.date,
+      latitude_deg: settings.latitudeDeg,
+      longitude_deg: settings.longitudeDeg,
+      timezone: settings.timezone,
+      bortle: settings.bortle,
+      fov_horizontal_deg: fov.horizontalDeg,
+      fov_vertical_deg: fov.verticalDeg,
+      pixel_scale_arcsec: fov.pixelScaleArcsec
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Capture plan failed with ${response.status}`);
+  }
+
+  return normalizeCapturePlan((await response.json()) as ApiCapturePlan);
 }
 
 export function createFallbackSessionPlan(target: Target, settings?: SessionSettings): SessionPlan {
@@ -294,6 +394,73 @@ export function createFallbackTonightBoard(
   };
 }
 
+export function createFallbackCapturePlan(
+  target: Target,
+  settings: SessionSettings,
+  fov: FovResult
+): CapturePlan {
+  const window = fallbackWindow(target.season);
+  const imagingMode = fallbackCaptureMode(target);
+  const exposureSeconds = imagingMode.includes("Narrowband")
+    ? 300
+    : imagingMode === "LRGB"
+      ? 180
+      : 120;
+  const filters = fallbackCaptureFilters(imagingMode);
+  const totalIntegrationMinutes = Math.max(72, Math.min(240, filters.length * 45));
+  const exposureSteps = filters.map((filterName) => {
+    const integrationMinutes = Math.round(totalIntegrationMinutes / filters.length);
+    const frames = Math.max(8, Math.round((integrationMinutes * 60) / exposureSeconds));
+    return {
+      filterName,
+      exposureSeconds,
+      frames,
+      integrationMinutes: Math.round((frames * exposureSeconds) / 60),
+      binning: "1x1",
+      gain: imagingMode.includes("Narrowband") ? "unity / low read noise" : "unity",
+      note: `${target.exposureHint} / offline estimate`
+    };
+  });
+  const plan: CapturePlan = {
+    targetId: target.id,
+    targetName: target.name,
+    date: settings.date,
+    windowStart: window[0],
+    windowEnd: window[1],
+    imagingMode,
+    totalIntegrationMinutes: exposureSteps.reduce(
+      (total, step) => total + step.integrationMinutes,
+      0
+    ),
+    guiding: `Target RMS <= ${Math.max(0.45, fov.pixelScaleArcsec * 0.65).toFixed(2)} arcsec`,
+    ditheringEveryFrames: settings.bortle <= 4 ? 3 : 2,
+    autofocusEveryMinutes: 75,
+    meridianAction: `Check flip near ${window[2]}`,
+    framingNote: `${fallbackFovFit(target, fov)}: ${target.framing}`,
+    moonWarning: "Offline moon estimate: confirm before capture",
+    weatherNote: "Offline weather estimate",
+    exposureSteps,
+    calibrationFrames: [
+      { frameType: "Flats", frames: 30, exposure: "per filter", note: "Before teardown" },
+      { frameType: "Dark flats", frames: 30, exposure: "flat exposure", note: "Match flats" },
+      {
+        frameType: "Darks",
+        frames: 20,
+        exposure: `${exposureSeconds}s`,
+        note: "Match gain and temperature"
+      }
+    ],
+    checklist: [
+      "Polar align and plate-solve first frame",
+      "Run autofocus before first light frame",
+      "Enable dithering before sequence start",
+      "Inspect first two subs for star shape"
+    ],
+    exportMarkdown: ""
+  };
+  return { ...plan, exportMarkdown: createCaptureMarkdown(plan) };
+}
+
 function normalizeSessionPlan(plan: ApiSessionPlan): SessionPlan {
   return {
     targetId: plan.target_id,
@@ -358,6 +525,42 @@ function normalizeTonightBoard(board: ApiTonightBoard): TonightBoard {
   };
 }
 
+function normalizeCapturePlan(plan: ApiCapturePlan): CapturePlan {
+  return {
+    targetId: plan.target_id,
+    targetName: plan.target_name,
+    date: plan.date,
+    windowStart: plan.window_start,
+    windowEnd: plan.window_end,
+    imagingMode: plan.imaging_mode,
+    totalIntegrationMinutes: plan.total_integration_minutes,
+    guiding: plan.guiding,
+    ditheringEveryFrames: plan.dithering_every_frames,
+    autofocusEveryMinutes: plan.autofocus_every_minutes,
+    meridianAction: plan.meridian_action,
+    framingNote: plan.framing_note,
+    moonWarning: plan.moon_warning,
+    weatherNote: plan.weather_note,
+    exposureSteps: plan.exposure_steps.map((step) => ({
+      filterName: step.filter_name,
+      exposureSeconds: step.exposure_seconds,
+      frames: step.frames,
+      integrationMinutes: step.integration_minutes,
+      binning: step.binning,
+      gain: step.gain,
+      note: step.note
+    })),
+    calibrationFrames: plan.calibration_frames.map((step) => ({
+      frameType: step.frame_type,
+      frames: step.frames,
+      exposure: step.exposure,
+      note: step.note
+    })),
+    checklist: plan.checklist,
+    exportMarkdown: plan.export_markdown
+  };
+}
+
 function createFallbackCurve(): AltitudePoint[] {
   return [
     { time: "18:00", targetAltitudeDeg: 16, sunAltitudeDeg: -4, darkness: "civil" },
@@ -388,6 +591,51 @@ function fallbackWindow(season: string): [string, string, string] {
     Autumn: ["21:10", "03:05", "00:15"]
   };
   return windows[season] ?? ["21:30", "02:30", "00:00"];
+}
+
+function fallbackCaptureMode(target: Target) {
+  const targetType = target.type.toLowerCase();
+  if (targetType.includes("galaxy")) return "LRGB";
+  if (targetType.includes("reflection")) return "RGB";
+  if (targetType.includes("nebula") || targetType.includes("remnant")) return "Narrowband";
+  return "RGB/Luminance";
+}
+
+function fallbackCaptureFilters(imagingMode: string) {
+  if (imagingMode === "LRGB") return ["L", "R", "G", "B"];
+  if (imagingMode === "RGB") return ["R", "G", "B"];
+  if (imagingMode.includes("Narrowband")) return ["Ha", "OIII", "SII"];
+  return ["Luminance"];
+}
+
+function createCaptureMarkdown(plan: CapturePlan) {
+  const exposureLines = plan.exposureSteps
+    .map(
+      (step) =>
+        `- ${step.filterName}: ${step.frames} x ${step.exposureSeconds}s (${step.integrationMinutes} min)`
+    )
+    .join("\n");
+  const calibrationLines = plan.calibrationFrames
+    .map((step) => `- ${step.frameType}: ${step.frames} x ${step.exposure} - ${step.note}`)
+    .join("\n");
+  const checklistLines = plan.checklist.map((item) => `- [ ] ${item}`).join("\n");
+  return [
+    `# Capture Plan: ${plan.targetName}`,
+    "",
+    `- Date: ${plan.date}`,
+    `- Window: ${plan.windowStart} - ${plan.windowEnd}`,
+    `- Mode: ${plan.imagingMode}`,
+    `- Integration: ${plan.totalIntegrationMinutes} min`,
+    "",
+    "## Lights",
+    exposureLines,
+    "",
+    "## Calibration",
+    calibrationLines,
+    "",
+    "## Checklist",
+    checklistLines
+  ].join("\n");
 }
 
 function seasonForDate(dateIso: string) {

@@ -3,6 +3,7 @@ import { Activity, Aperture, Gauge, LocateFixed, Moon, Radio, Telescope } from "
 import { TargetRail } from "./components/TargetRail";
 import { FovConsole } from "./components/FovConsole";
 import { ProfileDock } from "./components/ProfileDock";
+import { CapturePlan } from "./components/CapturePlan";
 import { SessionControl } from "./components/SessionControl";
 import { SessionTimeline } from "./components/SessionTimeline";
 import { SkyConditions } from "./components/SkyConditions";
@@ -26,11 +27,14 @@ import {
 } from "./lib/profiles";
 import { sensorPresets } from "./lib/sensors";
 import {
+  createFallbackCapturePlan,
   createFallbackSessionPlan,
   createFallbackTonightBoard,
+  fetchCapturePlan,
   fetchSessionPlan,
   fetchTonightBoard,
   getTodayIsoDate,
+  type CapturePlan as CapturePlanModel,
   type TonightBoard as TonightBoardModel,
   type SessionSettings
 } from "./lib/session";
@@ -41,7 +45,7 @@ const SkyScene = lazy(() =>
 );
 
 export function App() {
-  const [selectedTargetId, setSelectedTargetId] = useState("m42");
+  const [selectedTargetId, setSelectedTargetId] = useState("ngc7000");
   const [focalLengthMm, setFocalLengthMm] = useState(480);
   const [sensorWidthMm, setSensorWidthMm] = useState(23.5);
   const [sensorHeightMm, setSensorHeightMm] = useState(15.7);
@@ -51,6 +55,7 @@ export function App() {
   const [isPlanning, setIsPlanning] = useState(false);
   const [isForecastLoading, setIsForecastLoading] = useState(false);
   const [isBoardLoading, setIsBoardLoading] = useState(false);
+  const [isCaptureLoading, setIsCaptureLoading] = useState(false);
   const [isProfileSaving, setIsProfileSaving] = useState(false);
   const [profiles, setProfiles] = useState<EquipmentProfile[]>(() => createFallbackProfiles());
   const [selectedProfileId, setSelectedProfileId] = useState<number | null>(1);
@@ -75,6 +80,9 @@ export function App() {
   );
   const [tonightBoard, setTonightBoard] = useState<TonightBoardModel>(() =>
     createFallbackTonightBoard(targets, sessionSettings, fov)
+  );
+  const [capturePlan, setCapturePlan] = useState<CapturePlanModel>(() =>
+    createFallbackCapturePlan(selectedTarget, sessionSettings, fov)
   );
 
   const selectSensorPreset = (sensorId: string) => {
@@ -306,6 +314,27 @@ export function App() {
     };
   }, [sessionSettings, fov]);
 
+  useEffect(() => {
+    let ignore = false;
+    setIsCaptureLoading(true);
+    setCapturePlan(createFallbackCapturePlan(selectedTarget, sessionSettings, fov));
+
+    fetchCapturePlan(selectedTarget.id, sessionSettings, fov)
+      .then((plan) => {
+        if (!ignore) setCapturePlan(plan);
+      })
+      .catch(() => {
+        if (!ignore) setCapturePlan(createFallbackCapturePlan(selectedTarget, sessionSettings, fov));
+      })
+      .finally(() => {
+        if (!ignore) setIsCaptureLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [selectedTarget, sessionSettings, fov]);
+
   return (
     <main className="app-shell">
       <header className="top-bar">
@@ -447,6 +476,7 @@ export function App() {
           selectedTargetId={selectedTarget.id}
           onSelectTarget={setSelectedTargetId}
         />
+        <CapturePlan plan={capturePlan} loading={isCaptureLoading} />
       </section>
     </main>
   );

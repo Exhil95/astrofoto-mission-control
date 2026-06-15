@@ -1,13 +1,14 @@
 from datetime import date
 
 from astro_api.schemas import (
+    CapturePlanRequest,
     FovRequest,
     SessionPlanRequest,
     SkyForecastHour,
     SkyForecastResponse,
     TonightBoardRequest,
 )
-from astro_api.services import calculate_fov, plan_session, rank_tonight_targets
+from astro_api.services import build_capture_plan, calculate_fov, plan_session, rank_tonight_targets
 
 
 def _forecast(score: int = 86, status: str = "shoot") -> SkyForecastResponse:
@@ -145,3 +146,28 @@ def test_tonight_board_ranks_targets_with_fov_and_weather(monkeypatch) -> None:
     assert result.moon_illumination_percent >= 0
     assert result.items == sorted(result.items, key=lambda item: item.score, reverse=True)
     assert all(item.fov_fit for item in result.items)
+
+
+def test_capture_plan_builds_runbook_and_markdown(monkeypatch) -> None:
+    monkeypatch.setattr("astro_api.services.get_sky_forecast", lambda payload: _forecast())
+
+    result = build_capture_plan(
+        CapturePlanRequest(
+            target_id="ngc7000",
+            date=date(2026, 8, 12),
+            latitude_deg=50.2649,
+            longitude_deg=19.0238,
+            timezone="Europe/Warsaw",
+            bortle=4,
+            fov_horizontal_deg=2.8,
+            fov_vertical_deg=1.87,
+            pixel_scale_arcsec=1.62,
+        )
+    )
+
+    assert result.target_name == "North America"
+    assert result.exposure_steps
+    assert result.calibration_frames
+    assert result.total_integration_minutes > 0
+    assert "Capture Plan: North America" in result.export_markdown
+    assert any(step.filter_name in {"Ha", "OIII"} for step in result.exposure_steps)

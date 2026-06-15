@@ -52,6 +52,7 @@ button {
 .top-bar,
 .timeline,
 .tonight-board,
+.capture-plan,
 .panel {
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(8, 10, 18, 0.72);
@@ -1221,10 +1222,10 @@ button {
 }
 
 .bottom-grid {
-  height: 176px;
-  min-height: 176px;
+  height: clamp(164px, 20vh, 188px);
+  min-height: 164px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px) minmax(300px, 360px);
   gap: 10px;
   overflow: hidden;
 }
@@ -1232,9 +1233,9 @@ button {
 .timeline {
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(180px, 260px) minmax(220px, 340px) minmax(0, 1fr);
+  grid-template-columns: minmax(135px, 190px) minmax(155px, 230px) minmax(0, 1fr);
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   border-radius: 8px;
   padding: 10px;
 }
@@ -1391,6 +1392,159 @@ button {
   white-space: nowrap;
 }
 
+.capture-plan {
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 8px;
+  overflow: hidden;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.capture-head,
+.capture-actions,
+.capture-footer {
+  display: flex;
+  align-items: center;
+}
+
+.capture-head {
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.capture-head span,
+.capture-summary span,
+.capture-light span,
+.capture-light em,
+.capture-footer span {
+  color: #8d95a8;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.capture-head strong,
+.capture-summary strong,
+.capture-light strong {
+  display: block;
+  overflow: hidden;
+  color: #ffffff;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.capture-head strong {
+  margin-top: 3px;
+  font-size: 14px;
+}
+
+.capture-actions {
+  gap: 6px;
+}
+
+.capture-actions button {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #dce4f2;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 0 8px;
+  white-space: nowrap;
+}
+
+.capture-actions button:hover {
+  border-color: rgba(56, 214, 201, 0.6);
+  color: #e9fffb;
+  background: rgba(56, 214, 201, 0.1);
+}
+
+.capture-summary {
+  display: grid;
+  min-width: 0;
+}
+
+.capture-summary strong {
+  margin-top: 3px;
+  color: #38d6c9;
+  font-size: 12px;
+}
+
+.capture-summary em {
+  overflow: hidden;
+  margin-top: 3px;
+  color: #c8d0df;
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.capture-lights {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  align-content: start;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.capture-light {
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 6px;
+}
+
+.capture-light span,
+.capture-light em {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.capture-light strong {
+  margin-top: 3px;
+  color: #f7c873;
+  font-size: 11px;
+}
+
+.capture-light em {
+  margin-top: 3px;
+  color: #38d6c9;
+  font-style: normal;
+}
+
+.capture-footer {
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.capture-footer span {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.capture-footer svg {
+  flex: 0 0 auto;
+  color: #f7c873;
+}
+
 .altitude-chart {
   min-height: 58px;
   display: grid;
@@ -1469,8 +1623,8 @@ button {
 
 .timeline-track {
   display: grid;
-  grid-template-columns: repeat(4, minmax(130px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(4, minmax(82px, 1fr));
+  gap: 6px;
 }
 
 .timeline-slot {
@@ -1553,7 +1707,18 @@ button {
   }
 
   .bottom-grid {
+    height: auto;
+    min-height: 0;
     overflow: visible;
+  }
+
+  .capture-plan,
+  .tonight-board {
+    min-height: 176px;
+  }
+
+  .capture-plan {
+    height: auto;
   }
 
   .mission-grid {
@@ -1644,5 +1809,9 @@ button {
 
   .tonight-board {
     max-height: none;
+  }
+
+  .capture-plan {
+    min-height: 176px;
   }
 }
