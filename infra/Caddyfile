@@ -1,5 +1,15 @@
-:80 {
+{$CADDY_SITE_ADDRESS} {
   encode zstd gzip
+
+  header {
+    Referrer-Policy "strict-origin-when-cross-origin"
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "SAMEORIGIN"
+  }
+
+  handle /health {
+    respond "ok" 200
+  }
 
   handle /api/* {
     reverse_proxy api:8000

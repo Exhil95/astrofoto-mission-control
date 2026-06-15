@@ -34,6 +34,7 @@ docker compose up --build
 ```
 
 Caddy exposes the web UI on `http://localhost` and proxies API calls through `/api`.
+See [docs/HOMELAB.md](docs/HOMELAB.md) for persistent SQLite profiles, healthchecks, Caddy settings, and backup/restore notes.
 
 ## First tools
 
@@ -41,4 +42,3 @@ Caddy exposes the web UI on `http://localhost` and proxies API calls through `/a
 - Visual target selector
 - Session timeline mock for planning panels
 - API endpoints for FOV calculations and curated target data
-
