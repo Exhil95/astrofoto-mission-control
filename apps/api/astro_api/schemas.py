@@ -74,6 +74,17 @@ class SessionPlanRequest(BaseModel):
     bortle: int = Field(default=4, ge=1, le=9)
 
 
+class TonightBoardRequest(BaseModel):
+    date: Date | None = None
+    latitude_deg: float = Field(default=50.2649, ge=-90, le=90)
+    longitude_deg: float = Field(default=19.0238, ge=-180, le=180)
+    timezone: str = Field(default="Europe/Warsaw", min_length=1, max_length=64)
+    bortle: int = Field(default=4, ge=1, le=9)
+    fov_horizontal_deg: float = Field(gt=0, le=60)
+    fov_vertical_deg: float = Field(gt=0, le=60)
+    limit: int = Field(default=5, ge=1, le=12)
+
+
 class TimelineSlot(BaseModel):
     time: str
     label: str
@@ -115,6 +126,35 @@ class SessionPlanResponse(BaseModel):
     recommendation: str
     slots: list[TimelineSlot]
     altitude_curve: list[AltitudePoint]
+
+
+class TonightBoardItem(BaseModel):
+    target_id: str
+    target_name: str
+    catalog_id: str
+    target_type: str
+    constellation: str
+    score: int = Field(ge=0, le=100)
+    astronomy_score: int = Field(ge=0, le=100)
+    weather_score: int = Field(ge=0, le=100)
+    fov_score: int = Field(ge=0, le=100)
+    fov_fit: str
+    start_time: str
+    end_time: str
+    best_time: str
+    max_altitude_deg: int
+    recommended_mode: str
+    reason: str
+
+
+class TonightBoardResponse(BaseModel):
+    date: str
+    summary: str
+    weather_status: str
+    weather_score: int = Field(ge=0, le=100)
+    moon_illumination_percent: int
+    white_night: bool
+    items: list[TonightBoardItem]
 
 
 class SkyForecastRequest(BaseModel):

@@ -14,8 +14,10 @@ from .schemas import (
     SkyForecastRequest,
     SkyForecastResponse,
     TargetResponse,
+    TonightBoardRequest,
+    TonightBoardResponse,
 )
-from .services import TARGETS, calculate_fov, plan_session
+from .services import TARGETS, calculate_fov, plan_session, rank_tonight_targets
 from .settings import get_settings
 
 settings = get_settings()
@@ -74,6 +76,11 @@ def profile_delete(profile_id: int) -> Response:
 @app.post("/api/session/plan", response_model=SessionPlanResponse)
 def session_plan(payload: SessionPlanRequest) -> SessionPlanResponse:
     return plan_session(payload)
+
+
+@app.post("/api/session/tonight-board", response_model=TonightBoardResponse)
+def tonight_board(payload: TonightBoardRequest) -> TonightBoardResponse:
+    return rank_tonight_targets(payload)
 
 
 @app.post("/api/forecast/sky", response_model=SkyForecastResponse)

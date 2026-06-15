@@ -1,7 +1,13 @@
 from datetime import date
 
-from astro_api.schemas import FovRequest, SessionPlanRequest, SkyForecastHour, SkyForecastResponse
-from astro_api.services import calculate_fov, plan_session
+from astro_api.schemas import (
+    FovRequest,
+    SessionPlanRequest,
+    SkyForecastHour,
+    SkyForecastResponse,
+    TonightBoardRequest,
+)
+from astro_api.services import calculate_fov, plan_session, rank_tonight_targets
 
 
 def _forecast(score: int = 86, status: str = "shoot") -> SkyForecastResponse:
@@ -116,3 +122,26 @@ def test_plan_session_weather_skip_overrides_good_astronomy(monkeypatch) -> None
     assert result.condition_score < 55
     assert result.recommendation == "Weather skip: calibration only"
     assert any(slot.label == "Weather" for slot in result.slots)
+
+
+def test_tonight_board_ranks_targets_with_fov_and_weather(monkeypatch) -> None:
+    monkeypatch.setattr("astro_api.services.get_sky_forecast", lambda payload: _forecast())
+
+    result = rank_tonight_targets(
+        TonightBoardRequest(
+            date=date(2026, 10, 12),
+            latitude_deg=50.2649,
+            longitude_deg=19.0238,
+            timezone="Europe/Warsaw",
+            bortle=3,
+            fov_horizontal_deg=2.8,
+            fov_vertical_deg=1.87,
+            limit=4,
+        )
+    )
+
+    assert len(result.items) == 4
+    assert result.weather_score == 86
+    assert result.moon_illumination_percent >= 0
+    assert result.items == sorted(result.items, key=lambda item: item.score, reverse=True)
+    assert all(item.fov_fit for item in result.items)

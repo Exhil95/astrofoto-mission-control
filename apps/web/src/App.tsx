@@ -6,6 +6,7 @@ import { ProfileDock } from "./components/ProfileDock";
 import { SessionControl } from "./components/SessionControl";
 import { SessionTimeline } from "./components/SessionTimeline";
 import { SkyConditions } from "./components/SkyConditions";
+import { TonightBoard } from "./components/TonightBoard";
 import {
   createFallbackSkyForecast,
   fetchSkyForecast,
@@ -26,8 +27,11 @@ import {
 import { sensorPresets } from "./lib/sensors";
 import {
   createFallbackSessionPlan,
+  createFallbackTonightBoard,
   fetchSessionPlan,
+  fetchTonightBoard,
   getTodayIsoDate,
+  type TonightBoard as TonightBoardModel,
   type SessionSettings
 } from "./lib/session";
 import { targets } from "./lib/targets";
@@ -46,6 +50,7 @@ export function App() {
   const [reducer, setReducer] = useState(1);
   const [isPlanning, setIsPlanning] = useState(false);
   const [isForecastLoading, setIsForecastLoading] = useState(false);
+  const [isBoardLoading, setIsBoardLoading] = useState(false);
   const [isProfileSaving, setIsProfileSaving] = useState(false);
   const [profiles, setProfiles] = useState<EquipmentProfile[]>(() => createFallbackProfiles());
   const [selectedProfileId, setSelectedProfileId] = useState<number | null>(1);
@@ -67,6 +72,9 @@ export function App() {
   const fov = useMemo(
     () => calculateFov({ focalLengthMm, sensorWidthMm, sensorHeightMm, pixelSizeUm, reducer }),
     [focalLengthMm, sensorWidthMm, sensorHeightMm, pixelSizeUm, reducer]
+  );
+  const [tonightBoard, setTonightBoard] = useState<TonightBoardModel>(() =>
+    createFallbackTonightBoard(targets, sessionSettings, fov)
   );
 
   const selectSensorPreset = (sensorId: string) => {
@@ -277,6 +285,27 @@ export function App() {
     };
   }, [sessionSettings]);
 
+  useEffect(() => {
+    let ignore = false;
+    setIsBoardLoading(true);
+    setTonightBoard(createFallbackTonightBoard(targets, sessionSettings, fov));
+
+    fetchTonightBoard(sessionSettings, fov)
+      .then((board) => {
+        if (!ignore) setTonightBoard(board);
+      })
+      .catch(() => {
+        if (!ignore) setTonightBoard(createFallbackTonightBoard(targets, sessionSettings, fov));
+      })
+      .finally(() => {
+        if (!ignore) setIsBoardLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [sessionSettings, fov]);
+
   return (
     <main className="app-shell">
       <header className="top-bar">
@@ -410,7 +439,15 @@ export function App() {
         </aside>
       </section>
 
-      <SessionTimeline target={selectedTarget} plan={sessionPlan} loading={isPlanning} />
+      <section className="bottom-grid" aria-label="Timeline and tonight board">
+        <SessionTimeline target={selectedTarget} plan={sessionPlan} loading={isPlanning} />
+        <TonightBoard
+          board={tonightBoard}
+          loading={isBoardLoading}
+          selectedTargetId={selectedTarget.id}
+          onSelectTarget={setSelectedTargetId}
+        />
+      </section>
     </main>
   );
 }

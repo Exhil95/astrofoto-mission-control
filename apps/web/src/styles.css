@@ -51,6 +51,7 @@ button {
 
 .top-bar,
 .timeline,
+.tonight-board,
 .panel {
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(8, 10, 18, 0.72);
@@ -1219,14 +1220,175 @@ button {
   text-align: right;
 }
 
+.bottom-grid {
+  height: 176px;
+  min-height: 176px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+  gap: 10px;
+  overflow: hidden;
+}
+
 .timeline {
-  min-height: 78px;
+  min-height: 0;
   display: grid;
   grid-template-columns: minmax(180px, 260px) minmax(220px, 340px) minmax(0, 1fr);
   align-items: center;
   gap: 12px;
   border-radius: 8px;
   padding: 10px;
+}
+
+.tonight-board {
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 8px;
+  overflow: hidden;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.tonight-board-head,
+.tonight-badges,
+.tonight-foot,
+.tonight-item {
+  display: flex;
+  align-items: center;
+}
+
+.tonight-board-head {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tonight-board-head span,
+.tonight-summary span,
+.tonight-name em,
+.tonight-score small,
+.tonight-foot span {
+  color: #8d95a8;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.tonight-board-head strong,
+.tonight-summary strong,
+.tonight-name strong {
+  display: block;
+  overflow: hidden;
+  color: #ffffff;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tonight-board-head strong {
+  margin-top: 3px;
+  font-size: 14px;
+}
+
+.tonight-badges {
+  gap: 6px;
+}
+
+.tonight-badges span {
+  min-height: 26px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #dce4f2;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 0 7px;
+  white-space: nowrap;
+}
+
+.tonight-summary {
+  display: grid;
+  min-width: 0;
+}
+
+.tonight-summary strong {
+  margin-top: 3px;
+  color: #38d6c9;
+  font-size: 12px;
+}
+
+.tonight-list {
+  min-height: 0;
+  display: grid;
+  gap: 6px;
+  overflow: auto;
+}
+
+.tonight-item {
+  min-height: 31px;
+  width: 100%;
+  min-width: 0;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #f5f7fb;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 4px 8px;
+  text-align: left;
+}
+
+.tonight-item.is-selected {
+  border-color: rgba(56, 214, 201, 0.68);
+  background: rgba(56, 214, 201, 0.1);
+}
+
+.tonight-rank {
+  min-width: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #f7c873;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.tonight-name {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.tonight-name strong {
+  font-size: 12px;
+}
+
+.tonight-name em {
+  display: block;
+  margin-top: 2px;
+  font-style: normal;
+}
+
+.tonight-score {
+  min-width: 48px;
+  display: grid;
+  justify-items: end;
+}
+
+.tonight-score b {
+  color: #f7c873;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.tonight-foot {
+  display: none;
+}
+
+.tonight-foot span {
+  overflow: hidden;
+  color: #c8d0df;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .altitude-chart {
@@ -1385,8 +1547,13 @@ button {
 
   .top-bar,
   .mission-grid,
-  .timeline {
+  .timeline,
+  .bottom-grid {
     grid-template-columns: 1fr;
+  }
+
+  .bottom-grid {
+    overflow: visible;
   }
 
   .mission-grid {
@@ -1473,5 +1640,9 @@ button {
   .signal-strip span {
     min-width: 92px;
     justify-content: center;
+  }
+
+  .tonight-board {
+    max-height: none;
   }
 }

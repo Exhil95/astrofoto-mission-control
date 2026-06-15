@@ -1,3 +1,4 @@
+import type { FovResult } from "./fov";
 import type { Target } from "./targets";
 
 export type SessionSlot = {
@@ -51,6 +52,35 @@ export type SessionSettings = {
   bortle: number;
 };
 
+export type TonightBoardItem = {
+  targetId: string;
+  targetName: string;
+  catalogId: string;
+  targetType: string;
+  constellation: string;
+  score: number;
+  astronomyScore: number;
+  weatherScore: number;
+  fovScore: number;
+  fovFit: string;
+  startTime: string;
+  endTime: string;
+  bestTime: string;
+  maxAltitudeDeg: number;
+  recommendedMode: string;
+  reason: string;
+};
+
+export type TonightBoard = {
+  date: string;
+  summary: string;
+  weatherStatus: string;
+  weatherScore: number;
+  moonIlluminationPercent: number;
+  whiteNight: boolean;
+  items: TonightBoardItem[];
+};
+
 type ApiSessionPlan = {
   target_id: string;
   target_name: string;
@@ -84,6 +114,33 @@ type ApiSessionPlan = {
   }[];
 };
 
+type ApiTonightBoard = {
+  date: string;
+  summary: string;
+  weather_status: string;
+  weather_score: number;
+  moon_illumination_percent: number;
+  white_night: boolean;
+  items: {
+    target_id: string;
+    target_name: string;
+    catalog_id: string;
+    target_type: string;
+    constellation: string;
+    score: number;
+    astronomy_score: number;
+    weather_score: number;
+    fov_score: number;
+    fov_fit: string;
+    start_time: string;
+    end_time: string;
+    best_time: string;
+    max_altitude_deg: number;
+    recommended_mode: string;
+    reason: string;
+  }[];
+};
+
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
 
 export function getTodayIsoDate() {
@@ -112,6 +169,32 @@ export async function fetchSessionPlan(
   }
 
   return normalizeSessionPlan((await response.json()) as ApiSessionPlan);
+}
+
+export async function fetchTonightBoard(
+  settings: SessionSettings,
+  fov: FovResult
+): Promise<TonightBoard> {
+  const response = await fetch(`${apiBaseUrl}/api/session/tonight-board`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      date: settings.date,
+      latitude_deg: settings.latitudeDeg,
+      longitude_deg: settings.longitudeDeg,
+      timezone: settings.timezone,
+      bortle: settings.bortle,
+      fov_horizontal_deg: fov.horizontalDeg,
+      fov_vertical_deg: fov.verticalDeg,
+      limit: 5
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Tonight board failed with ${response.status}`);
+  }
+
+  return normalizeTonightBoard((await response.json()) as ApiTonightBoard);
 }
 
 export function createFallbackSessionPlan(target: Target, settings?: SessionSettings): SessionPlan {
@@ -164,6 +247,53 @@ export function createFallbackSessionPlan(target: Target, settings?: SessionSett
   };
 }
 
+export function createFallbackTonightBoard(
+  targets: Target[],
+  settings: SessionSettings,
+  fov: FovResult
+): TonightBoard {
+  const moonIlluminationPercent = estimateFallbackMoon(settings.date);
+  const items = targets
+    .map((target) => {
+      const fovFit = fallbackFovFit(target, fov);
+      const seasonScore = target.season === seasonForDate(settings.date) ? 88 : 66;
+      const fovScore = fovFit === "Fits" ? 94 : fovFit === "Tight" ? 78 : fovFit === "Small" ? 62 : 48;
+      const score = Math.round(Math.max(18, Math.min(100, seasonScore * 0.58 + fovScore * 0.42)));
+      const window = fallbackWindow(target.season);
+
+      return {
+        targetId: target.id,
+        targetName: target.name,
+        catalogId: target.catalogId,
+        targetType: target.type,
+        constellation: target.constellation,
+        score,
+        astronomyScore: seasonScore,
+        weatherScore: 72,
+        fovScore,
+        fovFit,
+        startTime: window[0],
+        endTime: window[1],
+        bestTime: window[2],
+        maxAltitudeDeg: target.season === "Winter" ? 61 : 54,
+        recommendedMode: target.exposureHint,
+        reason: `${fovFit} frame, offline estimate`
+      };
+    })
+    .sort((left, right) => right.score - left.score)
+    .slice(0, 5);
+
+  return {
+    date: settings.date,
+    summary: `Offline board: start with ${items[0]?.targetName ?? "calibration"}`,
+    weatherStatus: "risk",
+    weatherScore: 72,
+    moonIlluminationPercent,
+    whiteNight: false,
+    items
+  };
+}
+
 function normalizeSessionPlan(plan: ApiSessionPlan): SessionPlan {
   return {
     targetId: plan.target_id,
@@ -199,6 +329,35 @@ function normalizeSessionPlan(plan: ApiSessionPlan): SessionPlan {
   };
 }
 
+function normalizeTonightBoard(board: ApiTonightBoard): TonightBoard {
+  return {
+    date: board.date,
+    summary: board.summary,
+    weatherStatus: board.weather_status,
+    weatherScore: board.weather_score,
+    moonIlluminationPercent: board.moon_illumination_percent,
+    whiteNight: board.white_night,
+    items: board.items.map((item) => ({
+      targetId: item.target_id,
+      targetName: item.target_name,
+      catalogId: item.catalog_id,
+      targetType: item.target_type,
+      constellation: item.constellation,
+      score: item.score,
+      astronomyScore: item.astronomy_score,
+      weatherScore: item.weather_score,
+      fovScore: item.fov_score,
+      fovFit: item.fov_fit,
+      startTime: item.start_time,
+      endTime: item.end_time,
+      bestTime: item.best_time,
+      maxAltitudeDeg: item.max_altitude_deg,
+      recommendedMode: item.recommended_mode,
+      reason: item.reason
+    }))
+  };
+}
+
 function createFallbackCurve(): AltitudePoint[] {
   return [
     { time: "18:00", targetAltitudeDeg: 16, sunAltitudeDeg: -4, darkness: "civil" },
@@ -208,4 +367,42 @@ function createFallbackCurve(): AltitudePoint[] {
     { time: "02:00", targetAltitudeDeg: 48, sunAltitudeDeg: -19, darkness: "astronomical" },
     { time: "04:00", targetAltitudeDeg: 25, sunAltitudeDeg: -9, darkness: "nautical" }
   ];
+}
+
+function fallbackFovFit(target: Target, fov: FovResult) {
+  const load = Math.max(
+    target.angularWidthArcmin / (fov.horizontalDeg * 60),
+    target.angularHeightArcmin / (fov.verticalDeg * 60)
+  );
+  if (load <= 0.18) return "Small";
+  if (load <= 0.78) return "Fits";
+  if (load <= 1.05) return "Tight";
+  return "Mosaic";
+}
+
+function fallbackWindow(season: string): [string, string, string] {
+  const windows: Record<string, [string, string, string]> = {
+    Winter: ["20:40", "03:35", "00:30"],
+    Spring: ["21:25", "02:45", "00:20"],
+    Summer: ["22:35", "02:25", "00:45"],
+    Autumn: ["21:10", "03:05", "00:15"]
+  };
+  return windows[season] ?? ["21:30", "02:30", "00:00"];
+}
+
+function seasonForDate(dateIso: string) {
+  const month = new Date(`${dateIso}T12:00:00`).getMonth() + 1;
+  if (month <= 2 || month === 12) return "Winter";
+  if (month <= 5) return "Spring";
+  if (month <= 8) return "Summer";
+  return "Autumn";
+}
+
+function estimateFallbackMoon(dateIso: string) {
+  const reference = new Date("2000-01-06T12:00:00Z").getTime();
+  const current = new Date(`${dateIso}T12:00:00Z`).getTime();
+  const days = (current - reference) / 86_400_000;
+  const phase = ((days % 29.53058867) + 29.53058867) % 29.53058867;
+  const illumination = (1 - Math.cos((phase / 29.53058867) * Math.PI * 2)) / 2;
+  return Math.round(illumination * 100);
 }

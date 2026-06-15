@@ -40,5 +40,6 @@ See [docs/HOMELAB.md](docs/HOMELAB.md) for persistent SQLite profiles, healthche
 
 - Live field-of-view simulator
 - Searchable target catalog with FOV fit, size, season, and magnitude filters
+- Tonight Board ranking targets by weather, altitude, Moon, white nights, and FOV
 - Session timeline mock for planning panels
 - API endpoints for FOV calculations and curated target data

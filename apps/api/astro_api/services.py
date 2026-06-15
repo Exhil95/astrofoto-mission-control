@@ -11,6 +11,9 @@ from .schemas import (
     SessionPlanResponse,
     SkyForecastRequest,
     SkyForecastResponse,
+    TonightBoardItem,
+    TonightBoardRequest,
+    TonightBoardResponse,
     TimelineSlot,
 )
 
@@ -330,6 +333,103 @@ def plan_session(payload: SessionPlanRequest) -> SessionPlanResponse:
     )
 
 
+def rank_tonight_targets(payload: TonightBoardRequest) -> TonightBoardResponse:
+    session_date = payload.date or date.today()
+    moon_illumination_percent = _estimate_moon_illumination(session_date)
+    forecast = get_sky_forecast(
+        SkyForecastRequest(
+            date=session_date,
+            latitude_deg=payload.latitude_deg,
+            longitude_deg=payload.longitude_deg,
+            timezone=payload.timezone,
+        )
+    )
+
+    items: list[TonightBoardItem] = []
+    white_night = False
+    for target in TARGETS:
+        astro_plan = build_astro_plan(
+            session_date=session_date,
+            latitude_deg=payload.latitude_deg,
+            longitude_deg=payload.longitude_deg,
+            timezone_name=payload.timezone,
+            target=TargetProfile(ra_hours=target["ra_hours"], dec_deg=target["dec_deg"]),
+        )
+        white_night = white_night or astro_plan.white_night
+        transparency_percent = _estimate_transparency(payload.bortle, moon_illumination_percent)
+        astronomy_score = _score_astronomy(
+            max_altitude_deg=astro_plan.max_altitude_deg,
+            moon_illumination_percent=moon_illumination_percent,
+            transparency_percent=transparency_percent,
+            bortle=payload.bortle,
+            astronomical_darkness_minutes=astro_plan.astronomical_darkness_minutes,
+        )
+        condition_score = _score_conditions(
+            astro_score=astronomy_score,
+            weather_score=forecast.score,
+            weather_status=forecast.status,
+        )
+        fov_score, fov_fit = _score_fov_fit(
+            target_width_arcmin=float(target["angular_width_arcmin"]),
+            target_height_arcmin=float(target["angular_height_arcmin"]),
+            fov_horizontal_deg=payload.fov_horizontal_deg,
+            fov_vertical_deg=payload.fov_vertical_deg,
+        )
+        recommended_mode = _recommended_mode(
+            target_type=str(target["type"]),
+            white_night=astro_plan.white_night,
+            astronomical_darkness_minutes=astro_plan.astronomical_darkness_minutes,
+            moon_illumination_percent=moon_illumination_percent,
+            weather_status=forecast.status,
+            max_altitude_deg=astro_plan.max_altitude_deg,
+        )
+        score = _score_board_target(
+            condition_score=condition_score,
+            fov_score=fov_score,
+            max_altitude_deg=astro_plan.max_altitude_deg,
+            magnitude=float(target["magnitude"]),
+            target_type=str(target["type"]),
+            white_night=astro_plan.white_night,
+        )
+        items.append(
+            TonightBoardItem(
+                target_id=str(target["id"]),
+                target_name=str(target["name"]),
+                catalog_id=str(target["catalog_id"]),
+                target_type=str(target["type"]),
+                constellation=str(target["constellation"]),
+                score=score,
+                astronomy_score=astronomy_score,
+                weather_score=forecast.score,
+                fov_score=fov_score,
+                fov_fit=fov_fit,
+                start_time=astro_plan.best_start_time,
+                end_time=astro_plan.best_end_time,
+                best_time=astro_plan.meridian_time,
+                max_altitude_deg=astro_plan.max_altitude_deg,
+                recommended_mode=recommended_mode,
+                reason=_board_reason(
+                    astro_plan.white_night,
+                    forecast.status,
+                    fov_fit,
+                    astro_plan.max_altitude_deg,
+                    recommended_mode,
+                ),
+            )
+        )
+
+    ranked_items = sorted(items, key=lambda item: item.score, reverse=True)[: payload.limit]
+    return TonightBoardResponse(
+        date=session_date.isoformat(),
+        summary=_board_summary(ranked_items, forecast.status, white_night),
+        weather_status=forecast.status,
+        weather_score=forecast.score,
+        moon_illumination_percent=moon_illumination_percent,
+        white_night=white_night,
+        items=ranked_items,
+    )
+
+
 def _estimate_moon_illumination(session_date: date) -> int:
     reference_new_moon = date(2000, 1, 6)
     lunar_cycle_days = 29.53058867
@@ -374,6 +474,48 @@ def _score_conditions(astro_score: int, weather_score: int, weather_status: str)
         score -= 18
     elif weather_status == "risk":
         score -= 6
+    return round(max(0, min(100, score)))
+
+
+def _score_fov_fit(
+    target_width_arcmin: float,
+    target_height_arcmin: float,
+    fov_horizontal_deg: float,
+    fov_vertical_deg: float,
+) -> tuple[int, str]:
+    fov_width_arcmin = fov_horizontal_deg * 60
+    fov_height_arcmin = fov_vertical_deg * 60
+    load = max(target_width_arcmin / fov_width_arcmin, target_height_arcmin / fov_height_arcmin)
+
+    if load <= 0.18:
+        return 62, "Small"
+    if load <= 0.78:
+        return 96, "Fits"
+    if load <= 1.05:
+        return 80, "Tight"
+    if load <= 1.8:
+        return 58, "Mosaic"
+    return 38, "Large mosaic"
+
+
+def _score_board_target(
+    condition_score: int,
+    fov_score: int,
+    max_altitude_deg: int,
+    magnitude: float,
+    target_type: str,
+    white_night: bool,
+) -> int:
+    altitude_score = max(0, min(100, max_altitude_deg * 1.55))
+    brightness_score = max(28, min(100, 100 - max(0, magnitude - 2) * 7.5))
+    score = condition_score * 0.56 + fov_score * 0.24
+    score += altitude_score * 0.14 + brightness_score * 0.06
+    if white_night:
+        target_type_lower = target_type.lower()
+        if "nebula" in target_type_lower or "remnant" in target_type_lower:
+            score += 8
+        else:
+            score -= 18
     return round(max(0, min(100, score)))
 
 
@@ -429,7 +571,7 @@ def _recommended_mode(
     max_altitude_deg: int,
 ) -> str:
     target_type_lower = target_type.lower()
-    is_nebula = "nebula" in target_type_lower
+    is_nebula = "nebula" in target_type_lower or "remnant" in target_type_lower
     is_lunar_or_planetary = "lunar" in target_type_lower or "planetary" in target_type_lower
 
     if weather_status == "skip":
@@ -451,6 +593,41 @@ def _recommended_mode(
     if weather_status == "risk":
         return "Short subs"
     return "RGB/Luminance"
+
+
+def _board_reason(
+    white_night: bool,
+    weather_status: str,
+    fov_fit: str,
+    max_altitude_deg: int,
+    recommended_mode: str,
+) -> str:
+    if weather_status == "skip":
+        return "Weather skip, keep as backup"
+    if max_altitude_deg < 20:
+        return "Low altitude: scout framing"
+    if white_night:
+        return f"White night: {recommended_mode}"
+    if fov_fit in {"Mosaic", "Large mosaic"}:
+        return f"{fov_fit} plan, {recommended_mode}"
+    if fov_fit == "Small":
+        return f"Small target, {recommended_mode}"
+    return f"{fov_fit} frame, {recommended_mode}"
+
+
+def _board_summary(
+    items: list[TonightBoardItem],
+    weather_status: str,
+    white_night: bool,
+) -> str:
+    if not items:
+        return "No ranked targets"
+    prefix = "White-night board" if white_night else "Tonight board"
+    if weather_status == "skip":
+        return f"{prefix}: weather favors calibration"
+    if weather_status == "risk":
+        return f"{prefix}: weather risk, start with {items[0].target_name}"
+    return f"{prefix}: start with {items[0].target_name}"
 
 
 def _timeline_slots(
