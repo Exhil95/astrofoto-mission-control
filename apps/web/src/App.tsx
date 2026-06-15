@@ -15,8 +15,11 @@ import { calculateFov } from "./lib/fov";
 import {
   createFallbackProfiles,
   createProfile,
+  deleteProfile as deleteStoredProfile,
   fetchProfiles,
+  profileToPayload,
   profileToSessionSettings,
+  updateProfile as updateStoredProfile,
   type EquipmentProfile,
   type ProfilePayload
 } from "./lib/profiles";
@@ -108,9 +111,9 @@ export function App() {
     if (profile) applyProfile(profile);
   };
 
-  const saveCurrentProfile = () => {
+  const createPayloadFromCurrentSetup = (): ProfilePayload => {
     const sensor = sensorPresets.find((item) => item.id === selectedSensorId);
-    const payload: ProfilePayload = {
+    return {
       name: `${sessionSettings.bortle <= 3 ? "Dark" : "Home"} ${focalLengthMm.toFixed(0)}mm`,
       siteName: sessionSettings.timezone.includes("Canary") ? "Tenerife" : "Custom site",
       latitudeDeg: sessionSettings.latitudeDeg,
@@ -126,23 +129,92 @@ export function App() {
       sensorHeightMm,
       pixelSizeUm
     };
+  };
+
+  const saveCurrentProfile = async () => {
+    const payload = createPayloadFromCurrentSetup();
+    setIsProfileSaving(true);
+    try {
+      const profile = await createProfile(payload);
+      setProfiles((items) => [...items, profile]);
+      applyProfile(profile);
+    } catch {
+      const fallbackProfile: EquipmentProfile = {
+        ...payload,
+        id: Date.now(),
+        updatedAt: new Date().toISOString()
+      };
+      setProfiles((items) => [...items, fallbackProfile]);
+      applyProfile(fallbackProfile);
+    } finally {
+      setIsProfileSaving(false);
+    }
+  };
+
+  const updateExistingProfile = async (profileId: number, payload: ProfilePayload) => {
+    setIsProfileSaving(true);
+    try {
+      const updatedProfile = await updateStoredProfile(profileId, payload);
+      setProfiles((items) =>
+        items.map((profile) => (profile.id === profileId ? updatedProfile : profile))
+      );
+      applyProfile(updatedProfile);
+    } catch {
+      const fallbackProfile: EquipmentProfile = {
+        ...payload,
+        id: profileId,
+        updatedAt: new Date().toISOString()
+      };
+      setProfiles((items) =>
+        items.map((profile) => (profile.id === profileId ? fallbackProfile : profile))
+      );
+      applyProfile(fallbackProfile);
+    } finally {
+      setIsProfileSaving(false);
+    }
+  };
+
+  const duplicateExistingProfile = async (profileId: number) => {
+    const source = profiles.find((profile) => profile.id === profileId);
+    if (!source) return;
+    const payload: ProfilePayload = {
+      ...profileToPayload(source),
+      name: `${source.name} Copy`
+    };
 
     setIsProfileSaving(true);
-    createProfile(payload)
-      .then((profile) => {
-        setProfiles((items) => [...items, profile]);
-        applyProfile(profile);
-      })
-      .catch(() => {
-        const fallbackProfile: EquipmentProfile = {
-          ...payload,
-          id: Date.now(),
-          updatedAt: new Date().toISOString()
-        };
-        setProfiles((items) => [...items, fallbackProfile]);
-        applyProfile(fallbackProfile);
-      })
-      .finally(() => setIsProfileSaving(false));
+    try {
+      const profile = await createProfile(payload);
+      setProfiles((items) => [...items, profile]);
+      applyProfile(profile);
+    } catch {
+      const fallbackProfile: EquipmentProfile = {
+        ...payload,
+        id: Date.now(),
+        updatedAt: new Date().toISOString()
+      };
+      setProfiles((items) => [...items, fallbackProfile]);
+      applyProfile(fallbackProfile);
+    } finally {
+      setIsProfileSaving(false);
+    }
+  };
+
+  const deleteExistingProfile = async (profileId: number) => {
+    if (profiles.length <= 1) return;
+    const remainingProfiles = profiles.filter((profile) => profile.id !== profileId);
+    const nextProfile = remainingProfiles[0];
+
+    setIsProfileSaving(true);
+    try {
+      await deleteStoredProfile(profileId);
+    } catch {
+      // Local fallback profiles can be removed even when no persisted row exists.
+    } finally {
+      setProfiles(remainingProfiles);
+      if (selectedProfileId === profileId && nextProfile) applyProfile(nextProfile);
+      setIsProfileSaving(false);
+    }
   };
 
   useEffect(() => {
@@ -261,9 +333,12 @@ export function App() {
             <ProfileDock
               profiles={profiles}
               selectedProfileId={selectedProfileId}
-              saving={isProfileSaving}
+              busy={isProfileSaving}
               onSelectProfile={selectProfile}
               onSaveCurrent={saveCurrentProfile}
+              onUpdateProfile={updateExistingProfile}
+              onDuplicateProfile={duplicateExistingProfile}
+              onDeleteProfile={deleteExistingProfile}
             />
           </section>
         </aside>

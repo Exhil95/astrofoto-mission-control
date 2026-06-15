@@ -1,23 +1,114 @@
-import { Database, MapPinned, Save, Telescope } from "lucide-react";
-import type { EquipmentProfile } from "../lib/profiles";
+import {
+  Check,
+  Copy,
+  Database,
+  MapPinned,
+  Pencil,
+  Save,
+  Telescope,
+  Trash2,
+  X
+} from "lucide-react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { profileToPayload, type EquipmentProfile, type ProfilePayload } from "../lib/profiles";
+import { sensorPresets } from "../lib/sensors";
 
 type ProfileDockProps = {
   profiles: EquipmentProfile[];
   selectedProfileId: number | null;
-  saving: boolean;
+  busy: boolean;
   onSelectProfile: (profileId: number) => void;
-  onSaveCurrent: () => void;
+  onSaveCurrent: () => Promise<void> | void;
+  onUpdateProfile: (profileId: number, payload: ProfilePayload) => Promise<void> | void;
+  onDuplicateProfile: (profileId: number) => Promise<void> | void;
+  onDeleteProfile: (profileId: number) => Promise<void> | void;
 };
 
 export function ProfileDock({
   profiles,
   selectedProfileId,
-  saving,
+  busy,
   onSelectProfile,
-  onSaveCurrent
+  onSaveCurrent,
+  onUpdateProfile,
+  onDuplicateProfile,
+  onDeleteProfile
 }: ProfileDockProps) {
   const selectedProfile =
     profiles.find((profile) => profile.id === selectedProfileId) ?? profiles[0];
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [draft, setDraft] = useState<ProfilePayload>(() =>
+    selectedProfile ? profileToPayload(selectedProfile) : createEmptyDraft()
+  );
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (selectedProfile) setDraft(profileToPayload(selectedProfile));
+    setError("");
+  }, [selectedProfile?.id]);
+
+  const sensorSelectValue = useMemo(() => {
+    return sensorPresets.some((sensor) => sensor.id === draft.sensorId) ? draft.sensorId : "custom";
+  }, [draft.sensorId]);
+
+  const openEditor = () => {
+    if (!selectedProfile) return;
+    setDraft(profileToPayload(selectedProfile));
+    setError("");
+    setEditorOpen(true);
+  };
+
+  const submitProfile = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedProfile) return;
+
+    const payload = sanitizeDraft(draft);
+    if (!payload.name || !payload.siteName || !payload.timezone || !payload.telescopeName) {
+      setError("Complete required fields.");
+      return;
+    }
+
+    setError("");
+    await onUpdateProfile(selectedProfile.id, payload);
+    setEditorOpen(false);
+  };
+
+  const requestDelete = async () => {
+    if (!selectedProfile || profiles.length <= 1) return;
+    const confirmed = window.confirm(`Delete profile "${selectedProfile.name}"?`);
+    if (confirmed) await onDeleteProfile(selectedProfile.id);
+  };
+
+  const updateDraft = <Key extends keyof ProfilePayload>(field: Key, value: ProfilePayload[Key]) => {
+    setDraft((current) => ({ ...current, [field]: value }));
+  };
+
+  const updateDraftNumber = (field: NumericProfileField, value: string) => {
+    const numberValue = Number(value);
+    updateDraft(field, (Number.isFinite(numberValue) ? numberValue : 0) as ProfilePayload[typeof field]);
+  };
+
+  const selectSensor = (sensorId: string) => {
+    if (sensorId === "custom") {
+      setDraft((current) => ({
+        ...current,
+        sensorId: "custom",
+        sensorName: current.sensorName || "Custom sensor"
+      }));
+      return;
+    }
+
+    const sensor = sensorPresets.find((preset) => preset.id === sensorId);
+    if (!sensor) return;
+    setDraft((current) => ({
+      ...current,
+      sensorId: sensor.id,
+      sensorName: sensor.name,
+      sensorWidthMm: sensor.sensorWidthMm,
+      sensorHeightMm: sensor.sensorHeightMm,
+      pixelSizeUm: sensor.pixelSizeUm
+    }));
+  };
 
   return (
     <div className="stack profile-dock">
@@ -76,6 +167,28 @@ export function ProfileDock({
               <strong>{selectedProfile.sensorWidthMm.toFixed(1)}mm</strong>
             </div>
           </div>
+
+          <div className="profile-actions" aria-label="Profile actions">
+            <button type="button" onClick={openEditor} disabled={busy} title="Edit profile">
+              <Pencil size={15} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onDuplicateProfile(selectedProfile.id)}
+              disabled={busy}
+              title="Duplicate profile"
+            >
+              <Copy size={15} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={requestDelete}
+              disabled={busy || profiles.length <= 1}
+              title="Delete profile"
+            >
+              <Trash2 size={15} aria-hidden="true" />
+            </button>
+          </div>
         </>
       )}
 
@@ -83,11 +196,227 @@ export function ProfileDock({
         className="profile-save-button"
         type="button"
         onClick={onSaveCurrent}
-        disabled={saving}
+        disabled={busy}
       >
         <Save size={15} aria-hidden="true" />
-        {saving ? "Saving" : "Save current"}
+        {busy ? "Saving" : "Save current"}
       </button>
+
+      {editorOpen && selectedProfile && (
+        <div className="profile-editor-backdrop" role="dialog" aria-modal="true">
+          <form className="profile-editor" onSubmit={submitProfile}>
+            <div className="profile-editor-head">
+              <div>
+                <span>Profile Manager</span>
+                <strong>{selectedProfile.name}</strong>
+              </div>
+              <button
+                className="icon-button"
+                type="button"
+                onClick={() => setEditorOpen(false)}
+                title="Close"
+              >
+                <X size={17} aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="profile-form-grid">
+              <label className="field-row">
+                <span>Name</span>
+                <input
+                  value={draft.name}
+                  maxLength={80}
+                  required
+                  onChange={(event) => updateDraft("name", event.target.value)}
+                />
+              </label>
+              <label className="field-row">
+                <span>Site</span>
+                <input
+                  value={draft.siteName}
+                  maxLength={80}
+                  required
+                  onChange={(event) => updateDraft("siteName", event.target.value)}
+                />
+              </label>
+              <label className="field-row">
+                <span>Telescope</span>
+                <input
+                  value={draft.telescopeName}
+                  maxLength={80}
+                  required
+                  onChange={(event) => updateDraft("telescopeName", event.target.value)}
+                />
+              </label>
+              <label className="field-row">
+                <span>Timezone</span>
+                <input
+                  value={draft.timezone}
+                  maxLength={64}
+                  required
+                  onChange={(event) => updateDraft("timezone", event.target.value)}
+                />
+              </label>
+              <label className="field-row">
+                <span>Latitude</span>
+                <input
+                  type="number"
+                  value={draft.latitudeDeg}
+                  min={-90}
+                  max={90}
+                  step={0.0001}
+                  onChange={(event) => updateDraftNumber("latitudeDeg", event.target.value)}
+                />
+              </label>
+              <label className="field-row">
+                <span>Longitude</span>
+                <input
+                  type="number"
+                  value={draft.longitudeDeg}
+                  min={-180}
+                  max={180}
+                  step={0.0001}
+                  onChange={(event) => updateDraftNumber("longitudeDeg", event.target.value)}
+                />
+              </label>
+              <label className="field-row">
+                <span>Bortle</span>
+                <input
+                  type="number"
+                  value={draft.bortle}
+                  min={1}
+                  max={9}
+                  step={1}
+                  onChange={(event) => updateDraftNumber("bortle", event.target.value)}
+                />
+              </label>
+              <label className="field-row">
+                <span>Focal length</span>
+                <input
+                  type="number"
+                  value={draft.focalLengthMm}
+                  min={1}
+                  max={5000}
+                  step={1}
+                  onChange={(event) => updateDraftNumber("focalLengthMm", event.target.value)}
+                />
+              </label>
+              <label className="field-row">
+                <span>Reducer</span>
+                <input
+                  type="number"
+                  value={draft.reducer}
+                  min={0.1}
+                  max={3}
+                  step={0.01}
+                  onChange={(event) => updateDraftNumber("reducer", event.target.value)}
+                />
+              </label>
+              <label className="field-row">
+                <span>Sensor preset</span>
+                <select value={sensorSelectValue} onChange={(event) => selectSensor(event.target.value)}>
+                  <option value="custom">Custom sensor</option>
+                  {sensorPresets.map((sensor) => (
+                    <option key={sensor.id} value={sensor.id}>
+                      {sensor.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field-row">
+                <span>Sensor name</span>
+                <input
+                  value={draft.sensorName}
+                  maxLength={80}
+                  required
+                  onChange={(event) => updateDraft("sensorName", event.target.value)}
+                />
+              </label>
+              <label className="field-row">
+                <span>Sensor width</span>
+                <input
+                  type="number"
+                  value={draft.sensorWidthMm}
+                  min={0.1}
+                  max={80}
+                  step={0.01}
+                  onChange={(event) => updateDraftNumber("sensorWidthMm", event.target.value)}
+                />
+              </label>
+              <label className="field-row">
+                <span>Sensor height</span>
+                <input
+                  type="number"
+                  value={draft.sensorHeightMm}
+                  min={0.1}
+                  max={80}
+                  step={0.01}
+                  onChange={(event) => updateDraftNumber("sensorHeightMm", event.target.value)}
+                />
+              </label>
+              <label className="field-row">
+                <span>Pixel size</span>
+                <input
+                  type="number"
+                  value={draft.pixelSizeUm}
+                  min={0.1}
+                  max={20}
+                  step={0.01}
+                  onChange={(event) => updateDraftNumber("pixelSizeUm", event.target.value)}
+                />
+              </label>
+            </div>
+
+            {error && <p className="profile-editor-error">{error}</p>}
+
+            <div className="profile-editor-actions">
+              <button type="button" onClick={() => setEditorOpen(false)} disabled={busy}>
+                <X size={15} aria-hidden="true" />
+                Cancel
+              </button>
+              <button type="submit" disabled={busy}>
+                <Check size={15} aria-hidden="true" />
+                Save changes
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
+}
+
+type NumericProfileField = {
+  [Key in keyof ProfilePayload]: ProfilePayload[Key] extends number ? Key : never;
+}[keyof ProfilePayload];
+
+function createEmptyDraft(): ProfilePayload {
+  return {
+    name: "",
+    siteName: "",
+    latitudeDeg: 50.2649,
+    longitudeDeg: 19.0238,
+    timezone: "Europe/Warsaw",
+    bortle: 5,
+    telescopeName: "",
+    focalLengthMm: 480,
+    reducer: 1,
+    sensorId: "imx571",
+    sensorName: "Sony IMX571",
+    sensorWidthMm: 23.5,
+    sensorHeightMm: 15.7,
+    pixelSizeUm: 3.76
+  };
+}
+
+function sanitizeDraft(draft: ProfilePayload): ProfilePayload {
+  return {
+    ...draft,
+    name: draft.name.trim(),
+    siteName: draft.siteName.trim(),
+    timezone: draft.timezone.trim(),
+    telescopeName: draft.telescopeName.trim(),
+    sensorId: draft.sensorId.trim() || "custom",
+    sensorName: draft.sensorName.trim()
+  };
 }

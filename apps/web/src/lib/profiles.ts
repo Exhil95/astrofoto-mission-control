@@ -58,6 +58,26 @@ export async function createProfile(payload: ProfilePayload): Promise<EquipmentP
   return normalizeProfile((await response.json()) as ApiProfile);
 }
 
+export async function updateProfile(
+  profileId: number,
+  payload: ProfilePayload
+): Promise<EquipmentProfile> {
+  const response = await fetch(`${apiBaseUrl}/api/profiles/${profileId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(toApiPayload(payload))
+  });
+  if (!response.ok) throw new Error(`Profile update failed with ${response.status}`);
+  return normalizeProfile((await response.json()) as ApiProfile);
+}
+
+export async function deleteProfile(profileId: number): Promise<void> {
+  const response = await fetch(`${apiBaseUrl}/api/profiles/${profileId}`, {
+    method: "DELETE"
+  });
+  if (!response.ok) throw new Error(`Profile delete failed with ${response.status}`);
+}
+
 export function createFallbackProfiles(): EquipmentProfile[] {
   return [
     {
@@ -145,6 +165,25 @@ export function normalizeProfile(profile: ApiProfile): EquipmentProfile {
     sensorHeightMm: profile.sensor_height_mm,
     pixelSizeUm: profile.pixel_size_um,
     updatedAt: profile.updated_at
+  };
+}
+
+export function profileToPayload(profile: EquipmentProfile): ProfilePayload {
+  return {
+    name: profile.name,
+    siteName: profile.siteName,
+    latitudeDeg: profile.latitudeDeg,
+    longitudeDeg: profile.longitudeDeg,
+    timezone: profile.timezone,
+    bortle: profile.bortle,
+    telescopeName: profile.telescopeName,
+    focalLengthMm: profile.focalLengthMm,
+    reducer: profile.reducer,
+    sensorId: profile.sensorId,
+    sensorName: profile.sensorName,
+    sensorWidthMm: profile.sensorWidthMm,
+    sensorHeightMm: profile.sensorHeightMm,
+    pixelSizeUm: profile.pixelSizeUm
   };
 }
 
