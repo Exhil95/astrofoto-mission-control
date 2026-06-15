@@ -45,23 +45,6 @@ function calculateComparisonSize(target: Target, fov: FovResult): ComparisonSize
   };
 }
 
-function NebulaField({ tint, autoRotate }: { tint: string; autoRotate: boolean }) {
-  const meshRef = useRef<THREE.Mesh>(null);
-
-  useFrame((state) => {
-    if (!meshRef.current || !autoRotate) return;
-    meshRef.current.rotation.z = state.clock.elapsedTime * 0.04;
-    meshRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.2) * 0.08;
-  });
-
-  return (
-    <mesh ref={meshRef} position={[0, 0, -1.4]}>
-      <planeGeometry args={[8.6, 5.4, 48, 48]} />
-      <meshBasicMaterial color={tint} transparent opacity={0.08} side={THREE.DoubleSide} />
-    </mesh>
-  );
-}
-
 function TargetMarker({
   target,
   position,
@@ -173,39 +156,6 @@ function SelectedScalePlate({
   );
 }
 
-function FovFrame({
-  target,
-  position,
-  fov,
-  autoRotate
-}: {
-  target: Target;
-  position: [number, number, number];
-  fov: FovResult;
-  autoRotate: boolean;
-}) {
-  const frameRef = useRef<THREE.Group>(null);
-  const { fovWidth, fovHeight } = useMemo(() => calculateComparisonSize(target, fov), [target, fov]);
-
-  useFrame((state) => {
-    if (!frameRef.current || !autoRotate) return;
-    frameRef.current.rotation.z = Math.sin(state.clock.elapsedTime * 0.35) * 0.06;
-  });
-
-  return (
-    <group ref={frameRef} position={[position[0], position[1], position[2] + 0.03]}>
-      <lineSegments>
-        <edgesGeometry args={[new THREE.PlaneGeometry(fovWidth, fovHeight)]} />
-        <lineBasicMaterial color="#f7c873" transparent opacity={0.95} />
-      </lineSegments>
-      <mesh>
-        <planeGeometry args={[fovWidth, fovHeight]} />
-        <meshBasicMaterial color="#f7c873" transparent opacity={0.055} side={THREE.DoubleSide} />
-      </mesh>
-    </group>
-  );
-}
-
 function SkyObjects({ targets, selectedTarget, fov, autoRotate, layoutMode, onSelectTarget }: SkySceneProps) {
   const groupRef = useRef<THREE.Group>(null);
   const sceneTargets = useMemo(
@@ -228,7 +178,6 @@ function SkyObjects({ targets, selectedTarget, fov, autoRotate, layoutMode, onSe
 
   return (
     <group ref={groupRef}>
-      <NebulaField tint={selectedTarget.tint} autoRotate={autoRotate} />
       <SelectedScalePlate
         target={selectedTarget}
         position={selectedScenePosition}
@@ -243,12 +192,6 @@ function SkyObjects({ targets, selectedTarget, fov, autoRotate, layoutMode, onSe
           onSelect={() => onSelectTarget(target.id)}
         />
       ))}
-      <FovFrame
-        target={selectedTarget}
-        position={selectedScenePosition}
-        fov={fov}
-        autoRotate={autoRotate}
-      />
     </group>
   );
 }

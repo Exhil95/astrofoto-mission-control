@@ -22,7 +22,7 @@
 - [x] Object imagery: replace abstract spheres/rings with real object thumbnails or generated preview plates.
 - [x] Realistic object scale: render target apparent size against the current FOV so framing feels physically meaningful.
 - [x] FOV/object comparison tools: add fit margin, mosaic hints, and rotation guidance in the sky view.
-- [ ] Homelab image cache: proxy/cache generated DSS2 target plates locally for faster offline-friendly browsing.
+- [x] Homelab image cache: proxy/cache generated DSS2 target plates locally for faster offline-friendly browsing.
 - [ ] Session Archive / Capture Logs: save planned/captured sessions with filters, integration, weather, profile, and notes.
 - [ ] Processing Planner: recommend calibration matching, stack strategy, drizzle/binning, and gradient risk.
 - [ ] FITS metadata ingest: scan uploaded or mounted frame folders and read capture metadata from FITS headers.

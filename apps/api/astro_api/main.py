@@ -3,6 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .catalog import TARGETS
 from .forecast import get_sky_forecast
+from .image_cache import (
+    TargetImageNotFoundError,
+    TargetImageUnavailableError,
+    get_cached_target_image,
+)
 from .profiles import create_profile, delete_profile, list_profiles, update_profile
 from .schemas import (
     CapturePlanRequest,
@@ -49,6 +54,25 @@ def fov(payload: FovRequest) -> FovResponse:
 @app.get("/api/targets", response_model=list[TargetResponse])
 def targets() -> list[dict[str, object]]:
     return TARGETS
+
+
+@app.get("/api/targets/{target_id}/image")
+def target_image(target_id: str) -> Response:
+    try:
+        image = get_cached_target_image(target_id)
+    except TargetImageNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Target not found") from exc
+    except TargetImageUnavailableError as exc:
+        raise HTTPException(status_code=502, detail="Target image unavailable") from exc
+
+    return Response(
+        content=image.content,
+        media_type=image.media_type,
+        headers={
+            "Cache-Control": f"public, max-age={settings.target_image_cache_ttl_seconds}",
+            "X-Image-Cache": image.cache_status,
+        },
+    )
 
 
 @app.get("/api/profiles", response_model=list[ProfileResponse])

@@ -958,32 +958,6 @@ button {
   pointer-events: none;
 }
 
-.sky-object-thumb.is-selected {
-  width: 96px;
-  height: 70px;
-  border-color: color-mix(in srgb, var(--target-tint), white 36%);
-  border-radius: 8px;
-}
-
-.sky-object-thumb.is-selected span {
-  position: absolute;
-  right: 5px;
-  bottom: 5px;
-  z-index: 1;
-  max-width: calc(100% - 10px);
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 6px;
-  color: #ffffff;
-  background: rgba(5, 7, 13, 0.72);
-  padding: 2px 5px;
-  font-size: 10px;
-  font-weight: 750;
-  line-height: 1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .readout {
   min-height: 58px;
   display: flex;

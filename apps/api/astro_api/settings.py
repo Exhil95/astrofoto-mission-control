@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     open_meteo_forecast_url: str = "https://api.open-meteo.com/v1/forecast"
     forecast_cache_ttl_seconds: int = 900
     forecast_timeout_seconds: float = 4.0
+    target_image_cache_dir: str = ".cache/target-images"
+    target_image_cache_ttl_seconds: int = 604800
+    target_image_timeout_seconds: float = 8.0
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

@@ -12,7 +12,6 @@ from .schemas import TargetResponse
 
 TARGET_CATALOG_PATH = Path(__file__).with_name("data") / "targets.json"
 SURVEY_IMAGE_ENDPOINT = "https://alasky.cds.unistra.fr/hips-image-services/hips2fits"
-SURVEY_IMAGE_SOURCE_URL = "https://aladin.cds.unistra.fr/hips-image-services/"
 SURVEY_IMAGE_CREDIT = "CDS DSS2 color survey"
 
 
@@ -23,23 +22,27 @@ def load_targets() -> list[dict[str, Any]]:
 
 
 def get_target(target_id: str) -> dict[str, Any]:
-    targets = load_targets()
-    return next((target for target in targets if target["id"] == target_id), targets[0])
+    return find_target(target_id) or load_targets()[0]
+
+
+def find_target(target_id: str) -> dict[str, Any] | None:
+    return next((target for target in load_targets() if target["id"] == target_id), None)
+
+
+def build_survey_image_url(target: dict[str, Any]) -> str:
+    return _survey_image_url(
+        ra_hours=float(target["ra_hours"]),
+        dec_deg=float(target["dec_deg"]),
+        width_arcmin=float(target["angular_width_arcmin"]),
+        height_arcmin=float(target["angular_height_arcmin"]),
+    )
 
 def _enrich_target(target: dict[str, Any]) -> dict[str, Any]:
     enriched = dict(target)
     enriched.setdefault("position", _target_position(float(enriched["ra_hours"]), float(enriched["dec_deg"])))
-    enriched.setdefault(
-        "image_url",
-        _survey_image_url(
-            ra_hours=float(enriched["ra_hours"]),
-            dec_deg=float(enriched["dec_deg"]),
-            width_arcmin=float(enriched["angular_width_arcmin"]),
-            height_arcmin=float(enriched["angular_height_arcmin"]),
-        ),
-    )
+    enriched.setdefault("image_url", f"/api/targets/{enriched['id']}/image")
     enriched.setdefault("image_credit", SURVEY_IMAGE_CREDIT)
-    enriched.setdefault("image_source_url", SURVEY_IMAGE_SOURCE_URL)
+    enriched.setdefault("image_source_url", build_survey_image_url(enriched))
     return enriched
 
 

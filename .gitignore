@@ -18,6 +18,7 @@ htmlcov/
 media/
 staticfiles/
 .npm-cache/
+.cache/
 *.log
 *.tsbuildinfo
 apps/web/vite.config.js
