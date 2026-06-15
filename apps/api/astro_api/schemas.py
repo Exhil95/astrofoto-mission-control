@@ -74,6 +74,18 @@ class SessionPlanRequest(BaseModel):
     bortle: int = Field(default=4, ge=1, le=9)
 
 
+class CapturePlanRequest(BaseModel):
+    target_id: str
+    date: Date | None = None
+    latitude_deg: float = Field(default=50.2649, ge=-90, le=90)
+    longitude_deg: float = Field(default=19.0238, ge=-180, le=180)
+    timezone: str = Field(default="Europe/Warsaw", min_length=1, max_length=64)
+    bortle: int = Field(default=4, ge=1, le=9)
+    fov_horizontal_deg: float = Field(gt=0, le=60)
+    fov_vertical_deg: float = Field(gt=0, le=60)
+    pixel_scale_arcsec: float = Field(gt=0, le=20)
+
+
 class TonightBoardRequest(BaseModel):
     date: Date | None = None
     latitude_deg: float = Field(default=50.2649, ge=-90, le=90)
@@ -126,6 +138,44 @@ class SessionPlanResponse(BaseModel):
     recommendation: str
     slots: list[TimelineSlot]
     altitude_curve: list[AltitudePoint]
+
+
+class CaptureExposureStep(BaseModel):
+    filter_name: str
+    exposure_seconds: int
+    frames: int
+    integration_minutes: int
+    binning: str
+    gain: str
+    note: str
+
+
+class CaptureCalibrationStep(BaseModel):
+    frame_type: str
+    frames: int
+    exposure: str
+    note: str
+
+
+class CapturePlanResponse(BaseModel):
+    target_id: str
+    target_name: str
+    date: str
+    window_start: str
+    window_end: str
+    imaging_mode: str
+    total_integration_minutes: int
+    guiding: str
+    dithering_every_frames: int
+    autofocus_every_minutes: int
+    meridian_action: str
+    framing_note: str
+    moon_warning: str
+    weather_note: str
+    exposure_steps: list[CaptureExposureStep]
+    calibration_frames: list[CaptureCalibrationStep]
+    checklist: list[str]
+    export_markdown: str
 
 
 class TonightBoardItem(BaseModel):
