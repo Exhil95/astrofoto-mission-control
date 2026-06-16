@@ -15,6 +15,7 @@ import { TargetRail } from "./components/TargetRail";
 import { FovConsole } from "./components/FovConsole";
 import { ProfileDock } from "./components/ProfileDock";
 import { CapturePlan } from "./components/CapturePlan";
+import { ProcessingPlanner } from "./components/ProcessingPlanner";
 import { SessionControl } from "./components/SessionControl";
 import { SessionTimeline } from "./components/SessionTimeline";
 import { SkyConditions } from "./components/SkyConditions";
@@ -64,6 +65,7 @@ const SkyScene = lazy(() =>
 
 type SkyDisplayMode = "focus" | "tonight" | "showcase" | "catalog";
 type SkyFitFilter = "All" | "Small" | "Fits" | "Tight" | "Mosaic";
+type WorkspaceMode = "planner" | "capture" | "process";
 
 export function App() {
   const [selectedTargetId, setSelectedTargetId] = useState("ngc7000");
@@ -73,6 +75,10 @@ export function App() {
   const [pixelSizeUm, setPixelSizeUm] = useState(3.76);
   const [selectedSensorId, setSelectedSensorId] = useState("imx571");
   const [reducer, setReducer] = useState(1);
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(() => {
+    const storedMode = window.localStorage.getItem("astrofoto-workspace-mode");
+    return isWorkspaceMode(storedMode) ? storedMode : "planner";
+  });
   const [isPlanning, setIsPlanning] = useState(false);
   const [isForecastLoading, setIsForecastLoading] = useState(false);
   const [isBoardLoading, setIsBoardLoading] = useState(false);
@@ -356,6 +362,10 @@ export function App() {
   };
 
   useEffect(() => {
+    window.localStorage.setItem("astrofoto-workspace-mode", workspaceMode);
+  }, [workspaceMode]);
+
+  useEffect(() => {
     window.localStorage.setItem(
       "astrofoto-sky-auto-rotate",
       skyAutoRotate ? "true" : "false"
@@ -548,7 +558,7 @@ export function App() {
   }, [selectedTarget, sessionSettings, fov, sessionPlan, capturePlan]);
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell workspace-${workspaceMode}`}>
       <header className="top-bar">
         <div className="brand">
           <Telescope size={22} aria-hidden="true" />
@@ -559,17 +569,32 @@ export function App() {
         </div>
 
         <nav className="mode-tabs" aria-label="Workspace modes">
-          <button className="is-active" type="button" title="Planner">
+          <button
+            className={workspaceMode === "planner" ? "is-active" : ""}
+            type="button"
+            title="Planner"
+            onClick={() => setWorkspaceMode("planner")}
+          >
             <LocateFixed size={17} aria-hidden="true" />
             Planner
           </button>
-          <button type="button" title="Capture">
+          <button
+            className={workspaceMode === "capture" ? "is-active" : ""}
+            type="button"
+            title="Capture"
+            onClick={() => setWorkspaceMode("capture")}
+          >
             <Aperture size={17} aria-hidden="true" />
             Capture
           </button>
-          <button type="button" title="Signal">
+          <button
+            className={workspaceMode === "process" ? "is-active" : ""}
+            type="button"
+            title="Process"
+            onClick={() => setWorkspaceMode("process")}
+          >
             <Activity size={17} aria-hidden="true" />
-            Signal
+            Process
           </button>
         </nav>
 
@@ -589,214 +614,281 @@ export function App() {
         </div>
       </header>
 
-      <section className="mission-grid">
-        <aside className="left-stack" aria-label="Targets and profiles">
-          <section className="panel left-panel" aria-label="Target selector">
-            <TargetRail
-              targets={targetCatalog}
-              selectedTarget={selectedTarget}
-              fov={fov}
-              onSelectTarget={setSelectedTargetId}
-            />
-          </section>
+      {workspaceMode === "planner" && (
+        <section className="workspace-page planner-page" aria-label="Planner workspace">
+          <aside className="left-stack" aria-label="Targets and profiles">
+            <section className="panel left-panel" aria-label="Target selector">
+              <TargetRail
+                targets={targetCatalog}
+                selectedTarget={selectedTarget}
+                fov={fov}
+                onSelectTarget={setSelectedTargetId}
+              />
+            </section>
 
-          <section className="panel profile-panel" aria-label="Equipment profiles">
-            <ProfileDock
-              profiles={profiles}
-              selectedProfileId={selectedProfileId}
-              busy={isProfileSaving}
-              onSelectProfile={selectProfile}
-              onSaveCurrent={saveCurrentProfile}
-              onUpdateProfile={updateExistingProfile}
-              onDuplicateProfile={duplicateExistingProfile}
-              onDeleteProfile={deleteExistingProfile}
-            />
-          </section>
-        </aside>
+            <section className="panel profile-panel" aria-label="Equipment profiles">
+              <ProfileDock
+                profiles={profiles}
+                selectedProfileId={selectedProfileId}
+                busy={isProfileSaving}
+                onSelectProfile={selectProfile}
+                onSaveCurrent={saveCurrentProfile}
+                onUpdateProfile={updateExistingProfile}
+                onDuplicateProfile={duplicateExistingProfile}
+                onDeleteProfile={deleteExistingProfile}
+              />
+            </section>
+          </aside>
 
-        <section className="sky-stage" aria-label="Interactive sky map">
-          <Suspense
-            fallback={
-              <div className="sky-loading">
-                <span>Sky engine</span>
-                <strong>Initializing WebGL</strong>
+          <section className="sky-stage" aria-label="Interactive sky map">
+            <Suspense
+              fallback={
+                <div className="sky-loading">
+                  <span>Sky engine</span>
+                  <strong>Initializing WebGL</strong>
+                </div>
+              }
+            >
+              <SkyScene
+                targets={visibleSkyTargets}
+                selectedTarget={selectedTarget}
+                fov={fov}
+                autoRotate={skyAutoRotate}
+                layoutMode={skyDisplayMode === "showcase" || skyDisplayMode === "catalog" ? "showcase" : "sky"}
+                onSelectTarget={setSelectedTargetId}
+              />
+            </Suspense>
+            <div className="scene-controls" aria-label="Sky display controls">
+              <div className="scene-mode-tabs">
+                <button
+                  className={skyDisplayMode === "focus" ? "is-active" : ""}
+                  type="button"
+                  title="Show selected target only"
+                  onClick={() => setSkyDisplayMode("focus")}
+                >
+                  <LocateFixed size={14} aria-hidden="true" />
+                  Focus
+                </button>
+                <button
+                  className={skyDisplayMode === "tonight" ? "is-active" : ""}
+                  type="button"
+                  title="Show selected target and Tonight Board objects"
+                  onClick={() => setSkyDisplayMode("tonight")}
+                >
+                  <Moon size={14} aria-hidden="true" />
+                  Tonight
+                </button>
+                <button
+                  className={skyDisplayMode === "showcase" ? "is-active" : ""}
+                  type="button"
+                  title="Rotate through a filtered target showcase"
+                  onClick={() => setSkyDisplayMode("showcase")}
+                >
+                  <GalleryHorizontal size={14} aria-hidden="true" />
+                  Show
+                </button>
+                <button
+                  className={skyDisplayMode === "catalog" ? "is-active" : ""}
+                  type="button"
+                  title="Show filtered catalog targets"
+                  onClick={() => setSkyDisplayMode("catalog")}
+                >
+                  <SlidersHorizontal size={14} aria-hidden="true" />
+                  Filter
+                </button>
               </div>
-            }
-          >
-            <SkyScene
-              targets={visibleSkyTargets}
-              selectedTarget={selectedTarget}
-              fov={fov}
-              autoRotate={skyAutoRotate}
-              layoutMode={skyDisplayMode === "showcase" || skyDisplayMode === "catalog" ? "showcase" : "sky"}
-              onSelectTarget={setSelectedTargetId}
-            />
-          </Suspense>
-          <div className="scene-controls" aria-label="Sky display controls">
-            <div className="scene-mode-tabs">
-              <button
-                className={skyDisplayMode === "focus" ? "is-active" : ""}
-                type="button"
-                title="Show selected target only"
-                onClick={() => setSkyDisplayMode("focus")}
-              >
-                <LocateFixed size={14} aria-hidden="true" />
-                Focus
-              </button>
-              <button
-                className={skyDisplayMode === "tonight" ? "is-active" : ""}
-                type="button"
-                title="Show selected target and Tonight Board objects"
-                onClick={() => setSkyDisplayMode("tonight")}
-              >
-                <Moon size={14} aria-hidden="true" />
-                Tonight
-              </button>
-              <button
-                className={skyDisplayMode === "showcase" ? "is-active" : ""}
-                type="button"
-                title="Rotate through a filtered target showcase"
-                onClick={() => setSkyDisplayMode("showcase")}
-              >
-                <GalleryHorizontal size={14} aria-hidden="true" />
-                Show
-              </button>
-              <button
-                className={skyDisplayMode === "catalog" ? "is-active" : ""}
-                type="button"
-                title="Show filtered catalog targets"
-                onClick={() => setSkyDisplayMode("catalog")}
-              >
-                <SlidersHorizontal size={14} aria-hidden="true" />
-                Filter
-              </button>
+
+              {(skyDisplayMode === "showcase" || skyDisplayMode === "catalog") && (
+                <div className="scene-filter-row">
+                  <label>
+                    <span>Type</span>
+                    <select value={skyTypeFilter} onChange={(event) => setSkyTypeFilter(event.target.value)}>
+                      <option value="All">All</option>
+                      {skyTargetTypes.map((type) => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>Season</span>
+                    <select value={skySeasonFilter} onChange={(event) => setSkySeasonFilter(event.target.value)}>
+                      <option value="All">All</option>
+                      {skySeasons.map((season) => (
+                        <option key={season} value={season}>
+                          {season}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>FOV</span>
+                    <select
+                      value={skyFitFilter}
+                      onChange={(event) => setSkyFitFilter(event.target.value as SkyFitFilter)}
+                    >
+                      <option value="All">All</option>
+                      <option value="Small">Small</option>
+                      <option value="Fits">Fits</option>
+                      <option value="Tight">Tight</option>
+                      <option value="Mosaic">Mosaic</option>
+                    </select>
+                  </label>
+                </div>
+              )}
             </div>
+            <button
+              className={`scene-toggle ${skyAutoRotate ? "is-active" : ""}`}
+              type="button"
+              title={skyAutoRotate ? "Disable sky auto-rotate" : "Enable sky auto-rotate"}
+              aria-pressed={skyAutoRotate}
+              onClick={() => setSkyAutoRotate((current) => !current)}
+            >
+              <RotateCw size={15} aria-hidden="true" />
+              <span>{skyAutoRotate ? "Auto" : "Still"}</span>
+            </button>
+            <div className="scene-hud top-left">
+              <span>{selectedTarget.type}</span>
+              <strong>{selectedTarget.name}</strong>
+              <em>{skySceneSummary}</em>
+            </div>
+            <div className="scene-hud bottom-left">
+              <span>Object scale</span>
+              <strong>{formatObjectFootprint(selectedTarget, fov)}</strong>
+              <em>{framingAdvice}</em>
+            </div>
+            <div className="scene-hud bottom-right">
+              <span>FOV</span>
+              <strong>
+                {fov.horizontalDeg.toFixed(2)} x {fov.verticalDeg.toFixed(2)} deg
+              </strong>
+            </div>
+          </section>
 
-            {(skyDisplayMode === "showcase" || skyDisplayMode === "catalog") && (
-              <div className="scene-filter-row">
-                <label>
-                  <span>Type</span>
-                  <select value={skyTypeFilter} onChange={(event) => setSkyTypeFilter(event.target.value)}>
-                    <option value="All">All</option>
-                    {skyTargetTypes.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  <span>Season</span>
-                  <select value={skySeasonFilter} onChange={(event) => setSkySeasonFilter(event.target.value)}>
-                    <option value="All">All</option>
-                    {skySeasons.map((season) => (
-                      <option key={season} value={season}>
-                        {season}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  <span>FOV</span>
-                  <select
-                    value={skyFitFilter}
-                    onChange={(event) => setSkyFitFilter(event.target.value as SkyFitFilter)}
-                  >
-                    <option value="All">All</option>
-                    <option value="Small">Small</option>
-                    <option value="Fits">Fits</option>
-                    <option value="Tight">Tight</option>
-                    <option value="Mosaic">Mosaic</option>
-                  </select>
-                </label>
-              </div>
-            )}
-          </div>
-          <button
-            className={`scene-toggle ${skyAutoRotate ? "is-active" : ""}`}
-            type="button"
-            title={skyAutoRotate ? "Disable sky auto-rotate" : "Enable sky auto-rotate"}
-            aria-pressed={skyAutoRotate}
-            onClick={() => setSkyAutoRotate((current) => !current)}
-          >
-            <RotateCw size={15} aria-hidden="true" />
-            <span>{skyAutoRotate ? "Auto" : "Still"}</span>
-          </button>
-          <div className="scene-hud top-left">
-            <span>{selectedTarget.type}</span>
-            <strong>{selectedTarget.name}</strong>
-            <em>{skySceneSummary}</em>
-          </div>
-          <div className="scene-hud bottom-left">
-            <span>Object scale</span>
-            <strong>{formatObjectFootprint(selectedTarget, fov)}</strong>
-            <em>{framingAdvice}</em>
-          </div>
-          <div className="scene-hud bottom-right">
-            <span>FOV</span>
-            <strong>
-              {fov.horizontalDeg.toFixed(2)} x {fov.verticalDeg.toFixed(2)} deg
-            </strong>
-          </div>
+          <aside className="planner-controls" aria-label="Planner controls">
+            <section className="panel optics-panel" aria-label="Imaging controls">
+              <FovConsole
+                fov={fov}
+                profile={selectedProfile}
+                selectedSensorId={selectedSensorId}
+                focalLengthMm={focalLengthMm}
+                sensorWidthMm={sensorWidthMm}
+                sensorHeightMm={sensorHeightMm}
+                pixelSizeUm={pixelSizeUm}
+                reducer={reducer}
+                onSensorPresetChange={selectSensorPreset}
+                onFocalLengthChange={setFocalLengthMm}
+                onSensorWidthChange={changeSensorWidth}
+                onSensorHeightChange={changeSensorHeight}
+                onPixelSizeChange={changePixelSize}
+                onReducerChange={setReducer}
+              />
+            </section>
+
+            <section className="panel session-panel" aria-label="Session controls">
+              <SessionControl
+                settings={sessionSettings}
+                plan={sessionPlan}
+                loading={isPlanning}
+                onChange={setSessionSettings}
+              />
+            </section>
+          </aside>
         </section>
+      )}
 
-        <aside className="right-stack" aria-label="Session and imaging controls">
-          <section className="panel session-panel" aria-label="Session controls">
-            <SessionControl
-              settings={sessionSettings}
-              plan={sessionPlan}
-              loading={isPlanning}
-              onChange={setSessionSettings}
+      {workspaceMode === "capture" && (
+        <section className="workspace-page capture-page" aria-label="Capture workspace">
+          <aside className="capture-settings-stack" aria-label="Session setup">
+            <section className="panel session-panel" aria-label="Session controls">
+              <SessionControl
+                settings={sessionSettings}
+                plan={sessionPlan}
+                loading={isPlanning}
+                onChange={setSessionSettings}
+              />
+            </section>
+            <section className="panel conditions-panel" aria-label="Sky conditions">
+              <SkyConditions
+                forecast={skyForecast}
+                plan={sessionPlan}
+                loading={isForecastLoading}
+              />
+            </section>
+          </aside>
+
+          <section className="capture-command-stack" aria-label="Capture runbook">
+            <SessionTimeline target={selectedTarget} plan={sessionPlan} loading={isPlanning} />
+            <CapturePlan
+              plan={capturePlan}
+              loading={isCaptureLoading}
+              archiveState={archiveState}
+              archives={sessionArchives}
+              onArchive={archiveCurrentSession}
             />
           </section>
 
-          <section className="panel conditions-panel" aria-label="Sky conditions">
-            <SkyConditions
-              forecast={skyForecast}
-              plan={sessionPlan}
-              loading={isForecastLoading}
+          <aside className="capture-board-stack" aria-label="Tonight board">
+            <TonightBoard
+              board={tonightBoard}
+              loading={isBoardLoading}
+              selectedTargetId={selectedTarget.id}
+              onSelectTarget={setSelectedTargetId}
             />
-          </section>
+          </aside>
+        </section>
+      )}
 
-          <section className="panel optics-panel" aria-label="Imaging controls">
-            <FovConsole
-              fov={fov}
-              profile={selectedProfile}
-              selectedSensorId={selectedSensorId}
-              focalLengthMm={focalLengthMm}
-              sensorWidthMm={sensorWidthMm}
-              sensorHeightMm={sensorHeightMm}
-              pixelSizeUm={pixelSizeUm}
-              reducer={reducer}
-              onSensorPresetChange={selectSensorPreset}
-              onFocalLengthChange={setFocalLengthMm}
-              onSensorWidthChange={changeSensorWidth}
-              onSensorHeightChange={changeSensorHeight}
-              onPixelSizeChange={changePixelSize}
-              onReducerChange={setReducer}
-            />
-          </section>
-        </aside>
-      </section>
+      {workspaceMode === "process" && (
+        <section className="workspace-page process-page" aria-label="Processing workspace">
+          <aside className="process-target-stack" aria-label="Processing target selector">
+            <section className="panel left-panel" aria-label="Target selector">
+              <TargetRail
+                targets={targetCatalog}
+                selectedTarget={selectedTarget}
+                fov={fov}
+                onSelectTarget={setSelectedTargetId}
+              />
+            </section>
+          </aside>
 
-      <section className="bottom-grid" aria-label="Timeline and tonight board">
-        <SessionTimeline target={selectedTarget} plan={sessionPlan} loading={isPlanning} />
-        <TonightBoard
-          board={tonightBoard}
-          loading={isBoardLoading}
-          selectedTargetId={selectedTarget.id}
-          onSelectTarget={setSelectedTargetId}
-        />
-        <CapturePlan
-          plan={capturePlan}
-          loading={isCaptureLoading}
-          processingPlan={processingPlan}
-          processingLoading={isProcessingLoading}
-          archiveState={archiveState}
-          archives={sessionArchives}
-          onArchive={archiveCurrentSession}
-        />
-      </section>
+          <ProcessingPlanner
+            plan={processingPlan}
+            capturePlan={capturePlan}
+            archives={sessionArchives}
+            loading={isProcessingLoading}
+          />
+
+          <aside className="process-side-stack" aria-label="Processing context">
+            <section className="panel conditions-panel" aria-label="Sky conditions">
+              <SkyConditions
+                forecast={skyForecast}
+                plan={sessionPlan}
+                loading={isForecastLoading}
+              />
+            </section>
+            <section className="panel optics-panel" aria-label="Imaging controls">
+              <FovConsole
+                fov={fov}
+                profile={selectedProfile}
+                selectedSensorId={selectedSensorId}
+                focalLengthMm={focalLengthMm}
+                sensorWidthMm={sensorWidthMm}
+                sensorHeightMm={sensorHeightMm}
+                pixelSizeUm={pixelSizeUm}
+                reducer={reducer}
+                onSensorPresetChange={selectSensorPreset}
+                onFocalLengthChange={setFocalLengthMm}
+                onSensorWidthChange={changeSensorWidth}
+                onSensorHeightChange={changeSensorHeight}
+                onPixelSizeChange={changePixelSize}
+                onReducerChange={setReducer}
+              />
+            </section>
+          </aside>
+        </section>
+      )}
     </main>
   );
 }
@@ -866,6 +958,10 @@ function formatObjectFootprint(target: Target, fov: FovResult) {
 
 function isSkyDisplayMode(value: string | null): value is SkyDisplayMode {
   return value === "focus" || value === "tonight" || value === "showcase" || value === "catalog";
+}
+
+function isWorkspaceMode(value: string | null): value is WorkspaceMode {
+  return value === "planner" || value === "capture" || value === "process";
 }
 
 function filterSkyTargets(
