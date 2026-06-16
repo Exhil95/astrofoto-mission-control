@@ -81,6 +81,48 @@ export type TonightBoard = {
   items: TonightBoardItem[];
 };
 
+export type MultiSessionPlanItem = {
+  date: string;
+  targetId: string;
+  targetName: string;
+  catalogId: string;
+  targetType: string;
+  score: number;
+  astronomyScore: number;
+  weatherScore: number;
+  fovScore: number;
+  fovFit: string;
+  moonIlluminationPercent: number;
+  whiteNight: boolean;
+  maxAltitudeDeg: number;
+  startTime: string;
+  endTime: string;
+  bestTime: string;
+  recommendedMode: string;
+  reason: string;
+};
+
+export type MultiSessionNightSummary = {
+  date: string;
+  score: number;
+  weatherStatus: string;
+  weatherScore: number;
+  moonIlluminationPercent: number;
+  whiteNight: boolean;
+  bestTargetName: string;
+  summary: string;
+};
+
+export type MultiSessionPlan = {
+  startDate: string;
+  endDate: string;
+  nights: number;
+  summary: string;
+  items: MultiSessionPlanItem[];
+  nightsSummary: MultiSessionNightSummary[];
+  warnings: string[];
+};
+
 export type CaptureExposureStep = {
   filterName: string;
   exposureSeconds: number;
@@ -295,6 +337,44 @@ type ApiTonightBoard = {
   }[];
 };
 
+type ApiMultiSessionPlan = {
+  start_date: string;
+  end_date: string;
+  nights: number;
+  summary: string;
+  items: {
+    date: string;
+    target_id: string;
+    target_name: string;
+    catalog_id: string;
+    target_type: string;
+    score: number;
+    astronomy_score: number;
+    weather_score: number;
+    fov_score: number;
+    fov_fit: string;
+    moon_illumination_percent: number;
+    white_night: boolean;
+    max_altitude_deg: number;
+    start_time: string;
+    end_time: string;
+    best_time: string;
+    recommended_mode: string;
+    reason: string;
+  }[];
+  nights_summary: {
+    date: string;
+    score: number;
+    weather_status: string;
+    weather_score: number;
+    moon_illumination_percent: number;
+    white_night: boolean;
+    best_target_name: string;
+    summary: string;
+  }[];
+  warnings: string[];
+};
+
 type ApiCapturePlan = {
   target_id: string;
   target_name: string;
@@ -494,6 +574,45 @@ export async function fetchTonightBoard(
   }
 
   return normalizeTonightBoard((await response.json()) as ApiTonightBoard);
+}
+
+export async function fetchMultiSessionPlan({
+  settings,
+  fov,
+  targetIds,
+  nights,
+  weatherOptions
+}: {
+  settings: SessionSettings;
+  fov: FovResult;
+  targetIds: string[];
+  nights: number;
+  weatherOptions?: WeatherFetchOptions;
+}): Promise<MultiSessionPlan> {
+  const response = await fetch(`${apiBaseUrl}/api/session/multi-session-plan`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      start_date: settings.date,
+      nights,
+      target_ids: targetIds,
+      latitude_deg: settings.latitudeDeg,
+      longitude_deg: settings.longitudeDeg,
+      timezone: settings.timezone,
+      bortle: settings.bortle,
+      fov_horizontal_deg: fov.horizontalDeg,
+      fov_vertical_deg: fov.verticalDeg,
+      limit: 18,
+      forecast_cache_ttl_minutes: weatherOptions?.cacheTtlMinutes,
+      force_forecast_refresh: weatherOptions?.forceRefresh ?? false
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Multi-session planner failed with ${response.status}`);
+  }
+
+  return normalizeMultiSessionPlan((await response.json()) as ApiMultiSessionPlan);
 }
 
 export async function fetchCapturePlan(
@@ -721,6 +840,74 @@ export function createFallbackTonightBoard(
   };
 }
 
+export function createFallbackMultiSessionPlan(
+  targets: Target[],
+  settings: SessionSettings,
+  fov: FovResult,
+  nights = 7
+): MultiSessionPlan {
+  const items: MultiSessionPlanItem[] = [];
+  const nightsSummary: MultiSessionNightSummary[] = [];
+
+  for (let offset = 0; offset < nights; offset += 1) {
+    const dateIso = addDays(settings.date, offset);
+    const moonIlluminationPercent = estimateFallbackMoon(dateIso);
+    const season = seasonForDate(dateIso);
+    const nightItems = targets.map((target) => {
+      const fovFit = fallbackFovFit(target, fov);
+      const fovScore = fovFit === "Fits" ? 94 : fovFit === "Tight" ? 78 : fovFit === "Small" ? 62 : 48;
+      const seasonScore = target.season === season ? 84 : 58;
+      const moonPenalty = moonIlluminationPercent > 55 && !target.type.toLowerCase().includes("nebula") ? 16 : 0;
+      const score = Math.round(Math.max(18, Math.min(100, seasonScore * 0.54 + fovScore * 0.32 + 52 * 0.14 - moonPenalty)));
+      const window = fallbackWindow(target.season);
+
+      return {
+        date: dateIso,
+        targetId: target.id,
+        targetName: target.name,
+        catalogId: target.catalogId,
+        targetType: target.type,
+        score,
+        astronomyScore: seasonScore,
+        weatherScore: 72,
+        fovScore,
+        fovFit,
+        moonIlluminationPercent,
+        whiteNight: season === "Summer" && settings.latitudeDeg > 48,
+        maxAltitudeDeg: target.season === "Winter" ? 61 : 54,
+        startTime: window[0],
+        endTime: window[1],
+        bestTime: window[2],
+        recommendedMode: target.exposureHint,
+        reason: `${fovFit} frame, offline multi-night estimate`
+      };
+    });
+    const bestNightItem = [...nightItems].sort((left, right) => right.score - left.score)[0];
+    items.push(...nightItems);
+    nightsSummary.push({
+      date: dateIso,
+      score: bestNightItem?.score ?? 0,
+      weatherStatus: "risk",
+      weatherScore: 72,
+      moonIlluminationPercent,
+      whiteNight: bestNightItem?.whiteNight ?? false,
+      bestTargetName: bestNightItem?.targetName ?? "Calibration",
+      summary: bestNightItem ? `Offline pick: ${bestNightItem.targetName}` : "Offline calibration night"
+    });
+  }
+
+  const rankedItems = items.sort((left, right) => right.score - left.score).slice(0, 18);
+  return {
+    startDate: settings.date,
+    endDate: addDays(settings.date, nights - 1),
+    nights,
+    summary: `${nightsSummary.filter((night) => night.score >= 70).length}/${nights} useful nights / offline estimate`,
+    items: rankedItems,
+    nightsSummary,
+    warnings: ["Offline multi-session estimate"]
+  };
+}
+
 export function createFallbackCapturePlan(
   target: Target,
   settings: SessionSettings,
@@ -926,6 +1113,46 @@ function normalizeTonightBoard(board: ApiTonightBoard): TonightBoard {
       recommendedMode: item.recommended_mode,
       reason: item.reason
     }))
+  };
+}
+
+function normalizeMultiSessionPlan(plan: ApiMultiSessionPlan): MultiSessionPlan {
+  return {
+    startDate: plan.start_date,
+    endDate: plan.end_date,
+    nights: plan.nights,
+    summary: plan.summary,
+    items: plan.items.map((item) => ({
+      date: item.date,
+      targetId: item.target_id,
+      targetName: item.target_name,
+      catalogId: item.catalog_id,
+      targetType: item.target_type,
+      score: item.score,
+      astronomyScore: item.astronomy_score,
+      weatherScore: item.weather_score,
+      fovScore: item.fov_score,
+      fovFit: item.fov_fit,
+      moonIlluminationPercent: item.moon_illumination_percent,
+      whiteNight: item.white_night,
+      maxAltitudeDeg: item.max_altitude_deg,
+      startTime: item.start_time,
+      endTime: item.end_time,
+      bestTime: item.best_time,
+      recommendedMode: item.recommended_mode,
+      reason: item.reason
+    })),
+    nightsSummary: plan.nights_summary.map((night) => ({
+      date: night.date,
+      score: night.score,
+      weatherStatus: night.weather_status,
+      weatherScore: night.weather_score,
+      moonIlluminationPercent: night.moon_illumination_percent,
+      whiteNight: night.white_night,
+      bestTargetName: night.best_target_name,
+      summary: night.summary
+    })),
+    warnings: plan.warnings
   };
 }
 
@@ -1189,4 +1416,10 @@ function estimateFallbackMoon(dateIso: string) {
   const phase = ((days % 29.53058867) + 29.53058867) % 29.53058867;
   const illumination = (1 - Math.cos((phase / 29.53058867) * Math.PI * 2)) / 2;
   return Math.round(illumination * 100);
+}
+
+function addDays(dateIso: string, days: number) {
+  const date = new Date(`${dateIso}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
 }

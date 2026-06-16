@@ -54,6 +54,7 @@ button {
 .tonight-board,
 .capture-plan,
 .fits-ingest-panel,
+.multi-session-planner,
 .processing-planner,
 .panel {
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -91,13 +92,20 @@ button {
   gap: 10px;
 }
 
+.multi-page {
+  display: grid;
+  grid-template-columns: minmax(560px, 1fr) minmax(300px, 380px);
+  gap: 10px;
+}
+
 .planner-controls,
 .capture-settings-stack,
 .capture-command-stack,
 .capture-board-stack,
 .process-target-stack,
 .process-side-stack,
-.frames-context-stack {
+.frames-context-stack,
+.multi-context-stack {
   min-height: 0;
   display: grid;
   gap: 10px;
@@ -124,6 +132,10 @@ button {
 
 .frames-context-stack {
   grid-template-rows: minmax(0, 1.05fr) minmax(0, 0.95fr);
+}
+
+.multi-context-stack {
+  grid-template-rows: minmax(0, 0.95fr) minmax(0, 1.05fr);
 }
 
 .top-bar {
@@ -2398,6 +2410,298 @@ button {
   color: #c8d0df;
 }
 
+.multi-session-planner {
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto auto minmax(76px, auto) minmax(0, 1fr);
+  gap: 10px;
+  overflow: hidden;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.multi-session-head,
+.multi-session-hero,
+.multi-section-title {
+  display: flex;
+  align-items: center;
+}
+
+.multi-session-head {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.multi-session-head span,
+.multi-session-hero span,
+.multi-session-hero em,
+.multi-section-title span,
+.multi-session-list span,
+.multi-session-list em,
+.multi-signal-grid span,
+.multi-signal-grid em,
+.multi-warning-list span {
+  display: block;
+  overflow: hidden;
+  color: #8d95a8;
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.multi-session-head strong {
+  display: block;
+  margin-top: 3px;
+  color: #ffffff;
+  font-size: 17px;
+  line-height: 1.12;
+}
+
+.multi-night-tabs {
+  flex: 0 0 auto;
+  display: inline-grid;
+  grid-template-columns: repeat(3, minmax(44px, 1fr));
+  gap: 6px;
+}
+
+.multi-night-tabs button {
+  min-height: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #c8d0df;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 0 9px;
+  font-size: 11px;
+}
+
+.multi-night-tabs button.is-active {
+  border-color: rgba(247, 200, 115, 0.5);
+  color: #fff4ce;
+  background: rgba(247, 200, 115, 0.12);
+}
+
+.multi-session-hero {
+  min-width: 0;
+  justify-content: space-between;
+  gap: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(56, 214, 201, 0.18);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(56, 214, 201, 0.14), rgba(123, 183, 255, 0.08)),
+    rgba(255, 255, 255, 0.045);
+  padding: 12px;
+}
+
+.multi-session-hero div {
+  min-width: 0;
+}
+
+.multi-session-hero span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.multi-session-hero strong {
+  display: block;
+  overflow: hidden;
+  margin-top: 5px;
+  color: #ffffff;
+  font-size: 20px;
+  line-height: 1.08;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.multi-session-hero em {
+  margin-top: 5px;
+  color: #c8d0df;
+}
+
+.multi-session-hero b {
+  flex: 0 0 auto;
+  display: grid;
+  width: 54px;
+  height: 54px;
+  place-items: center;
+  border: 1px solid rgba(56, 214, 201, 0.3);
+  border-radius: 50%;
+  color: #dffffb;
+  background: rgba(56, 214, 201, 0.12);
+  font-size: 20px;
+}
+
+.multi-night-strip {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  gap: 7px;
+  overflow: hidden;
+}
+
+.multi-night-strip button {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #c8d0df;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 8px;
+  text-align: left;
+}
+
+.multi-night-strip button.risk {
+  border-color: rgba(247, 200, 115, 0.2);
+  background: rgba(247, 200, 115, 0.06);
+}
+
+.multi-night-strip button.skip {
+  border-color: rgba(255, 111, 145, 0.22);
+  background: rgba(255, 111, 145, 0.055);
+}
+
+.multi-night-strip button.white-night {
+  border-color: rgba(123, 183, 255, 0.28);
+  background: rgba(123, 183, 255, 0.07);
+}
+
+.multi-night-strip span,
+.multi-night-strip em {
+  overflow: hidden;
+  color: #8d95a8;
+  font-size: 10px;
+  font-style: normal;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.multi-night-strip strong {
+  color: #ffffff;
+  font-size: 15px;
+  line-height: 1.1;
+}
+
+.multi-session-content {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.75fr);
+  gap: 10px;
+  overflow: hidden;
+}
+
+.multi-session-content section {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
+  overflow: hidden;
+}
+
+.multi-section-title {
+  gap: 7px;
+  color: #c8d0df;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.multi-section-title svg {
+  color: #f7c873;
+}
+
+.multi-session-list,
+.multi-warning-list {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  overflow: auto;
+}
+
+.multi-session-list button {
+  position: relative;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(56, 214, 201, 0.13);
+  border-radius: 8px;
+  color: #c8d0df;
+  background: rgba(56, 214, 201, 0.052);
+  padding: 9px 48px 9px 9px;
+  text-align: left;
+}
+
+.multi-session-list strong,
+.multi-signal-grid strong {
+  display: block;
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 13px;
+  line-height: 1.18;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.multi-session-list em {
+  color: #c8d0df;
+}
+
+.multi-session-list b {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 50%;
+  color: #dffffb;
+  background: rgba(56, 214, 201, 0.12);
+  transform: translateY(-50%);
+}
+
+.multi-signal-grid {
+  min-height: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.multi-signal-grid div {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 9px;
+}
+
+.multi-signal-grid svg {
+  grid-row: span 3;
+  color: #38d6c9;
+}
+
+.multi-warning-list {
+  margin-top: 8px;
+}
+
+.multi-warning-list span {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  border: 1px solid rgba(247, 200, 115, 0.2);
+  border-radius: 8px;
+  color: #fff4ce;
+  background: rgba(247, 200, 115, 0.07);
+  padding: 0 9px;
+}
+
 .fits-ingest-panel {
   min-height: 0;
   height: 100%;
@@ -2857,6 +3161,7 @@ button {
   .capture-page,
   .process-page,
   .frames-page,
+  .multi-page,
   .timeline,
   .bottom-grid {
     grid-template-columns: 1fr;
@@ -2894,6 +3199,7 @@ button {
   .process-target-stack,
   .process-side-stack,
   .frames-context-stack,
+  .multi-context-stack,
   .processing-planner,
   .fits-ingest-panel {
     grid-template-rows: auto;
@@ -2914,14 +3220,16 @@ button {
   .planner-page,
   .capture-page,
   .process-page,
-  .frames-page {
+  .frames-page,
+  .multi-page {
     grid-template-rows: auto minmax(560px, 1fr) auto;
     overflow: visible;
   }
 
   .capture-page,
   .process-page,
-  .frames-page {
+  .frames-page,
+  .multi-page {
     grid-template-rows: auto;
   }
 
@@ -2951,7 +3259,8 @@ button {
   .processing-decision-grid,
   .processing-lanes,
   .fits-metrics,
-  .fits-content {
+  .fits-content,
+  .multi-session-content {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -2974,7 +3283,9 @@ button {
   .processing-lanes,
   .processing-workflow,
   .fits-metrics,
-  .fits-content {
+  .fits-content,
+  .multi-session-content,
+  .multi-signal-grid {
     grid-template-columns: 1fr;
   }
 

@@ -78,12 +78,21 @@ def get_sky_forecast(
         response = _fetch_open_meteo(payload, session_date, fetch_json or _default_fetch_json)
         source = "open-meteo"
     except Exception:
-        response = _fallback_samples(payload, session_date)
-        source = "fallback"
+        forecast = build_fallback_sky_forecast(payload, session_date)
+        _FORECAST_CACHE[key] = (now, forecast)
+        return forecast
 
     forecast = _build_response(response, source=source)
     _FORECAST_CACHE[key] = (now, forecast)
     return forecast
+
+
+def build_fallback_sky_forecast(
+    payload: SkyForecastRequest,
+    session_date: date | None = None,
+) -> SkyForecastResponse:
+    resolved_date = session_date or payload.date or date.today()
+    return _build_response(_fallback_samples(payload, resolved_date), source="fallback")
 
 
 def _fetch_open_meteo(

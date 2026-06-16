@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   Aperture,
+  CalendarRange,
   FileSearch,
   GalleryHorizontal,
   Gauge,
@@ -17,6 +18,7 @@ import { FovConsole } from "./components/FovConsole";
 import { ProfileDock } from "./components/ProfileDock";
 import { CapturePlan } from "./components/CapturePlan";
 import { FitsIngestPanel } from "./components/FitsIngestPanel";
+import { MultiSessionPlanner } from "./components/MultiSessionPlanner";
 import { ProcessingPlanner } from "./components/ProcessingPlanner";
 import { SessionControl } from "./components/SessionControl";
 import { SessionTimeline } from "./components/SessionTimeline";
@@ -43,10 +45,12 @@ import {
 import { sensorPresets } from "./lib/sensors";
 import {
   createFallbackCapturePlan,
+  createFallbackMultiSessionPlan,
   createFallbackProcessingPlan,
   createFallbackSessionPlan,
   createFallbackTonightBoard,
   fetchCapturePlan,
+  fetchMultiSessionPlan,
   fetchProcessingPlan,
   fetchSessionArchive,
   fetchSessionPlan,
@@ -54,6 +58,8 @@ import {
   getTodayIsoDate,
   saveSessionArchive,
   type CapturePlan as CapturePlanModel,
+  type MultiSessionPlan as MultiSessionPlanModel,
+  type MultiSessionPlanItem,
   type ProcessingPlan as ProcessingPlanModel,
   type SessionArchiveEntry,
   type SessionArchivePayload,
@@ -68,7 +74,7 @@ const SkyScene = lazy(() =>
 
 type SkyDisplayMode = "focus" | "tonight" | "showcase" | "catalog";
 type SkyFitFilter = "All" | "Small" | "Fits" | "Tight" | "Mosaic";
-type WorkspaceMode = "planner" | "capture" | "process" | "frames";
+type WorkspaceMode = "planner" | "capture" | "process" | "frames" | "multi";
 
 export function App() {
   const [selectedTargetId, setSelectedTargetId] = useState("ngc7000");
@@ -87,6 +93,11 @@ export function App() {
   const [isBoardLoading, setIsBoardLoading] = useState(false);
   const [isCaptureLoading, setIsCaptureLoading] = useState(false);
   const [isProcessingLoading, setIsProcessingLoading] = useState(false);
+  const [isMultiSessionLoading, setIsMultiSessionLoading] = useState(false);
+  const [multiSessionNights, setMultiSessionNights] = useState(() => {
+    const storedNights = Number(window.localStorage.getItem("astrofoto-multi-session-nights"));
+    return [3, 7, 14].includes(storedNights) ? storedNights : 7;
+  });
   const [weatherRefreshMinutes, setWeatherRefreshMinutes] =
     useState<ForecastRefreshMinutes>(() => {
       const storedMinutes = Number(window.localStorage.getItem("astrofoto-weather-refresh-minutes"));
@@ -146,6 +157,9 @@ export function App() {
       capturePlan
     )
   );
+  const [multiSessionPlan, setMultiSessionPlan] = useState<MultiSessionPlanModel>(() =>
+    createFallbackMultiSessionPlan(targetCatalog, sessionSettings, fov, multiSessionNights)
+  );
   const [sessionArchives, setSessionArchives] = useState<SessionArchiveEntry[]>([]);
   const skyTargetTypes = useMemo(
     () => uniqueValues(targetCatalog.map((target) => target.type)),
@@ -193,6 +207,15 @@ export function App() {
   const requestWeatherRefresh = () => {
     forceWeatherRefreshRef.current = true;
     setWeatherRefreshTick((current) => current + 1);
+  };
+
+  const selectMultiSessionItem = (item: MultiSessionPlanItem) => {
+    setSelectedTargetId(item.targetId);
+    setSessionSettings((currentSettings) => ({
+      ...currentSettings,
+      date: item.date
+    }));
+    setWorkspaceMode("capture");
   };
 
   const selectSensorPreset = (sensorId: string) => {
@@ -388,6 +411,10 @@ export function App() {
   }, [weatherRefreshMinutes]);
 
   useEffect(() => {
+    window.localStorage.setItem("astrofoto-multi-session-nights", String(multiSessionNights));
+  }, [multiSessionNights]);
+
+  useEffect(() => {
     const timer = window.setInterval(() => {
       requestWeatherRefresh();
     }, weatherRefreshMinutes * 60 * 1000);
@@ -542,6 +569,50 @@ export function App() {
   useEffect(() => {
     let ignore = false;
     const forceRefresh = forceWeatherRefreshRef.current;
+    setIsMultiSessionLoading(true);
+    setMultiSessionPlan(
+      createFallbackMultiSessionPlan(targetCatalog, sessionSettings, fov, multiSessionNights)
+    );
+
+    fetchMultiSessionPlan({
+      settings: sessionSettings,
+      fov,
+      targetIds: targetCatalog.map((target) => target.id),
+      nights: multiSessionNights,
+      weatherOptions: {
+        cacheTtlMinutes: weatherRefreshMinutes,
+        forceRefresh
+      }
+    })
+      .then((plan) => {
+        if (!ignore) setMultiSessionPlan(plan);
+      })
+      .catch(() => {
+        if (!ignore) {
+          setMultiSessionPlan(
+            createFallbackMultiSessionPlan(targetCatalog, sessionSettings, fov, multiSessionNights)
+          );
+        }
+      })
+      .finally(() => {
+        if (!ignore) setIsMultiSessionLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [
+    sessionSettings,
+    fov,
+    targetCatalog,
+    multiSessionNights,
+    weatherRefreshMinutes,
+    weatherRefreshTick
+  ]);
+
+  useEffect(() => {
+    let ignore = false;
+    const forceRefresh = forceWeatherRefreshRef.current;
     setIsCaptureLoading(true);
     setCapturePlan(createFallbackCapturePlan(selectedTarget, sessionSettings, fov));
 
@@ -650,6 +721,15 @@ export function App() {
           >
             <FileSearch size={17} aria-hidden="true" />
             Frames
+          </button>
+          <button
+            className={workspaceMode === "multi" ? "is-active" : ""}
+            type="button"
+            title="Multi-session"
+            onClick={() => setWorkspaceMode("multi")}
+          >
+            <CalendarRange size={17} aria-hidden="true" />
+            Multi
           </button>
         </nav>
 
@@ -1003,6 +1083,39 @@ export function App() {
           </aside>
         </section>
       )}
+
+      {workspaceMode === "multi" && (
+        <section className="workspace-page multi-page" aria-label="Multi-session workspace">
+          <MultiSessionPlanner
+            plan={multiSessionPlan}
+            loading={isMultiSessionLoading}
+            nights={multiSessionNights}
+            onNightsChange={setMultiSessionNights}
+            onSelectItem={selectMultiSessionItem}
+          />
+
+          <aside className="multi-context-stack" aria-label="Multi-session context">
+            <section className="panel session-panel" aria-label="Session controls">
+              <SessionControl
+                settings={sessionSettings}
+                plan={sessionPlan}
+                loading={isPlanning}
+                onChange={setSessionSettings}
+              />
+            </section>
+            <section className="panel conditions-panel" aria-label="Sky conditions">
+              <SkyConditions
+                forecast={skyForecast}
+                plan={sessionPlan}
+                loading={isForecastLoading}
+                refreshMinutes={weatherRefreshMinutes}
+                onRefreshMinutesChange={setWeatherRefreshMinutes}
+                onRefresh={requestWeatherRefresh}
+              />
+            </section>
+          </aside>
+        </section>
+      )}
     </main>
   );
 }
@@ -1075,7 +1188,13 @@ function isSkyDisplayMode(value: string | null): value is SkyDisplayMode {
 }
 
 function isWorkspaceMode(value: string | null): value is WorkspaceMode {
-  return value === "planner" || value === "capture" || value === "process" || value === "frames";
+  return (
+    value === "planner" ||
+    value === "capture" ||
+    value === "process" ||
+    value === "frames" ||
+    value === "multi"
+  );
 }
 
 function isForecastRefreshMinutes(value: number): value is ForecastRefreshMinutes {

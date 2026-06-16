@@ -1,8 +1,10 @@
 from datetime import date
+from time import perf_counter, sleep
 
 from astro_api.schemas import (
     CapturePlanRequest,
     FovRequest,
+    MultiSessionPlanRequest,
     ProcessingPlanRequest,
     SessionPlanRequest,
     SkyForecastHour,
@@ -13,6 +15,7 @@ from astro_api.services import (
     build_capture_plan,
     build_processing_plan,
     calculate_fov,
+    plan_multi_session,
     plan_session,
     rank_tonight_targets,
 )
@@ -204,3 +207,61 @@ def test_processing_plan_flags_gradient_and_calibration_strategy() -> None:
     assert "Separate masters" in result.stack_strategy
     assert {item.frame_type for item in result.calibration_matches} >= {"Flats", "Darks"}
     assert any("Low frame count" in warning for warning in result.warnings)
+
+
+def test_multi_session_plan_ranks_targets_across_nights(monkeypatch) -> None:
+    monkeypatch.setattr("astro_api.services.get_sky_forecast", lambda payload: _forecast())
+
+    result = plan_multi_session(
+        MultiSessionPlanRequest(
+            start_date=date(2026, 6, 13),
+            nights=3,
+            target_ids=["ngc7000", "m31", "m42"],
+            latitude_deg=50.2649,
+            longitude_deg=19.0238,
+            timezone="Europe/Warsaw",
+            bortle=4,
+            fov_horizontal_deg=2.8,
+            fov_vertical_deg=1.87,
+            limit=5,
+        )
+    )
+
+    assert result.nights == 3
+    assert result.start_date == "2026-06-13"
+    assert result.end_date == "2026-06-15"
+    assert len(result.nights_summary) == 3
+    assert len(result.items) == 5
+    assert result.items == sorted(result.items, key=lambda item: item.score, reverse=True)
+    assert any(item.white_night for item in result.items)
+    assert result.summary
+
+
+def test_multi_session_plan_falls_back_when_forecast_is_slow(monkeypatch) -> None:
+    def slow_forecast(payload):
+        sleep(0.08)
+        return _forecast()
+
+    monkeypatch.setattr("astro_api.services.MULTI_SESSION_FORECAST_BUDGET_SECONDS", 0.01)
+    monkeypatch.setattr("astro_api.services.get_sky_forecast", slow_forecast)
+
+    started_at = perf_counter()
+    result = plan_multi_session(
+        MultiSessionPlanRequest(
+            start_date=date(2026, 6, 13),
+            nights=2,
+            target_ids=["ngc7000"],
+            latitude_deg=50.2649,
+            longitude_deg=19.0238,
+            timezone="Europe/Warsaw",
+            bortle=4,
+            fov_horizontal_deg=2.8,
+            fov_vertical_deg=1.87,
+            limit=3,
+        )
+    )
+
+    assert perf_counter() - started_at < 2
+    assert result.nights == 2
+    assert len(result.nights_summary) == 2
+    assert result.items

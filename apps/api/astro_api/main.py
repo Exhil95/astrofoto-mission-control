@@ -17,6 +17,8 @@ from .schemas import (
     FitsScanResponse,
     FovRequest,
     FovResponse,
+    MultiSessionPlanRequest,
+    MultiSessionPlanResponse,
     ProcessingPlanRequest,
     ProcessingPlanResponse,
     ProfileCreate,
@@ -43,6 +45,7 @@ from .services import (
     build_capture_plan,
     build_processing_plan,
     calculate_fov,
+    plan_multi_session,
     plan_session,
     rank_tonight_targets,
 )
@@ -146,6 +149,11 @@ def fits_scan(payload: FitsScanRequest) -> FitsScanResponse:
 @app.post("/api/session/tonight-board", response_model=TonightBoardResponse)
 def tonight_board(payload: TonightBoardRequest) -> TonightBoardResponse:
     return rank_tonight_targets(payload)
+
+
+@app.post("/api/session/multi-session-plan", response_model=MultiSessionPlanResponse)
+def multi_session_plan(payload: MultiSessionPlanRequest) -> MultiSessionPlanResponse:
+    return plan_multi_session(payload)
 
 
 @app.get("/api/session/archive", response_model=list[SessionArchiveResponse])

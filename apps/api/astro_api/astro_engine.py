@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
+from functools import lru_cache
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import astropy.units as u
@@ -49,6 +50,20 @@ class AstroPlan:
     altitude_curve: list[AltitudeSample]
 
 
+@dataclass(frozen=True)
+class AstroNightContext:
+    local_datetimes: tuple[datetime, ...]
+    frame: AltAz
+    sun_altitudes: tuple[float, ...]
+    civil_window: dict[str, datetime | int | None]
+    nautical_window: dict[str, datetime | int | None]
+    astronomical_window: dict[str, datetime | int | None]
+    darkness_minutes: dict[str, int]
+    night_kind: str
+    night_kind_label: str
+    white_night: bool
+
+
 def build_astro_plan(
     session_date: date,
     latitude_deg: float,
@@ -56,58 +71,92 @@ def build_astro_plan(
     timezone_name: str,
     target: TargetProfile,
 ) -> AstroPlan:
-    timezone = _load_timezone(timezone_name)
-    local_datetimes = _sample_local_night(session_date, timezone)
-    times = Time(local_datetimes)
-    location = EarthLocation(lat=latitude_deg * u.deg, lon=longitude_deg * u.deg)
-    frame = AltAz(obstime=times, location=location)
-
-    sun_altitudes = get_sun(times).transform_to(frame).alt.degree
+    night_context = _night_context(
+        session_date,
+        round(latitude_deg, 4),
+        round(longitude_deg, 4),
+        timezone_name,
+    )
+    local_datetimes = night_context.local_datetimes
+    sun_altitudes = night_context.sun_altitudes
     target_coord = SkyCoord(ra=target.ra_hours * u.hourangle, dec=target.dec_deg * u.deg)
-    target_altitudes = target_coord.transform_to(frame).alt.degree
+    target_altitudes = target_coord.transform_to(night_context.frame).alt.degree
 
-    civil_window = _threshold_window(local_datetimes, sun_altitudes, -6)
-    nautical_window = _threshold_window(local_datetimes, sun_altitudes, -12)
-    astronomical_window = _threshold_window(local_datetimes, sun_altitudes, -18)
     usable_threshold = _primary_darkness_threshold(
-        astronomical_window["minutes"],
-        nautical_window["minutes"],
-        civil_window["minutes"],
+        night_context.astronomical_window["minutes"],
+        night_context.nautical_window["minutes"],
+        night_context.civil_window["minutes"],
     )
     max_index = _best_altitude_index(target_altitudes, sun_altitudes, usable_threshold)
     max_altitude_deg = round(float(target_altitudes[max_index]))
     peak_time = _format_time(local_datetimes[max_index])
     min_sun_altitude_deg = round(float(min(sun_altitudes)), 1)
-
-    darkness_minutes = {
-        "civil": civil_window["minutes"],
-        "nautical": nautical_window["minutes"],
-        "astronomical": astronomical_window["minutes"],
-    }
-    night_kind, night_kind_label = _classify_night(darkness_minutes)
-    white_night = darkness_minutes["astronomical"] == 0
     best_start_time, best_end_time = _best_window(
         local_datetimes,
         target_altitudes,
         sun_altitudes,
-        astronomical_window,
-        nautical_window,
+        night_context.astronomical_window,
+        night_context.nautical_window,
     )
 
     return AstroPlan(
-        night_kind=night_kind,
-        night_kind_label=night_kind_label,
-        white_night=white_night,
+        night_kind=night_context.night_kind,
+        night_kind_label=night_context.night_kind_label,
+        white_night=night_context.white_night,
         min_sun_altitude_deg=min_sun_altitude_deg,
-        civil_darkness_minutes=darkness_minutes["civil"],
-        nautical_darkness_minutes=darkness_minutes["nautical"],
-        astronomical_darkness_minutes=darkness_minutes["astronomical"],
+        civil_darkness_minutes=night_context.darkness_minutes["civil"],
+        nautical_darkness_minutes=night_context.darkness_minutes["nautical"],
+        astronomical_darkness_minutes=night_context.darkness_minutes["astronomical"],
         max_altitude_deg=max_altitude_deg,
         meridian_time=peak_time,
         best_start_time=best_start_time,
         best_end_time=best_end_time,
-        events=_build_events(civil_window, nautical_window, astronomical_window, peak_time, max_altitude_deg),
+        events=_build_events(
+            night_context.civil_window,
+            night_context.nautical_window,
+            night_context.astronomical_window,
+            peak_time,
+            max_altitude_deg,
+        ),
         altitude_curve=_build_altitude_curve(local_datetimes, target_altitudes, sun_altitudes),
+    )
+
+
+@lru_cache(maxsize=128)
+def _night_context(
+    session_date: date,
+    latitude_deg: float,
+    longitude_deg: float,
+    timezone_name: str,
+) -> AstroNightContext:
+    timezone = _load_timezone(timezone_name)
+    local_datetimes = tuple(_sample_local_night(session_date, timezone))
+    times = Time(local_datetimes)
+    location = EarthLocation(lat=latitude_deg * u.deg, lon=longitude_deg * u.deg)
+    frame = AltAz(obstime=times, location=location)
+    sun_altitudes = tuple(float(value) for value in get_sun(times).transform_to(frame).alt.degree)
+
+    civil_window = _threshold_window(local_datetimes, sun_altitudes, -6)
+    nautical_window = _threshold_window(local_datetimes, sun_altitudes, -12)
+    astronomical_window = _threshold_window(local_datetimes, sun_altitudes, -18)
+    darkness_minutes = {
+        "civil": int(civil_window["minutes"] or 0),
+        "nautical": int(nautical_window["minutes"] or 0),
+        "astronomical": int(astronomical_window["minutes"] or 0),
+    }
+    night_kind, night_kind_label = _classify_night(darkness_minutes)
+
+    return AstroNightContext(
+        local_datetimes=local_datetimes,
+        frame=frame,
+        sun_altitudes=sun_altitudes,
+        civil_window=civil_window,
+        nautical_window=nautical_window,
+        astronomical_window=astronomical_window,
+        darkness_minutes=darkness_minutes,
+        night_kind=night_kind,
+        night_kind_label=night_kind_label,
+        white_night=darkness_minutes["astronomical"] == 0,
     )
 
 

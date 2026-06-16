@@ -329,6 +329,63 @@ class TonightBoardResponse(BaseModel):
     items: list[TonightBoardItem]
 
 
+class MultiSessionPlanRequest(BaseModel):
+    start_date: Date | None = None
+    nights: int = Field(default=7, ge=2, le=21)
+    target_ids: list[str] = Field(default_factory=list, max_length=40)
+    latitude_deg: float = Field(default=50.2649, ge=-90, le=90)
+    longitude_deg: float = Field(default=19.0238, ge=-180, le=180)
+    timezone: str = Field(default="Europe/Warsaw", min_length=1, max_length=64)
+    bortle: int = Field(default=4, ge=1, le=9)
+    fov_horizontal_deg: float = Field(gt=0, le=60)
+    fov_vertical_deg: float = Field(gt=0, le=60)
+    limit: int = Field(default=18, ge=3, le=80)
+    forecast_cache_ttl_minutes: int | None = Field(default=None, ge=15, le=60)
+    force_forecast_refresh: bool = False
+
+
+class MultiSessionPlanItem(BaseModel):
+    date: str
+    target_id: str
+    target_name: str
+    catalog_id: str
+    target_type: str
+    score: int = Field(ge=0, le=100)
+    astronomy_score: int = Field(ge=0, le=100)
+    weather_score: int = Field(ge=0, le=100)
+    fov_score: int = Field(ge=0, le=100)
+    fov_fit: str
+    moon_illumination_percent: int
+    white_night: bool
+    max_altitude_deg: int
+    start_time: str
+    end_time: str
+    best_time: str
+    recommended_mode: str
+    reason: str
+
+
+class MultiSessionNightSummary(BaseModel):
+    date: str
+    score: int = Field(ge=0, le=100)
+    weather_status: str
+    weather_score: int = Field(ge=0, le=100)
+    moon_illumination_percent: int
+    white_night: bool
+    best_target_name: str
+    summary: str
+
+
+class MultiSessionPlanResponse(BaseModel):
+    start_date: str
+    end_date: str
+    nights: int
+    summary: str
+    items: list[MultiSessionPlanItem]
+    nights_summary: list[MultiSessionNightSummary]
+    warnings: list[str]
+
+
 class SessionArchiveBase(BaseModel):
     target_id: str = Field(min_length=1, max_length=80)
     target_name: str = Field(min_length=1, max_length=120)

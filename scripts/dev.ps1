@@ -17,6 +17,7 @@ New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 
 if ($Restart) {
   Stop-PortProcess -Port 8000
+  Stop-PortProcess -Port 8001
   Stop-PortProcess -Port 5173
 }
 
@@ -46,12 +47,18 @@ if ($Install -or -not (Test-Path (Join-Path $webDir "node_modules"))) {
   }
 }
 
-if (Test-PortInUse -Port 8000) {
-  Write-Warning "Port 8000 is already in use. Use -Restart to stop the existing process first."
+$apiPort = 8000
+if (Test-PortInUse -Port $apiPort) {
+  Write-Warning "Port 8000 is already in use after cleanup. Falling back to API port 8001."
+  $apiPort = 8001
+}
+
+if (Test-PortInUse -Port $apiPort) {
+  Write-Warning "Port $apiPort is already in use. API dev server was not started."
 } else {
   Start-Process `
     -FilePath $apiPython `
-    -ArgumentList "-m", "uvicorn", "astro_api.main:app", "--reload", "--host", "127.0.0.1", "--port", "8000" `
+    -ArgumentList "-m", "uvicorn", "astro_api.main:app", "--reload", "--host", "127.0.0.1", "--port", "$apiPort" `
     -WorkingDirectory $apiDir `
     -WindowStyle Hidden `
     -RedirectStandardOutput (Join-Path $logDir "api.out.log") `
@@ -61,6 +68,7 @@ if (Test-PortInUse -Port 8000) {
 if (Test-PortInUse -Port 5173) {
   Write-Warning "Port 5173 is already in use. Use -Restart to stop the existing process first."
 } else {
+  $env:VITE_API_PROXY_TARGET = "http://127.0.0.1:$apiPort"
   Start-Process `
     -FilePath "npm" `
     -ArgumentList "run", "dev", "--", "--host", "127.0.0.1", "--port", "5173" `
@@ -73,5 +81,5 @@ if (Test-PortInUse -Port 5173) {
 Write-Host ""
 Write-Host "Dev servers:"
 Write-Host "  Web: http://127.0.0.1:5173"
-Write-Host "  API: http://127.0.0.1:8000"
+Write-Host "  API: http://127.0.0.1:$apiPort"
 Write-Host "Logs: $logDir"
