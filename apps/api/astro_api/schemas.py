@@ -195,6 +195,51 @@ class CapturePlanResponse(BaseModel):
     export_markdown: str
 
 
+class ProcessingPlanRequest(BaseModel):
+    target_id: str
+    bortle: int = Field(default=4, ge=1, le=9)
+    moon_illumination_percent: int = Field(default=0, ge=0, le=100)
+    white_night: bool = False
+    weather_score: int = Field(default=72, ge=0, le=100)
+    fov_horizontal_deg: float = Field(gt=0, le=60)
+    fov_vertical_deg: float = Field(gt=0, le=60)
+    pixel_scale_arcsec: float = Field(gt=0, le=20)
+    total_integration_minutes: int = Field(ge=0, le=100000)
+    filter_names: list[str] = Field(default_factory=list, max_length=16)
+    planned_frames: int = Field(default=0, ge=0, le=100000)
+
+
+class ProcessingCalibrationMatch(BaseModel):
+    frame_type: str
+    recommendation: str
+    priority: str
+
+
+class ProcessingWorkflowStep(BaseModel):
+    label: str
+    action: str
+    reason: str
+
+
+class ProcessingPlanResponse(BaseModel):
+    target_id: str
+    target_name: str
+    integration_class: str
+    stack_strategy: str
+    calibration_strategy: str
+    drizzle: str
+    binning: str
+    normalization: str
+    gradient_risk: str
+    gradient_score: int = Field(ge=0, le=100)
+    noise_reduction: str
+    color_strategy: str
+    rejection: str
+    calibration_matches: list[ProcessingCalibrationMatch]
+    workflow: list[ProcessingWorkflowStep]
+    warnings: list[str]
+
+
 class TonightBoardItem(BaseModel):
     target_id: str
     target_name: str

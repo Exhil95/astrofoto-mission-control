@@ -14,6 +14,8 @@ from .schemas import (
     CapturePlanResponse,
     FovRequest,
     FovResponse,
+    ProcessingPlanRequest,
+    ProcessingPlanResponse,
     ProfileCreate,
     ProfileResponse,
     ProfileUpdate,
@@ -34,7 +36,13 @@ from .session_archive import (
     list_session_archives,
     update_session_archive,
 )
-from .services import build_capture_plan, calculate_fov, plan_session, rank_tonight_targets
+from .services import (
+    build_capture_plan,
+    build_processing_plan,
+    calculate_fov,
+    plan_session,
+    rank_tonight_targets,
+)
 from .settings import get_settings
 
 settings = get_settings()
@@ -117,6 +125,11 @@ def session_plan(payload: SessionPlanRequest) -> SessionPlanResponse:
 @app.post("/api/session/capture-plan", response_model=CapturePlanResponse)
 def capture_plan(payload: CapturePlanRequest) -> CapturePlanResponse:
     return build_capture_plan(payload)
+
+
+@app.post("/api/session/processing-plan", response_model=ProcessingPlanResponse)
+def processing_plan(payload: ProcessingPlanRequest) -> ProcessingPlanResponse:
+    return build_processing_plan(payload)
 
 
 @app.post("/api/session/tonight-board", response_model=TonightBoardResponse)

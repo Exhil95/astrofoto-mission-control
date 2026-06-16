@@ -119,6 +119,37 @@ export type CapturePlan = {
   exportMarkdown: string;
 };
 
+export type ProcessingCalibrationMatch = {
+  frameType: string;
+  recommendation: string;
+  priority: string;
+};
+
+export type ProcessingWorkflowStep = {
+  label: string;
+  action: string;
+  reason: string;
+};
+
+export type ProcessingPlan = {
+  targetId: string;
+  targetName: string;
+  integrationClass: string;
+  stackStrategy: string;
+  calibrationStrategy: string;
+  drizzle: string;
+  binning: string;
+  normalization: string;
+  gradientRisk: string;
+  gradientScore: number;
+  noiseReduction: string;
+  colorStrategy: string;
+  rejection: string;
+  calibrationMatches: ProcessingCalibrationMatch[];
+  workflow: ProcessingWorkflowStep[];
+  warnings: string[];
+};
+
 export type SessionArchiveEntry = {
   id: number;
   targetId: string;
@@ -275,6 +306,33 @@ type ApiSessionArchive = {
   updated_at: string;
 };
 
+type ApiProcessingPlan = {
+  target_id: string;
+  target_name: string;
+  integration_class: string;
+  stack_strategy: string;
+  calibration_strategy: string;
+  drizzle: string;
+  binning: string;
+  normalization: string;
+  gradient_risk: string;
+  gradient_score: number;
+  noise_reduction: string;
+  color_strategy: string;
+  rejection: string;
+  calibration_matches: {
+    frame_type: string;
+    recommendation: string;
+    priority: string;
+  }[];
+  workflow: {
+    label: string;
+    action: string;
+    reason: string;
+  }[];
+  warnings: string[];
+};
+
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
 
 export function getTodayIsoDate() {
@@ -357,6 +415,44 @@ export async function fetchCapturePlan(
   }
 
   return normalizeCapturePlan((await response.json()) as ApiCapturePlan);
+}
+
+export async function fetchProcessingPlan({
+  targetId,
+  settings,
+  fov,
+  sessionPlan,
+  capturePlan
+}: {
+  targetId: string;
+  settings: SessionSettings;
+  fov: FovResult;
+  sessionPlan: SessionPlan;
+  capturePlan: CapturePlan;
+}): Promise<ProcessingPlan> {
+  const response = await fetch(`${apiBaseUrl}/api/session/processing-plan`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      target_id: targetId,
+      bortle: settings.bortle,
+      moon_illumination_percent: sessionPlan.moonIlluminationPercent,
+      white_night: sessionPlan.whiteNight,
+      weather_score: sessionPlan.weatherScore,
+      fov_horizontal_deg: fov.horizontalDeg,
+      fov_vertical_deg: fov.verticalDeg,
+      pixel_scale_arcsec: fov.pixelScaleArcsec,
+      total_integration_minutes: capturePlan.totalIntegrationMinutes,
+      filter_names: capturePlan.exposureSteps.map((step) => step.filterName),
+      planned_frames: capturePlan.exposureSteps.reduce((sum, step) => sum + step.frames, 0)
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Processing planner failed with ${response.status}`);
+  }
+
+  return normalizeProcessingPlan((await response.json()) as ApiProcessingPlan);
 }
 
 export async function fetchSessionArchive(limit = 5): Promise<SessionArchiveEntry[]> {
@@ -549,6 +645,83 @@ export function createFallbackCapturePlan(
   return { ...plan, exportMarkdown: createCaptureMarkdown(plan) };
 }
 
+export function createFallbackProcessingPlan(
+  target: Target,
+  settings: SessionSettings,
+  fov: FovResult,
+  sessionPlan: SessionPlan,
+  capturePlan: CapturePlan
+): ProcessingPlan {
+  const filterNames = capturePlan.exposureSteps.map((step) => step.filterName);
+  const plannedFrames = capturePlan.exposureSteps.reduce((sum, step) => sum + step.frames, 0);
+  const hasNarrowband = filterNames.some((filterName) =>
+    ["Ha", "OIII", "SII"].includes(filterName)
+  );
+  const gradientScore = Math.max(
+    0,
+    Math.min(
+      100,
+      Math.round(
+        settings.bortle * 7 +
+          sessionPlan.moonIlluminationPercent * 0.42 +
+          (sessionPlan.whiteNight ? 24 : 0)
+      )
+    )
+  );
+
+  return {
+    targetId: target.id,
+    targetName: target.name,
+    integrationClass:
+      capturePlan.totalIntegrationMinutes >= 240
+        ? "Strong stack"
+        : capturePlan.totalIntegrationMinutes >= 120
+          ? "Usable stack"
+          : "Scout stack",
+    stackStrategy: hasNarrowband
+      ? "Separate masters per filter, then linear fit before combine"
+      : "Register all lights, weight by FWHM/eccentricity/SNR",
+    calibrationStrategy: `Flats per ${Math.max(1, filterNames.length)} filters, darks by exposure/gain/temp`,
+    drizzle:
+      plannedFrames >= 35 && fov.pixelScaleArcsec > 2.2
+        ? "2x drizzle for undersampled stars"
+        : "Off / native scale",
+    binning: fov.pixelScaleArcsec < 0.75 ? "2x2 bin after calibration" : "1x1 master stack",
+    normalization: gradientScore >= 52 ? "Local normalization before integration" : "Per-filter normalization",
+    gradientRisk: gradientScore >= 75 ? "Severe" : gradientScore >= 52 ? "High" : "Moderate",
+    gradientScore,
+    noiseReduction:
+      gradientScore >= 75
+        ? "Gradient first, denoise after background neutralization"
+        : "Multiscale linear denoise before stretch",
+    colorStrategy: hasNarrowband ? "SHO/HOO preview, RGB stars if available" : "Photometric color calibration",
+    rejection: plannedFrames >= 18 ? "Sigma clipping, moderate high rejection" : "Percentile clipping",
+    calibrationMatches: [
+      { frameType: "Flats", recommendation: `Match filters: ${filterNames.join(", ")}`, priority: "Required" },
+      { frameType: "Dark flats", recommendation: "Match flat exposure and temperature", priority: "Required" },
+      { frameType: "Darks", recommendation: "Match light exposure, gain, offset, and temp", priority: "Required" }
+    ],
+    workflow: [
+      {
+        label: "Calibrate",
+        action: "Apply matching darks, flats, and dark-flats",
+        reason: "Keeps dust and amp pattern out of the master"
+      },
+      {
+        label: "Cull",
+        action: "Reject frames by FWHM, eccentricity, clouds, and background",
+        reason: "Bad subframes cost more than they contribute"
+      },
+      {
+        label: "Integrate",
+        action: "Stack per filter with weighted rejection",
+        reason: "Clean masters before color work"
+      }
+    ],
+    warnings: gradientScore >= 52 ? ["High gradient risk: inspect channel backgrounds"] : []
+  };
+}
+
 function normalizeSessionPlan(plan: ApiSessionPlan): SessionPlan {
   return {
     targetId: plan.target_id,
@@ -646,6 +819,31 @@ function normalizeCapturePlan(plan: ApiCapturePlan): CapturePlan {
     })),
     checklist: plan.checklist,
     exportMarkdown: plan.export_markdown
+  };
+}
+
+function normalizeProcessingPlan(plan: ApiProcessingPlan): ProcessingPlan {
+  return {
+    targetId: plan.target_id,
+    targetName: plan.target_name,
+    integrationClass: plan.integration_class,
+    stackStrategy: plan.stack_strategy,
+    calibrationStrategy: plan.calibration_strategy,
+    drizzle: plan.drizzle,
+    binning: plan.binning,
+    normalization: plan.normalization,
+    gradientRisk: plan.gradient_risk,
+    gradientScore: plan.gradient_score,
+    noiseReduction: plan.noise_reduction,
+    colorStrategy: plan.color_strategy,
+    rejection: plan.rejection,
+    calibrationMatches: plan.calibration_matches.map((item) => ({
+      frameType: item.frame_type,
+      recommendation: item.recommendation,
+      priority: item.priority
+    })),
+    workflow: plan.workflow,
+    warnings: plan.warnings
   };
 }
 

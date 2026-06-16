@@ -39,15 +39,18 @@ import {
 import { sensorPresets } from "./lib/sensors";
 import {
   createFallbackCapturePlan,
+  createFallbackProcessingPlan,
   createFallbackSessionPlan,
   createFallbackTonightBoard,
   fetchCapturePlan,
+  fetchProcessingPlan,
   fetchSessionArchive,
   fetchSessionPlan,
   fetchTonightBoard,
   getTodayIsoDate,
   saveSessionArchive,
   type CapturePlan as CapturePlanModel,
+  type ProcessingPlan as ProcessingPlanModel,
   type SessionArchiveEntry,
   type SessionArchivePayload,
   type TonightBoard as TonightBoardModel,
@@ -74,6 +77,7 @@ export function App() {
   const [isForecastLoading, setIsForecastLoading] = useState(false);
   const [isBoardLoading, setIsBoardLoading] = useState(false);
   const [isCaptureLoading, setIsCaptureLoading] = useState(false);
+  const [isProcessingLoading, setIsProcessingLoading] = useState(false);
   const [archiveState, setArchiveState] = useState<"idle" | "saving" | "saved" | "failed">("idle");
   const [isProfileSaving, setIsProfileSaving] = useState(false);
   const [skyAutoRotate, setSkyAutoRotate] = useState(() => {
@@ -116,6 +120,15 @@ export function App() {
   );
   const [capturePlan, setCapturePlan] = useState<CapturePlanModel>(() =>
     createFallbackCapturePlan(selectedTarget, sessionSettings, fov)
+  );
+  const [processingPlan, setProcessingPlan] = useState<ProcessingPlanModel>(() =>
+    createFallbackProcessingPlan(
+      selectedTarget,
+      sessionSettings,
+      fov,
+      sessionPlan,
+      capturePlan
+    )
   );
   const [sessionArchives, setSessionArchives] = useState<SessionArchiveEntry[]>([]);
   const skyTargetTypes = useMemo(
@@ -495,6 +508,45 @@ export function App() {
     };
   }, [selectedTarget, sessionSettings, fov]);
 
+  useEffect(() => {
+    let ignore = false;
+    setIsProcessingLoading(true);
+    setProcessingPlan(
+      createFallbackProcessingPlan(selectedTarget, sessionSettings, fov, sessionPlan, capturePlan)
+    );
+
+    fetchProcessingPlan({
+      targetId: selectedTarget.id,
+      settings: sessionSettings,
+      fov,
+      sessionPlan,
+      capturePlan
+    })
+      .then((plan) => {
+        if (!ignore) setProcessingPlan(plan);
+      })
+      .catch(() => {
+        if (!ignore) {
+          setProcessingPlan(
+            createFallbackProcessingPlan(
+              selectedTarget,
+              sessionSettings,
+              fov,
+              sessionPlan,
+              capturePlan
+            )
+          );
+        }
+      })
+      .finally(() => {
+        if (!ignore) setIsProcessingLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [selectedTarget, sessionSettings, fov, sessionPlan, capturePlan]);
+
   return (
     <main className="app-shell">
       <header className="top-bar">
@@ -738,6 +790,8 @@ export function App() {
         <CapturePlan
           plan={capturePlan}
           loading={isCaptureLoading}
+          processingPlan={processingPlan}
+          processingLoading={isProcessingLoading}
           archiveState={archiveState}
           archives={sessionArchives}
           onArchive={archiveCurrentSession}

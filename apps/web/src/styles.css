@@ -1723,6 +1723,10 @@ button {
   gap: 10px;
 }
 
+.capture-head > div:first-child {
+  min-width: 86px;
+}
+
 .capture-head span,
 .capture-summary span,
 .capture-light span,
@@ -1751,6 +1755,48 @@ button {
 
 .capture-actions {
   gap: 6px;
+}
+
+.capture-view-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  min-width: 136px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+  padding: 3px;
+}
+
+.capture-view-tabs button {
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #aeb8cc;
+  background: transparent;
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.capture-view-tabs button.is-active {
+  border-color: rgba(56, 214, 201, 0.46);
+  color: #e9fffb;
+  background: rgba(56, 214, 201, 0.1);
+}
+
+.capture-view-tabs svg {
+  flex: 0 0 auto;
+  color: #38d6c9;
 }
 
 .capture-actions button {
@@ -1902,6 +1948,127 @@ button {
   margin-top: 2px;
   color: #38d6c9;
   text-transform: none;
+}
+
+.processing-risk {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  border: 1px solid rgba(247, 200, 115, 0.2);
+  border-radius: 8px;
+  background: rgba(247, 200, 115, 0.075);
+  padding: 8px;
+}
+
+.processing-risk.severe {
+  border-color: rgba(255, 111, 145, 0.36);
+  background: rgba(255, 111, 145, 0.095);
+}
+
+.processing-risk.low {
+  border-color: rgba(56, 214, 201, 0.28);
+  background: rgba(56, 214, 201, 0.075);
+}
+
+.processing-risk span,
+.processing-risk em,
+.processing-grid span,
+.processing-grid em,
+.processing-workflow span {
+  overflow: hidden;
+  color: #8d95a8;
+  font-size: 10px;
+  font-style: normal;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.processing-risk span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.processing-risk svg {
+  color: #f7c873;
+}
+
+.processing-risk.severe svg {
+  color: #ff6f91;
+}
+
+.processing-risk strong,
+.processing-grid strong,
+.processing-workflow strong {
+  display: block;
+  overflow: hidden;
+  color: #ffffff;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.processing-risk strong {
+  color: #f7c873;
+  font-size: 13px;
+}
+
+.processing-risk.severe strong {
+  color: #ff9ab3;
+}
+
+.processing-risk em {
+  color: #c8d0df;
+}
+
+.processing-grid {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  overflow: hidden;
+}
+
+.processing-grid div {
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 6px;
+}
+
+.processing-grid strong {
+  margin-top: 3px;
+  color: #38d6c9;
+  font-size: 11px;
+}
+
+.processing-grid em {
+  display: block;
+  margin-top: 3px;
+  color: #c8d0df;
+}
+
+.processing-workflow {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  overflow: hidden;
+}
+
+.processing-workflow div {
+  min-width: 0;
+  border: 1px solid rgba(56, 214, 201, 0.13);
+  border-radius: 8px;
+  background: rgba(56, 214, 201, 0.052);
+  padding: 6px;
+}
+
+.processing-workflow strong {
+  margin-top: 3px;
+  font-size: 10px;
 }
 
 .altitude-chart {

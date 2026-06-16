@@ -75,16 +75,16 @@ function normalizeTarget(target: ApiTarget): Target {
     position: target.position ?? calculateSkyPosition(target.ra_hours, target.dec_deg),
     tint: target.tint,
     exposureHint: target.exposure_hint,
-    imageUrl:
-      target.image_url ??
+    imageUrl: target.image_url ?? `${apiBaseUrl}/api/targets/${target.id}/image`,
+    imageCredit: target.image_credit ?? "CDS DSS2 color survey",
+    imageSourceUrl:
+      target.image_source_url ??
       createSurveyImageUrl(
         target.ra_hours,
         target.dec_deg,
         target.angular_width_arcmin,
         target.angular_height_arcmin
-      ),
-    imageCredit: target.image_credit ?? "CDS DSS2 color survey",
-    imageSourceUrl: target.image_source_url ?? "https://aladin.cds.unistra.fr/hips-image-services/"
+      )
   };
 }
 

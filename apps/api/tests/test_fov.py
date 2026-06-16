@@ -3,12 +3,19 @@ from datetime import date
 from astro_api.schemas import (
     CapturePlanRequest,
     FovRequest,
+    ProcessingPlanRequest,
     SessionPlanRequest,
     SkyForecastHour,
     SkyForecastResponse,
     TonightBoardRequest,
 )
-from astro_api.services import build_capture_plan, calculate_fov, plan_session, rank_tonight_targets
+from astro_api.services import (
+    build_capture_plan,
+    build_processing_plan,
+    calculate_fov,
+    plan_session,
+    rank_tonight_targets,
+)
 
 
 def _forecast(score: int = 86, status: str = "shoot") -> SkyForecastResponse:
@@ -171,3 +178,29 @@ def test_capture_plan_builds_runbook_and_markdown(monkeypatch) -> None:
     assert result.total_integration_minutes > 0
     assert "Capture Plan: North America" in result.export_markdown
     assert any(step.filter_name in {"Ha", "OIII"} for step in result.exposure_steps)
+
+
+def test_processing_plan_flags_gradient_and_calibration_strategy() -> None:
+    result = build_processing_plan(
+        ProcessingPlanRequest(
+            target_id="ngc7000",
+            bortle=6,
+            moon_illumination_percent=70,
+            white_night=True,
+            weather_score=58,
+            fov_horizontal_deg=2.8,
+            fov_vertical_deg=1.87,
+            pixel_scale_arcsec=1.62,
+            total_integration_minutes=180,
+            filter_names=["Ha", "OIII", "SII"],
+            planned_frames=12,
+        )
+    )
+
+    assert result.target_name == "North America"
+    assert result.gradient_score >= 70
+    assert result.gradient_risk in {"High", "Severe"}
+    assert result.drizzle.startswith("Off")
+    assert "Separate masters" in result.stack_strategy
+    assert {item.frame_type for item in result.calibration_matches} >= {"Flats", "Darks"}
+    assert any("Low frame count" in warning for warning in result.warnings)

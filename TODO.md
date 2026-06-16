@@ -24,5 +24,5 @@
 - [x] FOV/object comparison tools: add fit margin, mosaic hints, and rotation guidance in the sky view.
 - [x] Homelab image cache: proxy/cache generated DSS2 target plates locally for faster offline-friendly browsing.
 - [x] Session Archive / Capture Logs: save planned/captured sessions with filters, integration, weather, profile, and notes.
-- [ ] Processing Planner: recommend calibration matching, stack strategy, drizzle/binning, and gradient risk.
+- [x] Processing Planner: recommend calibration matching, stack strategy, drizzle/binning, and gradient risk.
 - [ ] FITS metadata ingest: scan uploaded or mounted frame folders and read capture metadata from FITS headers.
