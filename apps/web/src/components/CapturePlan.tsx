@@ -1,13 +1,16 @@
-import { CheckSquare, Clipboard, Download, TimerReset } from "lucide-react";
+import { Archive, CheckSquare, Clipboard, Download, TimerReset } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { CapturePlan as CapturePlanModel } from "../lib/session";
+import type { CapturePlan as CapturePlanModel, SessionArchiveEntry } from "../lib/session";
 
 type CapturePlanProps = {
   plan: CapturePlanModel;
   loading: boolean;
+  archiveState: "idle" | "saving" | "saved" | "failed";
+  archives: SessionArchiveEntry[];
+  onArchive: () => void;
 };
 
-export function CapturePlan({ plan, loading }: CapturePlanProps) {
+export function CapturePlan({ plan, loading, archiveState, archives, onArchive }: CapturePlanProps) {
   const [copyState, setCopyState] = useState<"idle" | "done" | "failed">("idle");
   const filename = useMemo(
     () => `${plan.date}-${plan.targetName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.md`,
@@ -43,6 +46,15 @@ export function CapturePlan({ plan, loading }: CapturePlanProps) {
           <strong>Capture Plan</strong>
         </div>
         <div className="capture-actions">
+          <button
+            type="button"
+            onClick={onArchive}
+            title="Save session archive"
+            disabled={archiveState === "saving"}
+          >
+            <Archive size={14} aria-hidden="true" />
+            <span>{archiveLabel(archiveState)}</span>
+          </button>
           <button type="button" onClick={copyMarkdown} title="Copy Markdown">
             <Clipboard size={14} aria-hidden="true" />
             <span>{copyState === "done" ? "Copied" : copyState === "failed" ? "Retry" : "Copy"}</span>
@@ -84,6 +96,27 @@ export function CapturePlan({ plan, loading }: CapturePlanProps) {
           {plan.calibrationFrames.length} cal / {plan.checklist.length} checks
         </span>
       </div>
+
+      {archives.length > 0 && (
+        <div className="archive-strip" aria-label="Recent session archive">
+          {archives.slice(0, 2).map((archive) => (
+            <div className="archive-chip" key={archive.id}>
+              <span>{archive.status}</span>
+              <strong>{archive.targetName}</strong>
+              <em>
+                {archive.sessionDate} / {archive.totalIntegrationMinutes}m / {archive.filterNames.join("+")}
+              </em>
+            </div>
+          ))}
+        </div>
+      )}
     </aside>
   );
+}
+
+function archiveLabel(state: CapturePlanProps["archiveState"]) {
+  if (state === "saving") return "Saving";
+  if (state === "saved") return "Saved";
+  if (state === "failed") return "Retry";
+  return "Log";
 }

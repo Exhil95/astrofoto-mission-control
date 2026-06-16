@@ -1704,7 +1704,7 @@ button {
   min-height: 0;
   height: 100%;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
   gap: 8px;
   overflow: hidden;
   border-radius: 8px;
@@ -1772,6 +1772,11 @@ button {
   border-color: rgba(56, 214, 201, 0.6);
   color: #e9fffb;
   background: rgba(56, 214, 201, 0.1);
+}
+
+.capture-actions button:disabled {
+  cursor: wait;
+  opacity: 0.62;
 }
 
 .capture-summary {
@@ -1851,6 +1856,52 @@ button {
 .capture-footer svg {
   flex: 0 0 auto;
   color: #f7c873;
+}
+
+.archive-strip {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  overflow: hidden;
+}
+
+.archive-chip {
+  min-width: 0;
+  border: 1px solid rgba(56, 214, 201, 0.14);
+  border-radius: 8px;
+  background: rgba(56, 214, 201, 0.055);
+  padding: 6px;
+}
+
+.archive-chip span,
+.archive-chip em {
+  display: block;
+  overflow: hidden;
+  color: #8d95a8;
+  font-size: 10px;
+  font-style: normal;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.archive-chip strong {
+  display: block;
+  overflow: hidden;
+  margin-top: 2px;
+  color: #ffffff;
+  font-size: 11px;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.archive-chip em {
+  margin-top: 2px;
+  color: #38d6c9;
+  text-transform: none;
 }
 
 .altitude-chart {

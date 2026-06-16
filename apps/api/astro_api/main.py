@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from .catalog import TARGETS
@@ -17,6 +17,9 @@ from .schemas import (
     ProfileCreate,
     ProfileResponse,
     ProfileUpdate,
+    SessionArchiveCreate,
+    SessionArchiveResponse,
+    SessionArchiveUpdate,
     SessionPlanRequest,
     SessionPlanResponse,
     SkyForecastRequest,
@@ -24,6 +27,12 @@ from .schemas import (
     TargetResponse,
     TonightBoardRequest,
     TonightBoardResponse,
+)
+from .session_archive import (
+    create_session_archive,
+    delete_session_archive,
+    list_session_archives,
+    update_session_archive,
 )
 from .services import build_capture_plan, calculate_fov, plan_session, rank_tonight_targets
 from .settings import get_settings
@@ -113,6 +122,35 @@ def capture_plan(payload: CapturePlanRequest) -> CapturePlanResponse:
 @app.post("/api/session/tonight-board", response_model=TonightBoardResponse)
 def tonight_board(payload: TonightBoardRequest) -> TonightBoardResponse:
     return rank_tonight_targets(payload)
+
+
+@app.get("/api/session/archive", response_model=list[SessionArchiveResponse])
+def session_archive_list(
+    limit: int = Query(default=12, ge=1, le=50)
+) -> list[SessionArchiveResponse]:
+    return list_session_archives(limit=limit)
+
+
+@app.post("/api/session/archive", response_model=SessionArchiveResponse)
+def session_archive_create(payload: SessionArchiveCreate) -> SessionArchiveResponse:
+    return create_session_archive(payload)
+
+
+@app.put("/api/session/archive/{archive_id}", response_model=SessionArchiveResponse)
+def session_archive_update(
+    archive_id: int, payload: SessionArchiveUpdate
+) -> SessionArchiveResponse:
+    archive = update_session_archive(archive_id, payload)
+    if archive is None:
+        raise HTTPException(status_code=404, detail="Session archive not found")
+    return archive
+
+
+@app.delete("/api/session/archive/{archive_id}", status_code=204)
+def session_archive_delete(archive_id: int) -> Response:
+    if not delete_session_archive(archive_id):
+        raise HTTPException(status_code=404, detail="Session archive not found")
+    return Response(status_code=204)
 
 
 @app.post("/api/forecast/sky", response_model=SkyForecastResponse)

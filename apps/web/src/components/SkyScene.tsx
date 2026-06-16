@@ -2,7 +2,7 @@ import { useFrame } from "@react-three/fiber";
 import { Canvas } from "@react-three/fiber";
 import { Html, OrbitControls, Stars } from "@react-three/drei";
 import { useMemo, useRef, type CSSProperties } from "react";
-import * as THREE from "three";
+import type { Group } from "three";
 import type { FovResult } from "../lib/fov";
 import type { Target } from "../lib/targets";
 
@@ -56,7 +56,7 @@ function TargetMarker({
   selected: boolean;
   onSelect: () => void;
 }) {
-  const groupRef = useRef<THREE.Group>(null);
+  const groupRef = useRef<Group>(null);
 
   useFrame((state) => {
     if (!groupRef.current) return;
@@ -157,7 +157,7 @@ function SelectedScalePlate({
 }
 
 function SkyObjects({ targets, selectedTarget, fov, autoRotate, layoutMode, onSelectTarget }: SkySceneProps) {
-  const groupRef = useRef<THREE.Group>(null);
+  const groupRef = useRef<Group>(null);
   const sceneTargets = useMemo(
     () =>
       targets.map((target, index) => ({

@@ -47,6 +47,7 @@ See [docs/HOMELAB.md](docs/HOMELAB.md) for persistent SQLite profiles, healthche
 - Rich optical profiles for telescope, reducer, camera, filters, guiding, focuser, and mount metadata
 - Tonight Board ranking targets by weather, altitude, Moon, white nights, and FOV
 - Capture Plan runbook with lights, calibration frames, dithering, autofocus, and Markdown export
+- Session Archive for saved planned/captured runs with filters, integration, weather, profile, and notes
 - Homelab target image proxy/cache for generated DSS2 object plates
 - Session timeline mock for planning panels
 - API endpoints for FOV calculations and curated target data

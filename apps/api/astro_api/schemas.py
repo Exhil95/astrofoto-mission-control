@@ -224,6 +224,47 @@ class TonightBoardResponse(BaseModel):
     items: list[TonightBoardItem]
 
 
+class SessionArchiveBase(BaseModel):
+    target_id: str = Field(min_length=1, max_length=80)
+    target_name: str = Field(min_length=1, max_length=120)
+    session_date: Date
+    status: str = Field(default="planned", pattern=r"^(planned|captured|processed|skipped)$")
+    profile_id: int | None = Field(default=None, ge=1)
+    profile_name: str | None = Field(default=None, max_length=80)
+    site_name: str = Field(min_length=1, max_length=80)
+    bortle: int = Field(ge=1, le=9)
+    fov_horizontal_deg: float = Field(gt=0, le=60)
+    fov_vertical_deg: float = Field(gt=0, le=60)
+    pixel_scale_arcsec: float = Field(gt=0, le=20)
+    imaging_mode: str = Field(min_length=1, max_length=80)
+    filter_names: list[str] = Field(default_factory=list, max_length=16)
+    total_integration_minutes: int = Field(ge=0, le=100000)
+    planned_frames: int = Field(default=0, ge=0, le=100000)
+    captured_frames: int = Field(default=0, ge=0, le=100000)
+    window_start: str = Field(min_length=1, max_length=16)
+    window_end: str = Field(min_length=1, max_length=16)
+    weather_status: str = Field(min_length=1, max_length=24)
+    weather_score: int = Field(ge=0, le=100)
+    moon_illumination_percent: int = Field(ge=0, le=100)
+    white_night: bool
+    notes: str = Field(default="", max_length=1600)
+    capture_markdown: str = Field(default="", max_length=20000)
+
+
+class SessionArchiveCreate(SessionArchiveBase):
+    pass
+
+
+class SessionArchiveUpdate(SessionArchiveBase):
+    pass
+
+
+class SessionArchiveResponse(SessionArchiveBase):
+    id: int
+    created_at: str
+    updated_at: str
+
+
 class SkyForecastRequest(BaseModel):
     date: Date | None = None
     latitude_deg: float = Field(default=50.2649, ge=-90, le=90)

@@ -42,10 +42,14 @@ import {
   createFallbackSessionPlan,
   createFallbackTonightBoard,
   fetchCapturePlan,
+  fetchSessionArchive,
   fetchSessionPlan,
   fetchTonightBoard,
   getTodayIsoDate,
+  saveSessionArchive,
   type CapturePlan as CapturePlanModel,
+  type SessionArchiveEntry,
+  type SessionArchivePayload,
   type TonightBoard as TonightBoardModel,
   type SessionSettings
 } from "./lib/session";
@@ -70,6 +74,7 @@ export function App() {
   const [isForecastLoading, setIsForecastLoading] = useState(false);
   const [isBoardLoading, setIsBoardLoading] = useState(false);
   const [isCaptureLoading, setIsCaptureLoading] = useState(false);
+  const [archiveState, setArchiveState] = useState<"idle" | "saving" | "saved" | "failed">("idle");
   const [isProfileSaving, setIsProfileSaving] = useState(false);
   const [skyAutoRotate, setSkyAutoRotate] = useState(() => {
     return window.localStorage.getItem("astrofoto-sky-auto-rotate") !== "false";
@@ -112,6 +117,7 @@ export function App() {
   const [capturePlan, setCapturePlan] = useState<CapturePlanModel>(() =>
     createFallbackCapturePlan(selectedTarget, sessionSettings, fov)
   );
+  const [sessionArchives, setSessionArchives] = useState<SessionArchiveEntry[]>([]);
   const skyTargetTypes = useMemo(
     () => uniqueValues(targetCatalog.map((target) => target.type)),
     [targetCatalog]
@@ -313,6 +319,29 @@ export function App() {
     }
   };
 
+  const archiveCurrentSession = async () => {
+    setArchiveState("saving");
+    const payload = createArchivePayload({
+      selectedTarget,
+      selectedProfile,
+      settings: sessionSettings,
+      fov,
+      sessionPlan,
+      capturePlan
+    });
+
+    try {
+      const savedArchive = await saveSessionArchive(payload);
+      setSessionArchives((items) =>
+        [savedArchive, ...items.filter((item) => item.id !== savedArchive.id)].slice(0, 5)
+      );
+      setArchiveState("saved");
+      window.setTimeout(() => setArchiveState("idle"), 1600);
+    } catch {
+      setArchiveState("failed");
+    }
+  };
+
   useEffect(() => {
     window.localStorage.setItem(
       "astrofoto-sky-auto-rotate",
@@ -341,6 +370,22 @@ export function App() {
       })
       .catch(() => {
         if (!ignore) setTargetCatalog(fallbackTargets);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let ignore = false;
+
+    fetchSessionArchive(5)
+      .then((archives) => {
+        if (!ignore) setSessionArchives(archives);
+      })
+      .catch(() => {
+        if (!ignore) setSessionArchives([]);
       });
 
     return () => {
@@ -690,10 +735,73 @@ export function App() {
           selectedTargetId={selectedTarget.id}
           onSelectTarget={setSelectedTargetId}
         />
-        <CapturePlan plan={capturePlan} loading={isCaptureLoading} />
+        <CapturePlan
+          plan={capturePlan}
+          loading={isCaptureLoading}
+          archiveState={archiveState}
+          archives={sessionArchives}
+          onArchive={archiveCurrentSession}
+        />
       </section>
     </main>
   );
+}
+
+function createArchivePayload({
+  selectedTarget,
+  selectedProfile,
+  settings,
+  fov,
+  sessionPlan,
+  capturePlan
+}: {
+  selectedTarget: Target;
+  selectedProfile: EquipmentProfile | null;
+  settings: SessionSettings;
+  fov: FovResult;
+  sessionPlan: ReturnType<typeof createFallbackSessionPlan>;
+  capturePlan: CapturePlanModel;
+}): SessionArchivePayload {
+  const plannedFrames = capturePlan.exposureSteps.reduce((sum, step) => sum + step.frames, 0);
+
+  return {
+    targetId: selectedTarget.id,
+    targetName: selectedTarget.name,
+    sessionDate: settings.date,
+    status: "planned",
+    profileId: selectedProfile?.id ?? null,
+    profileName: selectedProfile?.name ?? null,
+    siteName: selectedProfile?.siteName ?? settings.timezone,
+    bortle: settings.bortle,
+    fovHorizontalDeg: fov.horizontalDeg,
+    fovVerticalDeg: fov.verticalDeg,
+    pixelScaleArcsec: fov.pixelScaleArcsec,
+    imagingMode: capturePlan.imagingMode,
+    filterNames: capturePlan.exposureSteps.map((step) => step.filterName),
+    totalIntegrationMinutes: capturePlan.totalIntegrationMinutes,
+    plannedFrames,
+    capturedFrames: 0,
+    windowStart: capturePlan.windowStart,
+    windowEnd: capturePlan.windowEnd,
+    weatherStatus: sessionPlan.weatherStatus,
+    weatherScore: sessionPlan.weatherScore,
+    moonIlluminationPercent: sessionPlan.moonIlluminationPercent,
+    whiteNight: sessionPlan.whiteNight,
+    notes: createArchiveNotes(sessionPlan, selectedProfile),
+    captureMarkdown: capturePlan.exportMarkdown
+  };
+}
+
+function createArchiveNotes(
+  sessionPlan: ReturnType<typeof createFallbackSessionPlan>,
+  profile: EquipmentProfile | null
+) {
+  return [
+    sessionPlan.recommendation,
+    sessionPlan.whiteNight ? "White night: favor narrowband and brighter structures" : "Astronomical darkness available",
+    `Weather ${sessionPlan.weatherScore}/100: ${sessionPlan.weatherSummary}`,
+    `Profile: ${profile?.name ?? "Custom setup"}`
+  ].join("\n");
 }
 
 function formatObjectFootprint(target: Target, fov: FovResult) {

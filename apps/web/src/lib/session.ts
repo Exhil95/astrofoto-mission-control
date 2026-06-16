@@ -119,6 +119,38 @@ export type CapturePlan = {
   exportMarkdown: string;
 };
 
+export type SessionArchiveEntry = {
+  id: number;
+  targetId: string;
+  targetName: string;
+  sessionDate: string;
+  status: "planned" | "captured" | "processed" | "skipped";
+  profileId: number | null;
+  profileName: string | null;
+  siteName: string;
+  bortle: number;
+  fovHorizontalDeg: number;
+  fovVerticalDeg: number;
+  pixelScaleArcsec: number;
+  imagingMode: string;
+  filterNames: string[];
+  totalIntegrationMinutes: number;
+  plannedFrames: number;
+  capturedFrames: number;
+  windowStart: string;
+  windowEnd: string;
+  weatherStatus: string;
+  weatherScore: number;
+  moonIlluminationPercent: number;
+  whiteNight: boolean;
+  notes: string;
+  captureMarkdown: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SessionArchivePayload = Omit<SessionArchiveEntry, "id" | "createdAt" | "updatedAt">;
+
 type ApiSessionPlan = {
   target_id: string;
   target_name: string;
@@ -213,6 +245,36 @@ type ApiCapturePlan = {
   export_markdown: string;
 };
 
+type ApiSessionArchive = {
+  id: number;
+  target_id: string;
+  target_name: string;
+  session_date: string;
+  status: "planned" | "captured" | "processed" | "skipped";
+  profile_id: number | null;
+  profile_name: string | null;
+  site_name: string;
+  bortle: number;
+  fov_horizontal_deg: number;
+  fov_vertical_deg: number;
+  pixel_scale_arcsec: number;
+  imaging_mode: string;
+  filter_names: string[];
+  total_integration_minutes: number;
+  planned_frames: number;
+  captured_frames: number;
+  window_start: string;
+  window_end: string;
+  weather_status: string;
+  weather_score: number;
+  moon_illumination_percent: number;
+  white_night: boolean;
+  notes: string;
+  capture_markdown: string;
+  created_at: string;
+  updated_at: string;
+};
+
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
 
 export function getTodayIsoDate() {
@@ -295,6 +357,32 @@ export async function fetchCapturePlan(
   }
 
   return normalizeCapturePlan((await response.json()) as ApiCapturePlan);
+}
+
+export async function fetchSessionArchive(limit = 5): Promise<SessionArchiveEntry[]> {
+  const response = await fetch(`${apiBaseUrl}/api/session/archive?limit=${limit}`);
+
+  if (!response.ok) {
+    throw new Error(`Session archive failed with ${response.status}`);
+  }
+
+  return ((await response.json()) as ApiSessionArchive[]).map(normalizeSessionArchive);
+}
+
+export async function saveSessionArchive(
+  payload: SessionArchivePayload
+): Promise<SessionArchiveEntry> {
+  const response = await fetch(`${apiBaseUrl}/api/session/archive`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(toApiSessionArchive(payload))
+  });
+
+  if (!response.ok) {
+    throw new Error(`Session archive save failed with ${response.status}`);
+  }
+
+  return normalizeSessionArchive((await response.json()) as ApiSessionArchive);
 }
 
 export function createFallbackSessionPlan(target: Target, settings?: SessionSettings): SessionPlan {
@@ -558,6 +646,67 @@ function normalizeCapturePlan(plan: ApiCapturePlan): CapturePlan {
     })),
     checklist: plan.checklist,
     exportMarkdown: plan.export_markdown
+  };
+}
+
+function normalizeSessionArchive(archive: ApiSessionArchive): SessionArchiveEntry {
+  return {
+    id: archive.id,
+    targetId: archive.target_id,
+    targetName: archive.target_name,
+    sessionDate: archive.session_date,
+    status: archive.status,
+    profileId: archive.profile_id,
+    profileName: archive.profile_name,
+    siteName: archive.site_name,
+    bortle: archive.bortle,
+    fovHorizontalDeg: archive.fov_horizontal_deg,
+    fovVerticalDeg: archive.fov_vertical_deg,
+    pixelScaleArcsec: archive.pixel_scale_arcsec,
+    imagingMode: archive.imaging_mode,
+    filterNames: archive.filter_names,
+    totalIntegrationMinutes: archive.total_integration_minutes,
+    plannedFrames: archive.planned_frames,
+    capturedFrames: archive.captured_frames,
+    windowStart: archive.window_start,
+    windowEnd: archive.window_end,
+    weatherStatus: archive.weather_status,
+    weatherScore: archive.weather_score,
+    moonIlluminationPercent: archive.moon_illumination_percent,
+    whiteNight: archive.white_night,
+    notes: archive.notes,
+    captureMarkdown: archive.capture_markdown,
+    createdAt: archive.created_at,
+    updatedAt: archive.updated_at
+  };
+}
+
+function toApiSessionArchive(archive: SessionArchivePayload) {
+  return {
+    target_id: archive.targetId,
+    target_name: archive.targetName,
+    session_date: archive.sessionDate,
+    status: archive.status,
+    profile_id: archive.profileId,
+    profile_name: archive.profileName,
+    site_name: archive.siteName,
+    bortle: archive.bortle,
+    fov_horizontal_deg: archive.fovHorizontalDeg,
+    fov_vertical_deg: archive.fovVerticalDeg,
+    pixel_scale_arcsec: archive.pixelScaleArcsec,
+    imaging_mode: archive.imagingMode,
+    filter_names: archive.filterNames,
+    total_integration_minutes: archive.totalIntegrationMinutes,
+    planned_frames: archive.plannedFrames,
+    captured_frames: archive.capturedFrames,
+    window_start: archive.windowStart,
+    window_end: archive.windowEnd,
+    weather_status: archive.weatherStatus,
+    weather_score: archive.weatherScore,
+    moon_illumination_percent: archive.moonIlluminationPercent,
+    white_night: archive.whiteNight,
+    notes: archive.notes,
+    capture_markdown: archive.captureMarkdown
   };
 }
 
