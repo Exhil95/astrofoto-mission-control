@@ -62,6 +62,8 @@ def plan_session(payload: SessionPlanRequest) -> SessionPlanResponse:
             latitude_deg=payload.latitude_deg,
             longitude_deg=payload.longitude_deg,
             timezone=payload.timezone,
+            cache_ttl_minutes=payload.forecast_cache_ttl_minutes,
+            force_refresh=payload.force_forecast_refresh,
         )
     )
     transparency_percent = _estimate_transparency(payload.bortle, moon_illumination_percent)
@@ -144,6 +146,8 @@ def build_capture_plan(payload: CapturePlanRequest) -> CapturePlanResponse:
             longitude_deg=payload.longitude_deg,
             timezone=payload.timezone,
             bortle=payload.bortle,
+            forecast_cache_ttl_minutes=payload.forecast_cache_ttl_minutes,
+            force_forecast_refresh=payload.force_forecast_refresh,
         )
     )
     fov_fit = _capture_fov_fit(
@@ -259,6 +263,8 @@ def rank_tonight_targets(payload: TonightBoardRequest) -> TonightBoardResponse:
             latitude_deg=payload.latitude_deg,
             longitude_deg=payload.longitude_deg,
             timezone=payload.timezone,
+            cache_ttl_minutes=payload.forecast_cache_ttl_minutes,
+            force_refresh=payload.force_forecast_refresh,
         )
     )
 

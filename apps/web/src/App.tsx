@@ -1,7 +1,8 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   Aperture,
+  FileSearch,
   GalleryHorizontal,
   Gauge,
   LocateFixed,
@@ -15,6 +16,7 @@ import { TargetRail } from "./components/TargetRail";
 import { FovConsole } from "./components/FovConsole";
 import { ProfileDock } from "./components/ProfileDock";
 import { CapturePlan } from "./components/CapturePlan";
+import { FitsIngestPanel } from "./components/FitsIngestPanel";
 import { ProcessingPlanner } from "./components/ProcessingPlanner";
 import { SessionControl } from "./components/SessionControl";
 import { SessionTimeline } from "./components/SessionTimeline";
@@ -23,6 +25,7 @@ import { TonightBoard } from "./components/TonightBoard";
 import {
   createFallbackSkyForecast,
   fetchSkyForecast,
+  type ForecastRefreshMinutes,
   type SkyForecast
 } from "./lib/forecast";
 import { calculateFov, type FovResult } from "./lib/fov";
@@ -65,7 +68,7 @@ const SkyScene = lazy(() =>
 
 type SkyDisplayMode = "focus" | "tonight" | "showcase" | "catalog";
 type SkyFitFilter = "All" | "Small" | "Fits" | "Tight" | "Mosaic";
-type WorkspaceMode = "planner" | "capture" | "process";
+type WorkspaceMode = "planner" | "capture" | "process" | "frames";
 
 export function App() {
   const [selectedTargetId, setSelectedTargetId] = useState("ngc7000");
@@ -84,6 +87,13 @@ export function App() {
   const [isBoardLoading, setIsBoardLoading] = useState(false);
   const [isCaptureLoading, setIsCaptureLoading] = useState(false);
   const [isProcessingLoading, setIsProcessingLoading] = useState(false);
+  const [weatherRefreshMinutes, setWeatherRefreshMinutes] =
+    useState<ForecastRefreshMinutes>(() => {
+      const storedMinutes = Number(window.localStorage.getItem("astrofoto-weather-refresh-minutes"));
+      return isForecastRefreshMinutes(storedMinutes) ? storedMinutes : 15;
+    });
+  const [weatherRefreshTick, setWeatherRefreshTick] = useState(0);
+  const forceWeatherRefreshRef = useRef(false);
   const [archiveState, setArchiveState] = useState<"idle" | "saving" | "saved" | "failed">("idle");
   const [isProfileSaving, setIsProfileSaving] = useState(false);
   const [skyAutoRotate, setSkyAutoRotate] = useState(() => {
@@ -179,6 +189,11 @@ export function App() {
     [skyDisplayMode, visibleSkyTargets.length, filteredSkyTargets.length, targetCatalog.length]
   );
   const framingAdvice = useMemo(() => analyzeFraming(selectedTarget, fov), [selectedTarget, fov]);
+
+  const requestWeatherRefresh = () => {
+    forceWeatherRefreshRef.current = true;
+    setWeatherRefreshTick((current) => current + 1);
+  };
 
   const selectSensorPreset = (sensorId: string) => {
     setSelectedSensorId(sensorId);
@@ -367,6 +382,20 @@ export function App() {
 
   useEffect(() => {
     window.localStorage.setItem(
+      "astrofoto-weather-refresh-minutes",
+      String(weatherRefreshMinutes)
+    );
+  }, [weatherRefreshMinutes]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      requestWeatherRefresh();
+    }, weatherRefreshMinutes * 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, [weatherRefreshMinutes]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
       "astrofoto-sky-auto-rotate",
       skyAutoRotate ? "true" : "false"
     );
@@ -436,10 +465,14 @@ export function App() {
 
   useEffect(() => {
     let ignore = false;
+    const forceRefresh = forceWeatherRefreshRef.current;
     setIsPlanning(true);
     setSessionPlan(createFallbackSessionPlan(selectedTarget, sessionSettings));
 
-    fetchSessionPlan(selectedTarget.id, sessionSettings)
+    fetchSessionPlan(selectedTarget.id, sessionSettings, {
+      cacheTtlMinutes: weatherRefreshMinutes,
+      forceRefresh
+    })
       .then((plan) => {
         if (!ignore) setSessionPlan(plan);
       })
@@ -453,14 +486,18 @@ export function App() {
     return () => {
       ignore = true;
     };
-  }, [selectedTarget, sessionSettings]);
+  }, [selectedTarget, sessionSettings, weatherRefreshMinutes, weatherRefreshTick]);
 
   useEffect(() => {
     let ignore = false;
+    const forceRefresh = forceWeatherRefreshRef.current;
     setIsForecastLoading(true);
     setSkyForecast(createFallbackSkyForecast(sessionSettings));
 
-    fetchSkyForecast(sessionSettings)
+    fetchSkyForecast(sessionSettings, {
+      cacheTtlMinutes: weatherRefreshMinutes,
+      forceRefresh
+    })
       .then((forecast) => {
         if (!ignore) setSkyForecast(forecast);
       })
@@ -468,20 +505,25 @@ export function App() {
         if (!ignore) setSkyForecast(createFallbackSkyForecast(sessionSettings));
       })
       .finally(() => {
+        if (forceRefresh) forceWeatherRefreshRef.current = false;
         if (!ignore) setIsForecastLoading(false);
       });
 
     return () => {
       ignore = true;
     };
-  }, [sessionSettings]);
+  }, [sessionSettings, weatherRefreshMinutes, weatherRefreshTick]);
 
   useEffect(() => {
     let ignore = false;
+    const forceRefresh = forceWeatherRefreshRef.current;
     setIsBoardLoading(true);
     setTonightBoard(createFallbackTonightBoard(targetCatalog, sessionSettings, fov));
 
-    fetchTonightBoard(sessionSettings, fov)
+    fetchTonightBoard(sessionSettings, fov, {
+      cacheTtlMinutes: weatherRefreshMinutes,
+      forceRefresh
+    })
       .then((board) => {
         if (!ignore) setTonightBoard(board);
       })
@@ -495,14 +537,18 @@ export function App() {
     return () => {
       ignore = true;
     };
-  }, [sessionSettings, fov, targetCatalog]);
+  }, [sessionSettings, fov, targetCatalog, weatherRefreshMinutes, weatherRefreshTick]);
 
   useEffect(() => {
     let ignore = false;
+    const forceRefresh = forceWeatherRefreshRef.current;
     setIsCaptureLoading(true);
     setCapturePlan(createFallbackCapturePlan(selectedTarget, sessionSettings, fov));
 
-    fetchCapturePlan(selectedTarget.id, sessionSettings, fov)
+    fetchCapturePlan(selectedTarget.id, sessionSettings, fov, {
+      cacheTtlMinutes: weatherRefreshMinutes,
+      forceRefresh
+    })
       .then((plan) => {
         if (!ignore) setCapturePlan(plan);
       })
@@ -516,7 +562,7 @@ export function App() {
     return () => {
       ignore = true;
     };
-  }, [selectedTarget, sessionSettings, fov]);
+  }, [selectedTarget, sessionSettings, fov, weatherRefreshMinutes, weatherRefreshTick]);
 
   useEffect(() => {
     let ignore = false;
@@ -595,6 +641,15 @@ export function App() {
           >
             <Activity size={17} aria-hidden="true" />
             Process
+          </button>
+          <button
+            className={workspaceMode === "frames" ? "is-active" : ""}
+            type="button"
+            title="Frames"
+            onClick={() => setWorkspaceMode("frames")}
+          >
+            <FileSearch size={17} aria-hidden="true" />
+            Frames
           </button>
         </nav>
 
@@ -810,11 +865,14 @@ export function App() {
               />
             </section>
             <section className="panel conditions-panel" aria-label="Sky conditions">
-              <SkyConditions
-                forecast={skyForecast}
-                plan={sessionPlan}
-                loading={isForecastLoading}
-              />
+            <SkyConditions
+              forecast={skyForecast}
+              plan={sessionPlan}
+              loading={isForecastLoading}
+              refreshMinutes={weatherRefreshMinutes}
+              onRefreshMinutesChange={setWeatherRefreshMinutes}
+              onRefresh={requestWeatherRefresh}
+            />
             </section>
           </aside>
 
@@ -866,6 +924,9 @@ export function App() {
                 forecast={skyForecast}
                 plan={sessionPlan}
                 loading={isForecastLoading}
+                refreshMinutes={weatherRefreshMinutes}
+                onRefreshMinutesChange={setWeatherRefreshMinutes}
+                onRefresh={requestWeatherRefresh}
               />
             </section>
             <section className="panel optics-panel" aria-label="Imaging controls">
@@ -885,6 +946,59 @@ export function App() {
                 onPixelSizeChange={changePixelSize}
                 onReducerChange={setReducer}
               />
+            </section>
+          </aside>
+        </section>
+      )}
+
+      {workspaceMode === "frames" && (
+        <section className="workspace-page frames-page" aria-label="Frames workspace">
+          <FitsIngestPanel />
+
+          <aside className="frames-context-stack" aria-label="Frame context">
+            <section className="panel frame-expectation-panel" aria-label="Expected capture frames">
+              <div className="frame-context-head">
+                <span>{capturePlan.targetName}</span>
+                <strong>Expected Lights</strong>
+              </div>
+              <div className="frame-expectation-list">
+                {capturePlan.exposureSteps.map((step) => (
+                  <div key={step.filterName}>
+                    <span>{step.filterName}</span>
+                    <strong>
+                      {step.frames} x {step.exposureSeconds}s
+                    </strong>
+                    <em>{step.integrationMinutes} min / {step.binning}</em>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="panel frame-archive-panel" aria-label="Recent capture archive">
+              <div className="frame-context-head">
+                <span>{sessionArchives.length ? "Recent" : "Empty"}</span>
+                <strong>Archive</strong>
+              </div>
+              <div className="frame-archive-list">
+                {sessionArchives.length ? (
+                  sessionArchives.slice(0, 4).map((archive) => (
+                    <div key={archive.id}>
+                      <span>{archive.status}</span>
+                      <strong>{archive.targetName}</strong>
+                      <em>
+                        {archive.capturedFrames || archive.plannedFrames} frames /{" "}
+                        {archive.totalIntegrationMinutes} min
+                      </em>
+                    </div>
+                  ))
+                ) : (
+                  <div>
+                    <span>No sessions</span>
+                    <strong>Archive waiting</strong>
+                    <em>Capture logs will appear here</em>
+                  </div>
+                )}
+              </div>
             </section>
           </aside>
         </section>
@@ -961,7 +1075,11 @@ function isSkyDisplayMode(value: string | null): value is SkyDisplayMode {
 }
 
 function isWorkspaceMode(value: string | null): value is WorkspaceMode {
-  return value === "planner" || value === "capture" || value === "process";
+  return value === "planner" || value === "capture" || value === "process" || value === "frames";
+}
+
+function isForecastRefreshMinutes(value: number): value is ForecastRefreshMinutes {
+  return value === 15 || value === 30 || value === 60;
 }
 
 function filterSkyTargets(

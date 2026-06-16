@@ -29,6 +29,13 @@ export type SkyForecast = {
   hours: SkyForecastHour[];
 };
 
+export type ForecastRefreshMinutes = 15 | 30 | 60;
+
+export type ForecastFetchOptions = {
+  cacheTtlMinutes: ForecastRefreshMinutes;
+  forceRefresh?: boolean;
+};
+
 type ApiSkyForecast = {
   source: string;
   status: ForecastStatus;
@@ -56,7 +63,10 @@ type ApiSkyForecast = {
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
 
-export async function fetchSkyForecast(settings: SessionSettings): Promise<SkyForecast> {
+export async function fetchSkyForecast(
+  settings: SessionSettings,
+  options?: ForecastFetchOptions
+): Promise<SkyForecast> {
   const response = await fetch(`${apiBaseUrl}/api/forecast/sky`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -64,7 +74,9 @@ export async function fetchSkyForecast(settings: SessionSettings): Promise<SkyFo
       date: settings.date,
       latitude_deg: settings.latitudeDeg,
       longitude_deg: settings.longitudeDeg,
-      timezone: settings.timezone
+      timezone: settings.timezone,
+      cache_ttl_minutes: options?.cacheTtlMinutes,
+      force_refresh: options?.forceRefresh ?? false
     })
   });
 

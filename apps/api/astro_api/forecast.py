@@ -62,7 +62,16 @@ def get_sky_forecast(
     )
     cached = _FORECAST_CACHE.get(key)
     now = datetime.now(UTC)
-    if cached and (now - cached[0]).total_seconds() < settings.forecast_cache_ttl_seconds:
+    ttl_seconds = (
+        payload.cache_ttl_minutes * 60
+        if payload.cache_ttl_minutes is not None
+        else settings.forecast_cache_ttl_seconds
+    )
+    if (
+        cached
+        and not payload.force_refresh
+        and (now - cached[0]).total_seconds() < ttl_seconds
+    ):
         return cached[1].model_copy(update={"source": "cache"})
 
     try:

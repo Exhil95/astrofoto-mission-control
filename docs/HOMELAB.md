@@ -34,6 +34,8 @@ configuration-only changes.
 - `PUBLIC_BASE_URL`: the URL you expect to open in the browser.
 - `CORS_ORIGINS`: include `PUBLIC_BASE_URL` and any direct dev origins you use.
 - `PROFILE_DATABASE_URL`: keep `sqlite:////data/astrofoto.sqlite3` for Docker persistence.
+- `FITS_LIBRARY_ROOT_HOST`: host folder with `.fit`, `.fits`, or `.fts` frames mounted read-only into the API.
+- `FITS_LIBRARY_ROOT`: container path for FITS scans, usually `/data/fits`.
 - `POSTGRES_PASSWORD`, `MINIO_ROOT_PASSWORD`, `S3_SECRET_ACCESS_KEY`: replace before leaving the service up on a shared network.
 
 ## Health Checks
@@ -52,6 +54,7 @@ curl http://localhost/health
 ## Data Volumes
 
 - `astrofoto-data`: SQLite profile database at `/data/astrofoto.sqlite3`.
+- `FITS_LIBRARY_ROOT_HOST`: read-only bind mount for captured FITS frames, defaulting to `./data/fits`.
 - `postgres-data`: reserved relational database volume for future app data.
 - `redis-data`: Valkey cache data.
 - `minio-data`: object storage.
@@ -60,6 +63,19 @@ curl http://localhost/health
 The API automatically adds new equipment profile columns on startup, so existing
 SQLite profile databases can keep telescope, reducer, camera, filter, guiding,
 focuser, and mount metadata without a manual migration step.
+
+## FITS Frame Library
+
+Place captured frames under the host folder from `FITS_LIBRARY_ROOT_HOST`, for example:
+
+```powershell
+.\data\fits\2026-06-15-north-america\
+```
+
+The API only scans inside `FITS_LIBRARY_ROOT`, reads FITS headers, and returns metadata
+such as frame type, filter, exposure, gain, offset, sensor temperature, object name,
+camera, and calibration groups. The bind mount is read-only, so the app cannot modify
+raw capture data.
 
 ## Backup Profiles
 

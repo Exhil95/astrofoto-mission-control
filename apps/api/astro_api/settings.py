@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     target_image_cache_dir: str = ".cache/target-images"
     target_image_cache_ttl_seconds: int = 604800
     target_image_timeout_seconds: float = 8.0
+    fits_library_root: str = "data/fits"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

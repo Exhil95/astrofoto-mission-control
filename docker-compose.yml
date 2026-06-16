@@ -36,6 +36,7 @@ services:
       TARGET_IMAGE_CACHE_DIR: ${TARGET_IMAGE_CACHE_DIR:-/data/target-image-cache}
       TARGET_IMAGE_CACHE_TTL_SECONDS: ${TARGET_IMAGE_CACHE_TTL_SECONDS:-604800}
       TARGET_IMAGE_TIMEOUT_SECONDS: ${TARGET_IMAGE_TIMEOUT_SECONDS:-8}
+      FITS_LIBRARY_ROOT: ${FITS_LIBRARY_ROOT:-/data/fits}
     restart: unless-stopped
     depends_on:
       postgres:
@@ -44,6 +45,7 @@ services:
         condition: service_healthy
     volumes:
       - astrofoto-data:/data
+      - ${FITS_LIBRARY_ROOT_HOST:-./data/fits}:${FITS_LIBRARY_ROOT:-/data/fits}:ro
     healthcheck:
       test:
         [

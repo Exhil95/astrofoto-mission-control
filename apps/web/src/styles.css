@@ -53,6 +53,7 @@ button {
 .timeline,
 .tonight-board,
 .capture-plan,
+.fits-ingest-panel,
 .processing-planner,
 .panel {
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -84,12 +85,19 @@ button {
   gap: 10px;
 }
 
+.frames-page {
+  display: grid;
+  grid-template-columns: minmax(520px, 1fr) minmax(300px, 380px);
+  gap: 10px;
+}
+
 .planner-controls,
 .capture-settings-stack,
 .capture-command-stack,
 .capture-board-stack,
 .process-target-stack,
-.process-side-stack {
+.process-side-stack,
+.frames-context-stack {
   min-height: 0;
   display: grid;
   gap: 10px;
@@ -112,6 +120,10 @@ button {
 .capture-board-stack,
 .process-target-stack {
   grid-template-rows: minmax(0, 1fr);
+}
+
+.frames-context-stack {
+  grid-template-rows: minmax(0, 1.05fr) minmax(0, 0.95fr);
 }
 
 .top-bar {
@@ -1445,6 +1457,50 @@ button {
   color: #ff9ab3;
 }
 
+.weather-cache-controls {
+  min-height: 32px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  gap: 8px;
+}
+
+.weather-refresh-tabs {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.weather-refresh-tabs button,
+.weather-refresh-button {
+  min-width: 0;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #c8d0df;
+  background: rgba(255, 255, 255, 0.045);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.weather-refresh-tabs button.is-active,
+.weather-refresh-button:hover {
+  border-color: rgba(56, 214, 201, 0.42);
+  color: #dffffb;
+  background: rgba(56, 214, 201, 0.1);
+}
+
+.weather-refresh-button:disabled {
+  opacity: 0.6;
+}
+
+.weather-refresh-button svg {
+  color: currentColor;
+}
+
 .condition-metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -2342,6 +2398,289 @@ button {
   color: #c8d0df;
 }
 
+.fits-ingest-panel {
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  gap: 10px;
+  overflow: hidden;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.fits-ingest-head,
+.fits-scan-controls,
+.fits-section-title,
+.fits-warning,
+.frame-context-head {
+  display: flex;
+  align-items: center;
+}
+
+.fits-ingest-head {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fits-ingest-head span,
+.frame-context-head span {
+  display: block;
+  overflow: hidden;
+  color: #8d95a8;
+  font-size: 12px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fits-ingest-head strong,
+.frame-context-head strong {
+  display: block;
+  margin-top: 3px;
+  color: #ffffff;
+  font-size: 17px;
+  line-height: 1.12;
+}
+
+.fits-ingest-head button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(56, 214, 201, 0.28);
+  border-radius: 8px;
+  color: #dffffb;
+  background: rgba(56, 214, 201, 0.1);
+  padding: 0 11px;
+}
+
+.fits-ingest-head button:disabled {
+  opacity: 0.62;
+}
+
+.fits-scan-controls {
+  min-width: 0;
+  gap: 8px;
+}
+
+.fits-scan-controls label {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.fits-scan-controls span {
+  color: #8d95a8;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.fits-path-field {
+  flex: 1 1 auto;
+}
+
+.fits-scan-controls input {
+  min-width: 0;
+  height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 8px;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0 10px;
+}
+
+.fits-scan-controls input[type="number"] {
+  width: 96px;
+}
+
+.fits-checkbox {
+  min-height: 34px;
+  align-self: end;
+  display: inline-flex !important;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 7px !important;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0 10px;
+}
+
+.fits-checkbox input {
+  width: 14px;
+  height: 14px;
+  accent-color: #38d6c9;
+}
+
+.fits-metrics {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.fits-metrics div,
+.fits-group-list div,
+.fits-frame-list div,
+.frame-expectation-list div,
+.frame-archive-list div {
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 9px;
+}
+
+.fits-metrics div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 7px;
+}
+
+.fits-metrics svg {
+  grid-row: span 3;
+  color: #38d6c9;
+}
+
+.fits-metrics span,
+.fits-metrics em,
+.fits-group-list span,
+.fits-group-list em,
+.fits-frame-list span,
+.fits-frame-list em,
+.frame-expectation-list span,
+.frame-expectation-list em,
+.frame-archive-list span,
+.frame-archive-list em {
+  display: block;
+  overflow: hidden;
+  color: #8d95a8;
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fits-metrics strong,
+.fits-group-list strong,
+.fits-frame-list strong,
+.frame-expectation-list strong,
+.frame-archive-list strong {
+  display: block;
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 13px;
+  line-height: 1.18;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fits-metrics strong {
+  color: #38d6c9;
+}
+
+.fits-content {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+  gap: 10px;
+  overflow: hidden;
+}
+
+.fits-content section {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
+  overflow: hidden;
+}
+
+.fits-section-title {
+  gap: 7px;
+  color: #c8d0df;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.fits-section-title svg {
+  color: #f7c873;
+}
+
+.fits-group-list,
+.fits-frame-list,
+.frame-expectation-list,
+.frame-archive-list {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  overflow: auto;
+}
+
+.fits-frame-list div.needs-review {
+  border-color: rgba(247, 200, 115, 0.24);
+  background: rgba(247, 200, 115, 0.06);
+}
+
+.fits-empty {
+  min-height: 72px;
+  display: grid;
+  place-items: center;
+}
+
+.fits-warning {
+  min-width: 0;
+  min-height: 28px;
+  gap: 7px;
+  border: 1px solid rgba(247, 200, 115, 0.22);
+  border-radius: 8px;
+  color: #fff2ca;
+  background: rgba(247, 200, 115, 0.07);
+  padding: 0 9px;
+}
+
+.fits-warning.is-clean {
+  border-color: rgba(56, 214, 201, 0.22);
+  color: #dffffb;
+  background: rgba(56, 214, 201, 0.07);
+}
+
+.fits-warning.is-error {
+  border-color: rgba(255, 111, 145, 0.32);
+  color: #ffd8e1;
+  background: rgba(255, 111, 145, 0.08);
+}
+
+.fits-warning svg {
+  flex: 0 0 auto;
+}
+
+.fits-warning span {
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.frame-expectation-panel,
+.frame-archive-panel {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+  overflow: hidden;
+  padding: 12px;
+}
+
+.frame-context-head {
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .capture-command-stack .timeline {
   grid-template-columns: minmax(120px, 170px) minmax(135px, 205px) minmax(0, 1fr);
   overflow: hidden;
@@ -2517,6 +2856,7 @@ button {
   .planner-page,
   .capture-page,
   .process-page,
+  .frames-page,
   .timeline,
   .bottom-grid {
     grid-template-columns: 1fr;
@@ -2553,7 +2893,9 @@ button {
   .capture-board-stack,
   .process-target-stack,
   .process-side-stack,
-  .processing-planner {
+  .frames-context-stack,
+  .processing-planner,
+  .fits-ingest-panel {
     grid-template-rows: auto;
     height: auto;
     overflow: visible;
@@ -2571,13 +2913,15 @@ button {
 
   .planner-page,
   .capture-page,
-  .process-page {
+  .process-page,
+  .frames-page {
     grid-template-rows: auto minmax(560px, 1fr) auto;
     overflow: visible;
   }
 
   .capture-page,
-  .process-page {
+  .process-page,
+  .frames-page {
     grid-template-rows: auto;
   }
 
@@ -2605,7 +2949,9 @@ button {
   }
 
   .processing-decision-grid,
-  .processing-lanes {
+  .processing-lanes,
+  .fits-metrics,
+  .fits-content {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -2626,8 +2972,19 @@ button {
   .timeline-track,
   .processing-decision-grid,
   .processing-lanes,
-  .processing-workflow {
+  .processing-workflow,
+  .fits-metrics,
+  .fits-content {
     grid-template-columns: 1fr;
+  }
+
+  .fits-scan-controls {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .fits-scan-controls input[type="number"] {
+    width: 100%;
   }
 
   .catalog-filter-row {

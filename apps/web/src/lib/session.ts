@@ -182,6 +182,59 @@ export type SessionArchiveEntry = {
 
 export type SessionArchivePayload = Omit<SessionArchiveEntry, "id" | "createdAt" | "updatedAt">;
 
+export type WeatherFetchOptions = {
+  cacheTtlMinutes?: 15 | 30 | 60;
+  forceRefresh?: boolean;
+};
+
+export type FitsFrameMetadata = {
+  fileName: string;
+  relativePath: string;
+  frameType: string;
+  filterName: string | null;
+  exposureSeconds: number | null;
+  gain: number | null;
+  offset: number | null;
+  sensorTemperatureC: number | null;
+  binning: string | null;
+  objectName: string | null;
+  dateObs: string | null;
+  camera: string | null;
+  telescope: string | null;
+  widthPx: number | null;
+  heightPx: number | null;
+  sizeMb: number;
+  status: string;
+  warnings: string[];
+};
+
+export type FitsGroupSummary = {
+  label: string;
+  frameType: string;
+  filterName: string | null;
+  frames: number;
+  totalExposureSeconds: number;
+  exposureSeconds: number[];
+  temperatureRangeC: string | null;
+};
+
+export type FitsScanResult = {
+  scanPath: string;
+  totalFiles: number;
+  parsedFiles: number;
+  rejectedFiles: number;
+  totalLightSeconds: number;
+  filters: string[];
+  frameTypes: string[];
+  objects: string[];
+  cameras: string[];
+  exposureRangeSeconds: string | null;
+  temperatureRangeC: string | null;
+  groups: FitsGroupSummary[];
+  frames: FitsFrameMetadata[];
+  warnings: string[];
+};
+
 type ApiSessionPlan = {
   target_id: string;
   target_name: string;
@@ -333,6 +386,54 @@ type ApiProcessingPlan = {
   warnings: string[];
 };
 
+type ApiFitsFrameMetadata = {
+  file_name: string;
+  relative_path: string;
+  frame_type: string;
+  filter_name: string | null;
+  exposure_seconds: number | null;
+  gain: number | null;
+  offset: number | null;
+  sensor_temperature_c: number | null;
+  binning: string | null;
+  object_name: string | null;
+  date_obs: string | null;
+  camera: string | null;
+  telescope: string | null;
+  width_px: number | null;
+  height_px: number | null;
+  size_mb: number;
+  status: string;
+  warnings: string[];
+};
+
+type ApiFitsGroupSummary = {
+  label: string;
+  frame_type: string;
+  filter_name: string | null;
+  frames: number;
+  total_exposure_seconds: number;
+  exposure_seconds: number[];
+  temperature_range_c: string | null;
+};
+
+type ApiFitsScanResult = {
+  scan_path: string;
+  total_files: number;
+  parsed_files: number;
+  rejected_files: number;
+  total_light_seconds: number;
+  filters: string[];
+  frame_types: string[];
+  objects: string[];
+  cameras: string[];
+  exposure_range_seconds: string | null;
+  temperature_range_c: string | null;
+  groups: ApiFitsGroupSummary[];
+  frames: ApiFitsFrameMetadata[];
+  warnings: string[];
+};
+
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
 
 export function getTodayIsoDate() {
@@ -341,7 +442,8 @@ export function getTodayIsoDate() {
 
 export async function fetchSessionPlan(
   targetId: string,
-  settings: SessionSettings
+  settings: SessionSettings,
+  weatherOptions?: WeatherFetchOptions
 ): Promise<SessionPlan> {
   const response = await fetch(`${apiBaseUrl}/api/session/plan`, {
     method: "POST",
@@ -352,7 +454,9 @@ export async function fetchSessionPlan(
       latitude_deg: settings.latitudeDeg,
       longitude_deg: settings.longitudeDeg,
       timezone: settings.timezone,
-      bortle: settings.bortle
+      bortle: settings.bortle,
+      forecast_cache_ttl_minutes: weatherOptions?.cacheTtlMinutes,
+      force_forecast_refresh: weatherOptions?.forceRefresh ?? false
     })
   });
 
@@ -365,7 +469,8 @@ export async function fetchSessionPlan(
 
 export async function fetchTonightBoard(
   settings: SessionSettings,
-  fov: FovResult
+  fov: FovResult,
+  weatherOptions?: WeatherFetchOptions
 ): Promise<TonightBoard> {
   const response = await fetch(`${apiBaseUrl}/api/session/tonight-board`, {
     method: "POST",
@@ -378,7 +483,9 @@ export async function fetchTonightBoard(
       bortle: settings.bortle,
       fov_horizontal_deg: fov.horizontalDeg,
       fov_vertical_deg: fov.verticalDeg,
-      limit: 5
+      limit: 5,
+      forecast_cache_ttl_minutes: weatherOptions?.cacheTtlMinutes,
+      force_forecast_refresh: weatherOptions?.forceRefresh ?? false
     })
   });
 
@@ -392,7 +499,8 @@ export async function fetchTonightBoard(
 export async function fetchCapturePlan(
   targetId: string,
   settings: SessionSettings,
-  fov: FovResult
+  fov: FovResult,
+  weatherOptions?: WeatherFetchOptions
 ): Promise<CapturePlan> {
   const response = await fetch(`${apiBaseUrl}/api/session/capture-plan`, {
     method: "POST",
@@ -406,7 +514,9 @@ export async function fetchCapturePlan(
       bortle: settings.bortle,
       fov_horizontal_deg: fov.horizontalDeg,
       fov_vertical_deg: fov.verticalDeg,
-      pixel_scale_arcsec: fov.pixelScaleArcsec
+      pixel_scale_arcsec: fov.pixelScaleArcsec,
+      forecast_cache_ttl_minutes: weatherOptions?.cacheTtlMinutes,
+      force_forecast_refresh: weatherOptions?.forceRefresh ?? false
     })
   });
 
@@ -453,6 +563,39 @@ export async function fetchProcessingPlan({
   }
 
   return normalizeProcessingPlan((await response.json()) as ApiProcessingPlan);
+}
+
+export async function scanFitsFrames({
+  path,
+  recursive,
+  maxFiles
+}: {
+  path: string;
+  recursive: boolean;
+  maxFiles: number;
+}): Promise<FitsScanResult> {
+  const response = await fetch(`${apiBaseUrl}/api/frames/fits-scan`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      path,
+      recursive,
+      max_files: maxFiles
+    })
+  });
+
+  if (!response.ok) {
+    let detail = "";
+    try {
+      const payload = (await response.json()) as { detail?: string };
+      detail = payload.detail ?? "";
+    } catch {
+      detail = "";
+    }
+    throw new Error(detail || `FITS scan failed with ${response.status}`);
+  }
+
+  return normalizeFitsScan((await response.json()) as ApiFitsScanResult);
 }
 
 export async function fetchSessionArchive(limit = 5): Promise<SessionArchiveEntry[]> {
@@ -876,6 +1019,52 @@ function normalizeSessionArchive(archive: ApiSessionArchive): SessionArchiveEntr
     captureMarkdown: archive.capture_markdown,
     createdAt: archive.created_at,
     updatedAt: archive.updated_at
+  };
+}
+
+function normalizeFitsScan(scan: ApiFitsScanResult): FitsScanResult {
+  return {
+    scanPath: scan.scan_path,
+    totalFiles: scan.total_files,
+    parsedFiles: scan.parsed_files,
+    rejectedFiles: scan.rejected_files,
+    totalLightSeconds: scan.total_light_seconds,
+    filters: scan.filters,
+    frameTypes: scan.frame_types,
+    objects: scan.objects,
+    cameras: scan.cameras,
+    exposureRangeSeconds: scan.exposure_range_seconds,
+    temperatureRangeC: scan.temperature_range_c,
+    groups: scan.groups.map((group) => ({
+      label: group.label,
+      frameType: group.frame_type,
+      filterName: group.filter_name,
+      frames: group.frames,
+      totalExposureSeconds: group.total_exposure_seconds,
+      exposureSeconds: group.exposure_seconds,
+      temperatureRangeC: group.temperature_range_c
+    })),
+    frames: scan.frames.map((frame) => ({
+      fileName: frame.file_name,
+      relativePath: frame.relative_path,
+      frameType: frame.frame_type,
+      filterName: frame.filter_name,
+      exposureSeconds: frame.exposure_seconds,
+      gain: frame.gain,
+      offset: frame.offset,
+      sensorTemperatureC: frame.sensor_temperature_c,
+      binning: frame.binning,
+      objectName: frame.object_name,
+      dateObs: frame.date_obs,
+      camera: frame.camera,
+      telescope: frame.telescope,
+      widthPx: frame.width_px,
+      heightPx: frame.height_px,
+      sizeMb: frame.size_mb,
+      status: frame.status,
+      warnings: frame.warnings
+    })),
+    warnings: scan.warnings
   };
 }
 

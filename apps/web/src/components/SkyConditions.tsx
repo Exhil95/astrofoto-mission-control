@@ -1,15 +1,25 @@
-import { CloudSun, Droplets, Eye, Wind } from "lucide-react";
+import { CloudSun, Droplets, Eye, RefreshCw, Wind } from "lucide-react";
 import type { ReactNode } from "react";
-import type { SkyForecast, SkyForecastHour } from "../lib/forecast";
+import type { ForecastRefreshMinutes, SkyForecast, SkyForecastHour } from "../lib/forecast";
 import type { SessionPlan } from "../lib/session";
 
 type SkyConditionsProps = {
   forecast: SkyForecast;
   plan: SessionPlan;
   loading: boolean;
+  refreshMinutes: ForecastRefreshMinutes;
+  onRefreshMinutesChange: (minutes: ForecastRefreshMinutes) => void;
+  onRefresh: () => void;
 };
 
-export function SkyConditions({ forecast, plan, loading }: SkyConditionsProps) {
+export function SkyConditions({
+  forecast,
+  plan,
+  loading,
+  refreshMinutes,
+  onRefreshMinutesChange,
+  onRefresh
+}: SkyConditionsProps) {
   const bestHour = forecast.hours.reduce(
     (best, hour) => (hour.imagingScore > best.imagingScore ? hour : best),
     forecast.hours[0] ?? emptyHour
@@ -28,6 +38,31 @@ export function SkyConditions({ forecast, plan, loading }: SkyConditionsProps) {
       <div className="section-title">
         <span>Sky Conditions</span>
         <strong>{loading ? "Syncing" : `${forecast.score}/100`}</strong>
+      </div>
+
+      <div className="weather-cache-controls" aria-label="Weather cache controls">
+        <div className="weather-refresh-tabs">
+          {[15, 30, 60].map((minutes) => (
+            <button
+              className={refreshMinutes === minutes ? "is-active" : ""}
+              key={minutes}
+              type="button"
+              title={`Refresh every ${minutes} minutes`}
+              onClick={() => onRefreshMinutesChange(minutes as ForecastRefreshMinutes)}
+            >
+              {minutes}m
+            </button>
+          ))}
+        </div>
+        <button
+          className="weather-refresh-button"
+          type="button"
+          title="Refresh weather now"
+          onClick={onRefresh}
+          disabled={loading}
+        >
+          <RefreshCw size={14} aria-hidden="true" />
+        </button>
       </div>
 
       <div className={`condition-score ${forecast.status}`}>

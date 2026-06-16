@@ -25,4 +25,13 @@
 - [x] Homelab image cache: proxy/cache generated DSS2 target plates locally for faster offline-friendly browsing.
 - [x] Session Archive / Capture Logs: save planned/captured sessions with filters, integration, weather, profile, and notes.
 - [x] Processing Planner: recommend calibration matching, stack strategy, drizzle/binning, and gradient risk.
-- [ ] FITS metadata ingest: scan uploaded or mounted frame folders and read capture metadata from FITS headers.
+- [x] FITS metadata ingest: scan uploaded or mounted frame folders and read capture metadata from FITS headers.
+
+## Phase 3 Roadmap
+
+- [ ] Multi-session Planner: plan several nights across targets, weather windows, Moon, white nights, and equipment profiles.
+- [x] Weather cache controls: configurable 15/30/60 minute refresh with manual cache bypass from the UI.
+- [ ] FITS quality scoring: FWHM, eccentricity, background level, star count, and cloud rejection hints.
+- [ ] Frame-to-session import: turn a scanned FITS folder into a captured Session Archive entry.
+- [ ] Calibration library browser: reusable dark/flat/bias inventory with temperature/exposure/filter matching.
+- [ ] Processing handoff export: PixInsight/Siril-friendly checklist generated from real captured frames.

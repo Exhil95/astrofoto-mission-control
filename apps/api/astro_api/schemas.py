@@ -89,6 +89,8 @@ class SessionPlanRequest(BaseModel):
     longitude_deg: float = Field(default=19.0238, ge=-180, le=180)
     timezone: str = Field(default="Europe/Warsaw", min_length=1, max_length=64)
     bortle: int = Field(default=4, ge=1, le=9)
+    forecast_cache_ttl_minutes: int | None = Field(default=None, ge=15, le=60)
+    force_forecast_refresh: bool = False
 
 
 class CapturePlanRequest(BaseModel):
@@ -101,6 +103,8 @@ class CapturePlanRequest(BaseModel):
     fov_horizontal_deg: float = Field(gt=0, le=60)
     fov_vertical_deg: float = Field(gt=0, le=60)
     pixel_scale_arcsec: float = Field(gt=0, le=20)
+    forecast_cache_ttl_minutes: int | None = Field(default=None, ge=15, le=60)
+    force_forecast_refresh: bool = False
 
 
 class TonightBoardRequest(BaseModel):
@@ -112,6 +116,8 @@ class TonightBoardRequest(BaseModel):
     fov_horizontal_deg: float = Field(gt=0, le=60)
     fov_vertical_deg: float = Field(gt=0, le=60)
     limit: int = Field(default=5, ge=1, le=12)
+    forecast_cache_ttl_minutes: int | None = Field(default=None, ge=15, le=60)
+    force_forecast_refresh: bool = False
 
 
 class TimelineSlot(BaseModel):
@@ -240,6 +246,60 @@ class ProcessingPlanResponse(BaseModel):
     warnings: list[str]
 
 
+class FitsScanRequest(BaseModel):
+    path: str = Field(default=".", min_length=1, max_length=500)
+    recursive: bool = True
+    max_files: int = Field(default=250, ge=1, le=2000)
+
+
+class FitsFrameMetadata(BaseModel):
+    file_name: str
+    relative_path: str
+    frame_type: str
+    filter_name: str | None = None
+    exposure_seconds: float | None = None
+    gain: float | None = None
+    offset: float | None = None
+    sensor_temperature_c: float | None = None
+    binning: str | None = None
+    object_name: str | None = None
+    date_obs: str | None = None
+    camera: str | None = None
+    telescope: str | None = None
+    width_px: int | None = None
+    height_px: int | None = None
+    size_mb: float
+    status: str
+    warnings: list[str]
+
+
+class FitsGroupSummary(BaseModel):
+    label: str
+    frame_type: str
+    filter_name: str | None = None
+    frames: int
+    total_exposure_seconds: float
+    exposure_seconds: list[float]
+    temperature_range_c: str | None = None
+
+
+class FitsScanResponse(BaseModel):
+    scan_path: str
+    total_files: int
+    parsed_files: int
+    rejected_files: int
+    total_light_seconds: float
+    filters: list[str]
+    frame_types: list[str]
+    objects: list[str]
+    cameras: list[str]
+    exposure_range_seconds: str | None = None
+    temperature_range_c: str | None = None
+    groups: list[FitsGroupSummary]
+    frames: list[FitsFrameMetadata]
+    warnings: list[str]
+
+
 class TonightBoardItem(BaseModel):
     target_id: str
     target_name: str
@@ -315,6 +375,8 @@ class SkyForecastRequest(BaseModel):
     latitude_deg: float = Field(default=50.2649, ge=-90, le=90)
     longitude_deg: float = Field(default=19.0238, ge=-180, le=180)
     timezone: str = Field(default="Europe/Warsaw", min_length=1, max_length=64)
+    cache_ttl_minutes: int | None = Field(default=None, ge=15, le=60)
+    force_refresh: bool = False
 
 
 class SkyForecastHour(BaseModel):

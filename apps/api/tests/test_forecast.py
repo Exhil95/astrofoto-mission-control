@@ -1,6 +1,6 @@
 from datetime import date
 
-from astro_api.forecast import get_sky_forecast
+from astro_api.forecast import _FORECAST_CACHE, get_sky_forecast
 from astro_api.schemas import SkyForecastRequest
 
 
@@ -61,3 +61,48 @@ def test_sky_forecast_uses_offline_fallback_when_provider_fails() -> None:
     assert len(forecast.hours) == 13
     assert forecast.status in {"shoot", "risk", "skip"}
     assert forecast.warnings
+
+
+def test_sky_forecast_respects_cache_ttl_and_force_refresh() -> None:
+    _FORECAST_CACHE.clear()
+    payload = SkyForecastRequest(
+        date=date(2026, 7, 20),
+        latitude_deg=50.2649,
+        longitude_deg=19.0238,
+        timezone="Europe/Warsaw",
+        cache_ttl_minutes=15,
+    )
+    calls = 0
+
+    def fetch_json(url: str, timeout_seconds: float) -> dict:
+        nonlocal calls
+        calls += 1
+        return {
+            "hourly": {
+                "time": ["2026-07-20T18:00", "2026-07-20T23:00", "2026-07-21T01:00"],
+                "temperature_2m": [18.0, 14.0, 13.0],
+                "relative_humidity_2m": [74, 82, 79],
+                "dew_point_2m": [11.0, 12.0, 10.5],
+                "cloud_cover": [22 + calls, 36, 30],
+                "cloud_cover_low": [6, 12, 8],
+                "cloud_cover_mid": [14, 20, 18],
+                "cloud_cover_high": [32, 44, 38],
+                "visibility": [26000, 16000, 18000],
+                "wind_speed_10m": [8.0, 10.0, 9.0],
+                "wind_gusts_10m": [16.0, 18.0, 17.0],
+                "precipitation_probability": [4, 12, 8],
+                "precipitation": [0, 0, 0],
+            }
+        }
+
+    first = get_sky_forecast(payload, fetch_json=fetch_json)
+    second = get_sky_forecast(payload, fetch_json=fetch_json)
+    forced = get_sky_forecast(
+        payload.model_copy(update={"force_refresh": True}),
+        fetch_json=fetch_json,
+    )
+
+    assert first.source == "open-meteo"
+    assert second.source == "cache"
+    assert forced.source == "open-meteo"
+    assert calls == 2

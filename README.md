@@ -46,8 +46,10 @@ See [docs/HOMELAB.md](docs/HOMELAB.md) for persistent SQLite profiles, healthche
 - JSON-backed target catalog shared by the API and web fallback
 - Rich optical profiles for telescope, reducer, camera, filters, guiding, focuser, and mount metadata
 - Tonight Board ranking targets by weather, altitude, Moon, white nights, and FOV
+- Weather cache controls with 15/30/60 minute refresh and manual cache bypass
 - Capture Plan runbook with lights, calibration frames, dithering, autofocus, and Markdown export
 - Processing Planner for calibration matching, stack strategy, drizzle/binning, and gradient risk
+- FITS metadata ingest for mounted homelab frame folders, filters, exposures, temperature, and calibration grouping
 - Session Archive for saved planned/captured runs with filters, integration, weather, profile, and notes
 - Homelab target image proxy/cache for generated DSS2 object plates
 - Session timeline mock for planning panels

@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .catalog import TARGETS
 from .forecast import get_sky_forecast
+from .fits_ingest import FitsIngestError, scan_fits_metadata
 from .image_cache import (
     TargetImageNotFoundError,
     TargetImageUnavailableError,
@@ -12,6 +13,8 @@ from .profiles import create_profile, delete_profile, list_profiles, update_prof
 from .schemas import (
     CapturePlanRequest,
     CapturePlanResponse,
+    FitsScanRequest,
+    FitsScanResponse,
     FovRequest,
     FovResponse,
     ProcessingPlanRequest,
@@ -130,6 +133,14 @@ def capture_plan(payload: CapturePlanRequest) -> CapturePlanResponse:
 @app.post("/api/session/processing-plan", response_model=ProcessingPlanResponse)
 def processing_plan(payload: ProcessingPlanRequest) -> ProcessingPlanResponse:
     return build_processing_plan(payload)
+
+
+@app.post("/api/frames/fits-scan", response_model=FitsScanResponse)
+def fits_scan(payload: FitsScanRequest) -> FitsScanResponse:
+    try:
+        return scan_fits_metadata(payload)
+    except FitsIngestError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.post("/api/session/tonight-board", response_model=TonightBoardResponse)
