@@ -448,6 +448,12 @@ export function App() {
     }
   };
 
+  const addSessionArchive = (archive: SessionArchiveEntry) => {
+    setSessionArchives((items) =>
+      [archive, ...items.filter((item) => item.id !== archive.id)].slice(0, 5)
+    );
+  };
+
   useEffect(() => {
     window.localStorage.setItem("astrofoto-workspace-mode", workspaceMode);
   }, [workspaceMode]);
@@ -1082,7 +1088,13 @@ export function App() {
 
       {workspaceMode === "frames" && (
         <section className="workspace-page frames-page" aria-label="Frames workspace">
-          <FitsIngestPanel />
+          <FitsIngestPanel
+            targets={targetCatalog}
+            selectedProfile={selectedProfile}
+            settings={sessionSettings}
+            fov={fov}
+            onArchiveCreated={addSessionArchive}
+          />
 
           <aside className="frames-context-stack" aria-label="Frame context">
             <section className="panel frame-expectation-panel" aria-label="Expected capture frames">
