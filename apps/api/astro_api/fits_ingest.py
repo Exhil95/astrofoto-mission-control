@@ -1,8 +1,10 @@
 from collections import defaultdict
+from dataclasses import dataclass
 from pathlib import Path
 from statistics import median
 from typing import Any
 
+import numpy as np
 from astropy.io import fits
 
 from .schemas import (
@@ -14,6 +16,17 @@ from .schemas import (
 from .settings import get_settings
 
 FITS_EXTENSIONS = {".fit", ".fits", ".fts"}
+
+
+@dataclass
+class ImageQuality:
+    quality_score: int | None
+    star_count: int | None
+    fwhm_px: float | None
+    eccentricity: float | None
+    background_adu: float | None
+    background_noise_adu: float | None
+    quality_flags: list[str]
 
 
 class FitsIngestError(ValueError):
@@ -122,6 +135,7 @@ def _read_fits_frame(file_path: Path, root: Path) -> FitsFrameMetadata:
         header = hdul[0].header
         warnings = _frame_warnings(header)
         frame_type = _normalize_frame_type(_header_text(header, "IMAGETYP", "FRAME", "OBSTYPE"))
+        quality = _analyze_image_quality(hdul[0].data, frame_type)
         exposure_seconds = _header_float(header, "EXPTIME", "EXPOSURE")
         filter_name = _header_text(header, "FILTER", "INSFLNAM", "FILTERID")
         sensor_temperature_c = _header_float(
@@ -150,7 +164,14 @@ def _read_fits_frame(file_path: Path, root: Path) -> FitsFrameMetadata:
             width_px=_header_int(header, "NAXIS1"),
             height_px=_header_int(header, "NAXIS2"),
             size_mb=round(file_path.stat().st_size / 1_048_576, 3),
-            status="ready" if not warnings else "needs-review",
+            quality_score=quality.quality_score,
+            star_count=quality.star_count,
+            fwhm_px=quality.fwhm_px,
+            eccentricity=quality.eccentricity,
+            background_adu=quality.background_adu,
+            background_noise_adu=quality.background_noise_adu,
+            quality_flags=quality.quality_flags,
+            status="ready" if not warnings and not quality.quality_flags else "needs-review",
             warnings=warnings,
         )
 
@@ -164,6 +185,242 @@ def _frame_warnings(header: Any) -> list[str]:
     if not _header_text(header, "DATE-OBS", "DATE"):
         warnings.append("Missing DATE-OBS")
     return warnings
+
+
+def _analyze_image_quality(data: Any, frame_type: str) -> ImageQuality:
+    if data is None:
+        return _empty_quality()
+
+    try:
+        raw_image = np.asarray(data)
+        image = np.asarray(data, dtype=np.float32)
+    except (TypeError, ValueError):
+        return _empty_quality()
+
+    image = np.squeeze(image)
+    if image.ndim != 2 or image.size < 100:
+        return _empty_quality()
+
+    sampled_image, stride = _sample_image(image)
+    finite_pixels = sampled_image[np.isfinite(sampled_image)]
+    if finite_pixels.size < 100:
+        return _empty_quality()
+
+    background = float(np.median(finite_pixels))
+    mad = float(np.median(np.abs(finite_pixels - background)))
+    noise = 1.4826 * mad if mad > 0 else float(np.std(finite_pixels))
+    noise = max(noise, 0.0001)
+
+    if frame_type != "Light":
+        return ImageQuality(
+            quality_score=None,
+            star_count=None,
+            fwhm_px=None,
+            eccentricity=None,
+            background_adu=round(background, 2),
+            background_noise_adu=round(noise, 2),
+            quality_flags=[],
+        )
+
+    star_count, fwhm_values, eccentricity_values = _measure_stars(
+        sampled_image,
+        background,
+        noise,
+        stride,
+    )
+    fwhm_px = float(median(fwhm_values)) if fwhm_values else None
+    eccentricity = float(median(eccentricity_values)) if eccentricity_values else None
+    clipped_fraction = _clipped_fraction(raw_image)
+    score, flags = _score_light_quality(
+        star_count=star_count,
+        fwhm_px=fwhm_px,
+        eccentricity=eccentricity,
+        background_adu=background,
+        background_noise_adu=noise,
+        clipped_fraction=clipped_fraction,
+    )
+
+    return ImageQuality(
+        quality_score=score,
+        star_count=star_count,
+        fwhm_px=round(fwhm_px, 2) if fwhm_px is not None else None,
+        eccentricity=round(eccentricity, 3) if eccentricity is not None else None,
+        background_adu=round(background, 2),
+        background_noise_adu=round(noise, 2),
+        quality_flags=flags,
+    )
+
+
+def _empty_quality() -> ImageQuality:
+    return ImageQuality(
+        quality_score=None,
+        star_count=None,
+        fwhm_px=None,
+        eccentricity=None,
+        background_adu=None,
+        background_noise_adu=None,
+        quality_flags=[],
+    )
+
+
+def _sample_image(image: np.ndarray) -> tuple[np.ndarray, int]:
+    max_pixels = 900_000
+    stride = max(1, int(np.ceil(np.sqrt(image.size / max_pixels))))
+    return image[::stride, ::stride], stride
+
+
+def _measure_stars(
+    image: np.ndarray,
+    background: float,
+    noise: float,
+    stride: int,
+) -> tuple[int, list[float], list[float]]:
+    working = np.nan_to_num(image, nan=background, posinf=background, neginf=background)
+    if working.shape[0] < 5 or working.shape[1] < 5:
+        return 0, [], []
+
+    threshold = background + max(noise * 5.0, 1.0)
+    center = working[1:-1, 1:-1]
+    peaks = center > threshold
+    for y_offset in (-1, 0, 1):
+        for x_offset in (-1, 0, 1):
+            if y_offset == 0 and x_offset == 0:
+                continue
+            peaks &= center >= working[1 + y_offset : working.shape[0] - 1 + y_offset, 1 + x_offset : working.shape[1] - 1 + x_offset]
+
+    peak_y, peak_x = np.nonzero(peaks)
+    if peak_y.size == 0:
+        return 0, [], []
+
+    peak_y = peak_y + 1
+    peak_x = peak_x + 1
+    peak_values = working[peak_y, peak_x]
+    star_count = int(peak_y.size)
+    if peak_y.size > 160:
+        brightest = np.argpartition(peak_values, -160)[-160:]
+        peak_y = peak_y[brightest]
+        peak_x = peak_x[brightest]
+
+    fwhm_values: list[float] = []
+    eccentricity_values: list[float] = []
+    for y, x in zip(peak_y, peak_x, strict=False):
+        measurement = _measure_star_shape(working, int(y), int(x), background, noise, stride)
+        if measurement is None:
+            continue
+        fwhm_px, eccentricity = measurement
+        fwhm_values.append(fwhm_px)
+        eccentricity_values.append(eccentricity)
+
+    return star_count, fwhm_values, eccentricity_values
+
+
+def _measure_star_shape(
+    image: np.ndarray,
+    y: int,
+    x: int,
+    background: float,
+    noise: float,
+    stride: int,
+) -> tuple[float, float] | None:
+    radius = 6
+    if y < radius or x < radius or y >= image.shape[0] - radius or x >= image.shape[1] - radius:
+        return None
+
+    patch = image[y - radius : y + radius + 1, x - radius : x + radius + 1] - background
+    patch = np.where(np.isfinite(patch) & (patch > noise * 2), patch, 0.0)
+    total = float(np.sum(patch))
+    if total <= 0:
+        return None
+
+    yy, xx = np.indices(patch.shape, dtype=np.float32)
+    centroid_x = float(np.sum(xx * patch) / total)
+    centroid_y = float(np.sum(yy * patch) / total)
+    dx = xx - centroid_x
+    dy = yy - centroid_y
+    cov_xx = float(np.sum(dx * dx * patch) / total)
+    cov_yy = float(np.sum(dy * dy * patch) / total)
+    cov_xy = float(np.sum(dx * dy * patch) / total)
+    trace = cov_xx + cov_yy
+    determinant = cov_xx * cov_yy - cov_xy * cov_xy
+    discriminant = max(0.0, (trace * trace / 4) - determinant)
+    major_variance = max(0.0, trace / 2 + discriminant**0.5)
+    minor_variance = max(0.0, trace / 2 - discriminant**0.5)
+    if major_variance <= 0 or minor_variance <= 0:
+        return None
+
+    sigma_major = major_variance**0.5
+    sigma_minor = minor_variance**0.5
+    fwhm_px = 2.355 * ((sigma_major**2 + sigma_minor**2) / 2) ** 0.5 * stride
+    eccentricity = 1 - min(1.0, sigma_minor / sigma_major)
+    return fwhm_px, eccentricity
+
+
+def _clipped_fraction(raw_image: np.ndarray) -> float:
+    if not np.issubdtype(raw_image.dtype, np.integer):
+        return 0.0
+
+    finite = raw_image[np.isfinite(raw_image)]
+    if finite.size == 0:
+        return 0.0
+
+    dtype_max = np.iinfo(raw_image.dtype).max
+    return float(np.count_nonzero(finite >= dtype_max) / finite.size)
+
+
+def _score_light_quality(
+    *,
+    star_count: int,
+    fwhm_px: float | None,
+    eccentricity: float | None,
+    background_adu: float,
+    background_noise_adu: float,
+    clipped_fraction: float,
+) -> tuple[int, list[str]]:
+    score = 100.0
+    flags: list[str] = []
+
+    if star_count == 0:
+        flags.append("No stars detected")
+        score -= 55
+    elif star_count < 8:
+        flags.append("Sparse stars")
+        score -= 12 + (8 - star_count) * 4
+    elif star_count < 15:
+        score -= (15 - star_count) * 1.5
+
+    if fwhm_px is None:
+        if star_count > 0:
+            flags.append("Could not measure FWHM")
+            score -= 10
+    else:
+        if fwhm_px > 8:
+            flags.append("Bloated stars")
+        score -= min(30, max(0.0, (fwhm_px - 3.2) * 5.5))
+
+    if eccentricity is not None:
+        if eccentricity > 0.55:
+            flags.append("Elongated stars")
+        elif eccentricity > 0.42:
+            flags.append("Mild star elongation")
+        score -= min(30, max(0.0, (eccentricity - 0.35) * 85))
+
+    noise_ratio = background_noise_adu / max(abs(background_adu), 1.0)
+    if noise_ratio > 0.18:
+        flags.append("Noisy background")
+        score -= min(20, (noise_ratio - 0.18) * 80)
+
+    if background_adu > 20_000:
+        flags.append("Bright background")
+        score -= min(18, (background_adu - 20_000) / 3000)
+
+    if clipped_fraction > 0.001:
+        flags.append("Clipped highlights")
+        score -= min(25, clipped_fraction * 10_000)
+    elif clipped_fraction > 0.0001:
+        flags.append("Slight clipping")
+        score -= 5
+
+    return int(max(0, min(100, round(score)))), flags
 
 
 def _summarize_groups(frames: list[FitsFrameMetadata]) -> list[FitsGroupSummary]:
@@ -241,6 +498,14 @@ def _scan_warnings(
     for group in groups:
         if group.frame_type in {"Light", "Dark"} and len(group.exposure_seconds) > 1:
             warnings.append(f"Mixed exposures in {group.label}")
+
+    quality_review_frames = [
+        frame
+        for frame in frames
+        if frame.frame_type == "Light" and frame.quality_score is not None and frame.quality_score < 60
+    ]
+    if quality_review_frames:
+        warnings.append(f"{len(quality_review_frames)} light frames flagged for quality")
 
     return warnings
 

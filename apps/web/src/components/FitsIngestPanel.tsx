@@ -6,7 +6,6 @@ import {
   FileSearch,
   FolderOpen,
   Layers3,
-  Thermometer,
   TriangleAlert
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -89,6 +88,7 @@ export function FitsIngestPanel({
   };
 
   const lightMinutes = result ? Math.round(result.totalLightSeconds / 60) : 0;
+  const qualitySummary = result ? summarizeQuality(result.frames) : null;
 
   return (
     <section className="fits-ingest-panel" aria-label="FITS metadata ingest">
@@ -164,10 +164,16 @@ export function FitsIngestPanel({
           detail={result?.exposureRangeSeconds ?? "exposure"}
         />
         <MetricCard
-          icon={<Thermometer size={15} aria-hidden="true" />}
-          label="Sensor"
-          value={result?.temperatureRangeC ?? "--"}
-          detail={result?.cameras.join(" / ") || "camera"}
+          icon={<CheckCircle2 size={15} aria-hidden="true" />}
+          label="Quality"
+          value={qualitySummary ? `Q${qualitySummary.averageScore}` : "--"}
+          detail={
+            qualitySummary
+              ? `${qualitySummary.reviewFrames} review / FWHM ${formatOptionalNumber(
+                  qualitySummary.fwhmPx
+                )}`
+              : result?.cameras.join(" / ") || "waiting"
+          }
         />
         <MetricCard
           icon={<Layers3 size={15} aria-hidden="true" />}
@@ -266,13 +272,19 @@ function MetricCard({
 }
 
 function FrameRow({ frame }: { frame: FitsFrameMetadata }) {
+  const scoreLabel = frame.qualityScore !== null ? ` / Q${frame.qualityScore}` : "";
+  const frameFlags = [...frame.warnings, ...frame.qualityFlags];
   return (
     <div className={frame.status === "ready" ? "" : "needs-review"}>
-      <span>{frame.frameType}</span>
+      <span>
+        {frame.frameType}
+        {scoreLabel}
+      </span>
       <strong>{frame.fileName}</strong>
       <em>
         {frame.filterName ?? "No filter"} / {frame.exposureSeconds ?? "--"}s /{" "}
-        {frame.sensorTemperatureC ?? "--"}C
+        {frame.sensorTemperatureC ?? "--"}C / {frameQualityDetail(frame)}
+        {frameFlags.length ? ` / ${frameFlags[0]}` : ""}
       </em>
     </div>
   );
@@ -289,6 +301,65 @@ function EmptyState({ label }: { label: string }) {
 function formatSeconds(seconds: number) {
   if (seconds < 60) return `${Math.round(seconds)}s`;
   return `${Math.round(seconds / 60)}m`;
+}
+
+function frameQualityDetail(frame: FitsFrameMetadata) {
+  if (frame.qualityScore === null) {
+    return frame.backgroundAdu !== null ? `BG ${formatOptionalNumber(frame.backgroundAdu)}` : "quality --";
+  }
+  return `${frame.starCount ?? 0} stars / FWHM ${formatOptionalNumber(
+    frame.fwhmPx
+  )} / e ${formatOptionalNumber(frame.eccentricity)}`;
+}
+
+function summarizeQuality(frames: FitsFrameMetadata[]) {
+  const lightFrames = frames.filter((frame) => frame.frameType === "Light");
+  const scoredFrames = lightFrames.filter((frame) => frame.qualityScore !== null);
+  if (!scoredFrames.length) return null;
+
+  const averageScore = Math.round(
+    scoredFrames.reduce((sum, frame) => sum + (frame.qualityScore ?? 0), 0) / scoredFrames.length
+  );
+  const fwhmPx = medianNumber(scoredFrames.map((frame) => frame.fwhmPx));
+  const eccentricity = medianNumber(scoredFrames.map((frame) => frame.eccentricity));
+  const starCount = Math.round(
+    scoredFrames.reduce((sum, frame) => sum + (frame.starCount ?? 0), 0) / scoredFrames.length
+  );
+  const reviewFrames = scoredFrames.filter(
+    (frame) => frame.status !== "ready" || (frame.qualityScore ?? 100) < 60
+  ).length;
+  const flags = Array.from(new Set(scoredFrames.flatMap((frame) => frame.qualityFlags)));
+
+  return {
+    averageScore,
+    fwhmPx,
+    eccentricity,
+    starCount,
+    reviewFrames,
+    flags
+  };
+}
+
+function qualitySummaryLabel(frames: FitsFrameMetadata[]) {
+  const summary = summarizeQuality(frames);
+  if (!summary) return "Quality: not measured";
+  return `Quality: Q${summary.averageScore}, ${summary.starCount} stars avg, FWHM ${formatOptionalNumber(
+    summary.fwhmPx
+  )}, e ${formatOptionalNumber(summary.eccentricity)}${
+    summary.reviewFrames ? `, ${summary.reviewFrames} review` : ""
+  }`;
+}
+
+function medianNumber(values: Array<number | null>) {
+  const sorted = values.filter((value): value is number => value !== null).sort((a, b) => a - b);
+  if (!sorted.length) return null;
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle];
+}
+
+function formatOptionalNumber(value: number | null) {
+  if (value === null) return "--";
+  return Number.isInteger(value) ? `${value}` : value.toFixed(value < 1 ? 2 : 1);
 }
 
 function importLabel(state: "idle" | "saving" | "saved" | "failed") {
@@ -324,6 +395,7 @@ function createArchiveImportDraft({
   const capturedFrames = lightFrames.length;
   const totalLightSeconds = lightFrames.reduce((sum, frame) => sum + (frame.exposureSeconds ?? 0), 0);
   const totalIntegrationMinutes = Math.max(0, Math.round(totalLightSeconds / 60));
+  const qualitySummary = summarizeQuality(lightFrames);
   const firstLight = earliestFrame(lightFrames);
   const lastLight = latestFrame(lightFrames);
   const sessionDate = dateFromFrame(firstLight) ?? settings.date;
@@ -376,7 +448,9 @@ function createArchiveImportDraft({
     payload,
     confidence,
     targetLabel: targetName,
-    summary: `${sessionDate} / ${totalIntegrationMinutes} min / ${payload.filterNames.join("+")}`
+    summary: `${sessionDate} / ${totalIntegrationMinutes} min / ${payload.filterNames.join("+")}${
+      qualitySummary ? ` / Q${qualitySummary.averageScore}` : ""
+    }`
   };
 }
 
@@ -473,6 +547,7 @@ function createFitsArchiveNotes(
     `FITS import: ${confidence}`,
     `Scan path: ${scan.scanPath}`,
     `Lights: ${lightFrames.length} frames, ${Math.round(scan.totalLightSeconds / 60)} min`,
+    qualitySummaryLabel(lightFrames),
     `Camera: ${scan.cameras.join(", ") || "unknown"}`,
     `Temperature: ${scan.temperatureRangeC ?? "unknown"}`,
     `Profile: ${profile?.name ?? "Custom setup"}`,
@@ -524,6 +599,7 @@ function createFitsArchiveMarkdown({
     `- Lights: ${lightFrames.length} frames`,
     `- Integration: ${totalIntegrationMinutes} min`,
     `- Filters: ${filterSummary}`,
+    `- ${qualitySummaryLabel(lightFrames)}`,
     `- Camera: ${scan.cameras.join(", ") || "unknown"}`,
     `- Temperature: ${scan.temperatureRangeC ?? "unknown"}`,
     `- Profile: ${selectedProfile?.name ?? "Custom setup"}`,

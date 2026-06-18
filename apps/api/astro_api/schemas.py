@@ -269,6 +269,13 @@ class FitsFrameMetadata(BaseModel):
     width_px: int | None = None
     height_px: int | None = None
     size_mb: float
+    quality_score: int | None = Field(default=None, ge=0, le=100)
+    star_count: int | None = Field(default=None, ge=0)
+    fwhm_px: float | None = Field(default=None, ge=0)
+    eccentricity: float | None = Field(default=None, ge=0, le=1)
+    background_adu: float | None = None
+    background_noise_adu: float | None = None
+    quality_flags: list[str] = Field(default_factory=list)
     status: str
     warnings: list[str]
 

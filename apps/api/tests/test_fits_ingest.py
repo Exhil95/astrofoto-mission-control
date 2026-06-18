@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import numpy as np
 import pytest
 from astropy.io import fits
 
@@ -84,9 +85,93 @@ def test_scan_fits_metadata_rejects_path_traversal(tmp_path: Path) -> None:
         )
 
 
-def _write_fits(path: Path, header_values: dict[str, object]) -> None:
+def test_scan_fits_metadata_scores_light_quality(tmp_path: Path) -> None:
+    base_headers = {
+        "IMAGETYP": "Light",
+        "FILTER": "Ha",
+        "EXPTIME": 300,
+        "OBJECT": "North America",
+        "DATE-OBS": "2026-06-15T22:10:00",
+        "INSTRUME": "ASI2600MM",
+    }
+    _write_fits(
+        tmp_path / "good.fit",
+        base_headers,
+        data=_synthetic_star_field(
+            seed=1,
+            star_count=16,
+            background=720,
+            noise=4,
+            sigma_x=0.9,
+            sigma_y=0.9,
+        ),
+    )
+    _write_fits(
+        tmp_path / "poor.fit",
+        {**base_headers, "DATE-OBS": "2026-06-15T22:15:00"},
+        data=_synthetic_star_field(
+            seed=2,
+            star_count=3,
+            background=1450,
+            noise=35,
+            sigma_x=4.0,
+            sigma_y=1.0,
+        ),
+    )
+
+    result = scan_fits_metadata(
+        FitsScanRequest(path=".", recursive=True, max_files=20),
+        library_root=tmp_path,
+    )
+
+    frames = {frame.file_name: frame for frame in result.frames}
+    good = frames["good.fit"]
+    poor = frames["poor.fit"]
+
+    assert good.quality_score is not None
+    assert good.quality_score >= 75
+    assert good.star_count is not None and good.star_count >= 12
+    assert good.fwhm_px is not None and good.fwhm_px < 5
+    assert good.eccentricity is not None and good.eccentricity < 0.4
+    assert good.background_adu is not None and good.background_adu > 0
+    assert good.status == "ready"
+
+    assert poor.quality_score is not None
+    assert poor.quality_score < good.quality_score
+    assert "Sparse stars" in poor.quality_flags
+    assert poor.status == "needs-review"
+    assert any("flagged for quality" in warning for warning in result.warnings)
+
+
+def _write_fits(
+    path: Path,
+    header_values: dict[str, object],
+    data: np.ndarray | None = None,
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    hdu = fits.PrimaryHDU()
+    hdu = fits.PrimaryHDU(data=data)
     for key, value in header_values.items():
         hdu.header[key] = value
     hdu.writeto(path)
+
+
+def _synthetic_star_field(
+    *,
+    seed: int,
+    star_count: int,
+    background: float,
+    noise: float,
+    sigma_x: float,
+    sigma_y: float,
+) -> np.ndarray:
+    rng = np.random.default_rng(seed)
+    image = rng.normal(background, noise, size=(96, 96)).astype(np.float32)
+    yy, xx = np.indices(image.shape, dtype=np.float32)
+    for _ in range(star_count):
+        x = rng.uniform(9, image.shape[1] - 9)
+        y = rng.uniform(9, image.shape[0] - 9)
+        amplitude = rng.uniform(1200, 1800)
+        image += amplitude * np.exp(
+            -(((xx - x) ** 2) / (2 * sigma_x**2) + ((yy - y) ** 2) / (2 * sigma_y**2))
+        )
+    return image

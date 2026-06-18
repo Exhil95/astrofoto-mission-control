@@ -256,6 +256,13 @@ export type FitsFrameMetadata = {
   widthPx: number | null;
   heightPx: number | null;
   sizeMb: number;
+  qualityScore: number | null;
+  starCount: number | null;
+  fwhmPx: number | null;
+  eccentricity: number | null;
+  backgroundAdu: number | null;
+  backgroundNoiseAdu: number | null;
+  qualityFlags: string[];
   status: string;
   warnings: string[];
 };
@@ -503,6 +510,13 @@ type ApiFitsFrameMetadata = {
   width_px: number | null;
   height_px: number | null;
   size_mb: number;
+  quality_score: number | null;
+  star_count: number | null;
+  fwhm_px: number | null;
+  eccentricity: number | null;
+  background_adu: number | null;
+  background_noise_adu: number | null;
+  quality_flags: string[];
   status: string;
   warnings: string[];
 };
@@ -1328,6 +1342,13 @@ function normalizeFitsScan(scan: ApiFitsScanResult): FitsScanResult {
       widthPx: frame.width_px,
       heightPx: frame.height_px,
       sizeMb: frame.size_mb,
+      qualityScore: frame.quality_score ?? null,
+      starCount: frame.star_count ?? null,
+      fwhmPx: frame.fwhm_px ?? null,
+      eccentricity: frame.eccentricity ?? null,
+      backgroundAdu: frame.background_adu ?? null,
+      backgroundNoiseAdu: frame.background_noise_adu ?? null,
+      qualityFlags: frame.quality_flags ?? [],
       status: frame.status,
       warnings: frame.warnings
     })),
