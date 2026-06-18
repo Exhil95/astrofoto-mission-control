@@ -34,5 +34,6 @@
 - [x] Weather cache controls: configurable 15/30/60 minute refresh with manual cache bypass from the UI.
 - [x] FITS quality scoring: FWHM, eccentricity, background level, star count, and cloud rejection hints.
 - [x] Frame-to-session import: turn a scanned FITS folder into a captured Session Archive entry.
-- [ ] Calibration library browser: reusable dark/flat/bias inventory with temperature/exposure/filter matching.
+- [ ] Internationalization: translate the app into Polish, German, Italian, and Spanish.
+- [x] Calibration library browser: reusable dark/flat/bias inventory with temperature/exposure/filter matching.
 - [ ] Processing handoff export: PixInsight/Siril-friendly checklist generated from real captured frames.

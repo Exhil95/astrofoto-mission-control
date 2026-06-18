@@ -183,16 +183,14 @@ export function FitsIngestPanel({
         />
       </div>
 
-      {result && (
-        <div className={`fits-import-card ${importDraft ? "" : "is-disabled"}`}>
-          <div>
-            <span>{importDraft ? importDraft.confidence : "No light frames"}</span>
-            <strong>{importDraft?.targetLabel ?? "Import unavailable"}</strong>
-            <em>{importDraft?.summary ?? "Scan needs at least one Light frame"}</em>
-          </div>
-          <b>{importDraft ? `${importDraft.payload.capturedFrames} frames` : "--"}</b>
+      <div className={`fits-import-card ${importDraft ? "" : "is-disabled"}`}>
+        <div>
+          <span>{importDraft ? importDraft.confidence : result ? "No light frames" : "Archive import"}</span>
+          <strong>{importDraft?.targetLabel ?? "Import unavailable"}</strong>
+          <em>{importDraft?.summary ?? (result ? "Scan needs at least one Light frame" : "Scan a folder to create a captured session")}</em>
         </div>
-      )}
+        <b>{importDraft ? `${importDraft.payload.capturedFrames} frames` : "--"}</b>
+      </div>
 
       <div className="fits-content">
         <section aria-label="FITS groups">

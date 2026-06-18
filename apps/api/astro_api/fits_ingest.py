@@ -8,6 +8,9 @@ import numpy as np
 from astropy.io import fits
 
 from .schemas import (
+    CalibrationLibraryItem,
+    CalibrationLibraryRequest,
+    CalibrationLibraryResponse,
     FitsFrameMetadata,
     FitsGroupSummary,
     FitsScanRequest,
@@ -16,6 +19,7 @@ from .schemas import (
 from .settings import get_settings
 
 FITS_EXTENSIONS = {".fit", ".fits", ".fts"}
+CALIBRATION_FRAME_TYPES = {"Flat", "Dark", "Bias", "Dark flat"}
 
 
 @dataclass
@@ -89,6 +93,41 @@ def scan_fits_metadata(
         temperature_range_c=_range_label(all_temperatures, suffix="C"),
         groups=groups,
         frames=frames,
+        warnings=warnings[:12],
+    )
+
+
+def build_calibration_library(
+    payload: CalibrationLibraryRequest,
+    library_root: str | Path | None = None,
+) -> CalibrationLibraryResponse:
+    scan = scan_fits_metadata(
+        FitsScanRequest(
+            path=payload.path,
+            recursive=payload.recursive,
+            max_files=payload.max_files,
+        ),
+        library_root=library_root,
+    )
+    calibration_frames = [
+        frame for frame in scan.frames if frame.frame_type in CALIBRATION_FRAME_TYPES
+    ]
+    items = _summarize_calibration_items(calibration_frames, payload)
+    warnings = [
+        warning
+        for warning in scan.warnings
+        if not warning.startswith("No light frames") and "flagged for quality" not in warning
+    ]
+    warnings.extend(_calibration_library_warnings(items, payload))
+    summary = _calibration_summary(calibration_frames, items)
+
+    return CalibrationLibraryResponse(
+        scan_path=scan.scan_path,
+        total_files=scan.total_files,
+        parsed_files=scan.parsed_files,
+        calibration_frames=len(calibration_frames),
+        summary=summary,
+        items=items,
         warnings=warnings[:12],
     )
 
@@ -421,6 +460,255 @@ def _score_light_quality(
         score -= 5
 
     return int(max(0, min(100, round(score)))), flags
+
+
+def _summarize_calibration_items(
+    frames: list[FitsFrameMetadata],
+    payload: CalibrationLibraryRequest,
+) -> list[CalibrationLibraryItem]:
+    grouped: dict[tuple[str, str | None, float | None, str | None, str | None], list[FitsFrameMetadata]] = defaultdict(list)
+    for frame in frames:
+        exposure = round(frame.exposure_seconds, 3) if frame.exposure_seconds is not None else None
+        grouped[
+            (
+                frame.frame_type,
+                _normalized_optional(frame.filter_name),
+                exposure,
+                _normalized_optional(frame.binning),
+                _normalized_optional(frame.camera),
+            )
+        ].append(frame)
+
+    items: list[CalibrationLibraryItem] = []
+    for (frame_type, filter_name, exposure_seconds, binning, camera), group_frames in grouped.items():
+        temperatures = [
+            frame.sensor_temperature_c
+            for frame in group_frames
+            if frame.sensor_temperature_c is not None
+        ]
+        score, status, reason = _score_calibration_match(
+            frame_type=frame_type,
+            filter_name=filter_name,
+            exposure_seconds=exposure_seconds,
+            binning=binning,
+            camera=camera,
+            frames=len(group_frames),
+            median_temperature_c=round(float(median(temperatures)), 2) if temperatures else None,
+            payload=payload,
+        )
+        items.append(
+            CalibrationLibraryItem(
+                frame_type=frame_type,
+                filter_name=filter_name,
+                exposure_seconds=exposure_seconds,
+                binning=binning,
+                camera=camera,
+                frames=len(group_frames),
+                temperature_range_c=_range_label(temperatures, suffix="C"),
+                median_temperature_c=round(float(median(temperatures)), 2) if temperatures else None,
+                match_score=score,
+                match_status=status,
+                reason=reason,
+                sample_files=[frame.relative_path for frame in group_frames[:5]],
+            )
+        )
+
+    return sorted(
+        items,
+        key=lambda item: (
+            -item.match_score,
+            _frame_type_order(item.frame_type),
+            item.filter_name or "",
+            item.exposure_seconds or 0,
+        ),
+    )
+
+
+def _score_calibration_match(
+    *,
+    frame_type: str,
+    filter_name: str | None,
+    exposure_seconds: float | None,
+    binning: str | None,
+    camera: str | None,
+    frames: int,
+    median_temperature_c: float | None,
+    payload: CalibrationLibraryRequest,
+) -> tuple[int, str, str]:
+    score = min(28, frames * 2)
+    reasons: list[str] = [f"{frames} frames"]
+    target_filters = [_normalize_text(value) for value in payload.target_filters]
+    target_exposures = [value for value in payload.target_exposure_seconds if value > 0]
+    target_binning = _normalized_optional(payload.target_binning)
+    target_camera = _normalized_optional(payload.target_camera)
+
+    if frame_type == "Flat":
+        score += _filter_match_score(filter_name, target_filters, reasons)
+    elif frame_type in {"Dark", "Dark flat"}:
+        score += _exposure_match_score(exposure_seconds, target_exposures, reasons)
+        score += _temperature_match_score(median_temperature_c, payload.target_temperature_c, reasons)
+    elif frame_type == "Bias":
+        score += 32
+        reasons.append("reusable bias")
+
+    if target_binning:
+        if _normalize_text(binning or "") == _normalize_text(target_binning):
+            score += 12
+            reasons.append(f"binning {binning}")
+        elif binning:
+            score -= 18
+            reasons.append(f"binning mismatch {binning}")
+        else:
+            score -= 4
+            reasons.append("binning unknown")
+
+    if target_camera:
+        if _normalize_text(camera or "") == _normalize_text(target_camera):
+            score += 8
+            reasons.append("camera match")
+        elif camera:
+            score -= 12
+            reasons.append(f"camera mismatch {camera}")
+        else:
+            score -= 3
+            reasons.append("camera unknown")
+
+    score = int(max(0, min(100, round(score))))
+    if score >= 78:
+        status = "match"
+    elif score >= 52:
+        status = "usable"
+    else:
+        status = "review"
+
+    return score, status, ", ".join(reasons[:4])
+
+
+def _filter_match_score(
+    filter_name: str | None,
+    target_filters: list[str],
+    reasons: list[str],
+) -> int:
+    if not target_filters:
+        reasons.append("no filter target")
+        return 32
+
+    normalized_filter = _normalize_text(filter_name or "")
+    if normalized_filter in target_filters:
+        reasons.append(f"filter {filter_name}")
+        return 42
+    if not normalized_filter:
+        reasons.append("filter unknown")
+        return 4
+    reasons.append(f"filter mismatch {filter_name}")
+    return -34
+
+
+def _exposure_match_score(
+    exposure_seconds: float | None,
+    target_exposures: list[float],
+    reasons: list[str],
+) -> int:
+    if not target_exposures:
+        reasons.append("no exposure target")
+        return 30
+    if exposure_seconds is None:
+        reasons.append("exposure unknown")
+        return -18
+
+    closest = min(target_exposures, key=lambda target: abs(target - exposure_seconds))
+    delta = abs(closest - exposure_seconds)
+    tolerance = max(2.0, closest * 0.05)
+    if delta <= 0.5:
+        reasons.append(f"{_number_label(exposure_seconds)}s exact")
+        return 42
+    if delta <= tolerance:
+        reasons.append(f"{_number_label(exposure_seconds)}s close to {_number_label(closest)}s")
+        return 30
+    reasons.append(f"{_number_label(exposure_seconds)}s vs {_number_label(closest)}s")
+    return -28
+
+
+def _temperature_match_score(
+    temperature_c: float | None,
+    target_temperature_c: float | None,
+    reasons: list[str],
+) -> int:
+    if target_temperature_c is None:
+        reasons.append("no temp target")
+        return 10
+    if temperature_c is None:
+        reasons.append("temperature unknown")
+        return -8
+
+    delta = abs(temperature_c - target_temperature_c)
+    if delta <= 1.5:
+        reasons.append(f"{_number_label(temperature_c)}C exact")
+        return 24
+    if delta <= 4:
+        reasons.append(f"{_number_label(temperature_c)}C close")
+        return 14
+    reasons.append(f"{_number_label(temperature_c)}C temp gap")
+    return -18
+
+
+def _calibration_library_warnings(
+    items: list[CalibrationLibraryItem],
+    payload: CalibrationLibraryRequest,
+) -> list[str]:
+    warnings: list[str] = []
+    target_filters = [_normalize_text(value) for value in payload.target_filters]
+    for target_filter in target_filters:
+        matching_flats = [
+            item
+            for item in items
+            if item.frame_type == "Flat"
+            and _normalize_text(item.filter_name or "") == target_filter
+            and item.match_status in {"match", "usable"}
+        ]
+        if not matching_flats:
+            warnings.append(f"Missing reusable flats for {target_filter}")
+
+    target_exposures = [value for value in payload.target_exposure_seconds if value > 0]
+    for target_exposure in target_exposures:
+        matching_darks = [
+            item
+            for item in items
+            if item.frame_type == "Dark"
+            and item.exposure_seconds is not None
+            and abs(item.exposure_seconds - target_exposure) <= max(2.0, target_exposure * 0.05)
+            and item.match_status in {"match", "usable"}
+        ]
+        if not matching_darks:
+            warnings.append(f"Missing reusable darks for {_number_label(target_exposure)}s")
+
+    if not any(item.frame_type == "Bias" and item.match_status in {"match", "usable"} for item in items):
+        warnings.append("No reusable bias frames found")
+
+    return warnings
+
+
+def _calibration_summary(
+    frames: list[FitsFrameMetadata],
+    items: list[CalibrationLibraryItem],
+) -> str:
+    if not frames:
+        return "No calibration frames found"
+
+    matches = sum(1 for item in items if item.match_status == "match")
+    usable = sum(1 for item in items if item.match_status == "usable")
+    return f"{len(frames)} calibration frames, {matches} strong matches, {usable} usable groups"
+
+
+def _normalized_optional(value: str | None) -> str | None:
+    if value is None:
+        return None
+    text = value.strip()
+    return text or None
+
+
+def _normalize_text(value: str) -> str:
+    return "".join(character for character in value.lower() if character.isalnum())
 
 
 def _summarize_groups(frames: list[FitsFrameMetadata]) -> list[FitsGroupSummary]:

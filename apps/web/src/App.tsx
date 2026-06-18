@@ -17,6 +17,7 @@ import { TargetRail } from "./components/TargetRail";
 import { FovConsole } from "./components/FovConsole";
 import { ProfileDock } from "./components/ProfileDock";
 import { CapturePlan } from "./components/CapturePlan";
+import { CalibrationLibraryPanel } from "./components/CalibrationLibraryPanel";
 import { FitsIngestPanel } from "./components/FitsIngestPanel";
 import { MultiSessionPlanner } from "./components/MultiSessionPlanner";
 import { ProcessingPlanner } from "./components/ProcessingPlanner";
@@ -1114,6 +1115,11 @@ export function App() {
                 ))}
               </div>
             </section>
+
+            <CalibrationLibraryPanel
+              capturePlan={capturePlan}
+              selectedProfile={selectedProfile}
+            />
 
             <section className="panel frame-archive-panel" aria-label="Recent capture archive">
               <div className="frame-context-head">

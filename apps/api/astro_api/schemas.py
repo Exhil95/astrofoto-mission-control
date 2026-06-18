@@ -307,6 +307,42 @@ class FitsScanResponse(BaseModel):
     warnings: list[str]
 
 
+class CalibrationLibraryRequest(BaseModel):
+    path: str = Field(default=".", min_length=1, max_length=500)
+    recursive: bool = True
+    max_files: int = Field(default=500, ge=1, le=4000)
+    target_filters: list[str] = Field(default_factory=list, max_length=24)
+    target_exposure_seconds: list[float] = Field(default_factory=list, max_length=24)
+    target_temperature_c: float | None = None
+    target_binning: str | None = Field(default=None, max_length=24)
+    target_camera: str | None = Field(default=None, max_length=120)
+
+
+class CalibrationLibraryItem(BaseModel):
+    frame_type: str
+    filter_name: str | None = None
+    exposure_seconds: float | None = None
+    binning: str | None = None
+    camera: str | None = None
+    frames: int
+    temperature_range_c: str | None = None
+    median_temperature_c: float | None = None
+    match_score: int = Field(ge=0, le=100)
+    match_status: str
+    reason: str
+    sample_files: list[str]
+
+
+class CalibrationLibraryResponse(BaseModel):
+    scan_path: str
+    total_files: int
+    parsed_files: int
+    calibration_frames: int
+    summary: str
+    items: list[CalibrationLibraryItem]
+    warnings: list[str]
+
+
 class TonightBoardItem(BaseModel):
     target_id: str
     target_name: str

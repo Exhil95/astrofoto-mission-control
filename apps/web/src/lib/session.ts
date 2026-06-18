@@ -294,6 +294,31 @@ export type FitsScanResult = {
   warnings: string[];
 };
 
+export type CalibrationLibraryItem = {
+  frameType: string;
+  filterName: string | null;
+  exposureSeconds: number | null;
+  binning: string | null;
+  camera: string | null;
+  frames: number;
+  temperatureRangeC: string | null;
+  medianTemperatureC: number | null;
+  matchScore: number;
+  matchStatus: "match" | "usable" | "review";
+  reason: string;
+  sampleFiles: string[];
+};
+
+export type CalibrationLibraryResult = {
+  scanPath: string;
+  totalFiles: number;
+  parsedFiles: number;
+  calibrationFrames: number;
+  summary: string;
+  items: CalibrationLibraryItem[];
+  warnings: string[];
+};
+
 type ApiSessionPlan = {
   target_id: string;
   target_name: string;
@@ -548,6 +573,31 @@ type ApiFitsScanResult = {
   warnings: string[];
 };
 
+type ApiCalibrationLibraryItem = {
+  frame_type: string;
+  filter_name: string | null;
+  exposure_seconds: number | null;
+  binning: string | null;
+  camera: string | null;
+  frames: number;
+  temperature_range_c: string | null;
+  median_temperature_c: number | null;
+  match_score: number;
+  match_status: "match" | "usable" | "review";
+  reason: string;
+  sample_files: string[];
+};
+
+type ApiCalibrationLibraryResult = {
+  scan_path: string;
+  total_files: number;
+  parsed_files: number;
+  calibration_frames: number;
+  summary: string;
+  items: ApiCalibrationLibraryItem[];
+  warnings: string[];
+};
+
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
 
 export function getTodayIsoDate() {
@@ -749,6 +799,54 @@ export async function scanFitsFrames({
   }
 
   return normalizeFitsScan((await response.json()) as ApiFitsScanResult);
+}
+
+export async function fetchCalibrationLibrary({
+  path,
+  recursive,
+  maxFiles,
+  targetFilters,
+  targetExposureSeconds,
+  targetTemperatureC,
+  targetBinning,
+  targetCamera
+}: {
+  path: string;
+  recursive: boolean;
+  maxFiles: number;
+  targetFilters: string[];
+  targetExposureSeconds: number[];
+  targetTemperatureC: number | null;
+  targetBinning: string | null;
+  targetCamera: string | null;
+}): Promise<CalibrationLibraryResult> {
+  const response = await fetch(`${apiBaseUrl}/api/frames/calibration-library`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      path,
+      recursive,
+      max_files: maxFiles,
+      target_filters: targetFilters,
+      target_exposure_seconds: targetExposureSeconds,
+      target_temperature_c: targetTemperatureC,
+      target_binning: targetBinning,
+      target_camera: targetCamera
+    })
+  });
+
+  if (!response.ok) {
+    let detail = "";
+    try {
+      const payload = (await response.json()) as { detail?: string };
+      detail = payload.detail ?? "";
+    } catch {
+      detail = "";
+    }
+    throw new Error(detail || `Calibration library failed with ${response.status}`);
+  }
+
+  return normalizeCalibrationLibrary((await response.json()) as ApiCalibrationLibraryResult);
 }
 
 export async function fetchSessionArchive(limit = 5): Promise<SessionArchiveEntry[]> {
@@ -1351,6 +1449,31 @@ function normalizeFitsScan(scan: ApiFitsScanResult): FitsScanResult {
       qualityFlags: frame.quality_flags ?? [],
       status: frame.status,
       warnings: frame.warnings
+    })),
+    warnings: scan.warnings
+  };
+}
+
+function normalizeCalibrationLibrary(scan: ApiCalibrationLibraryResult): CalibrationLibraryResult {
+  return {
+    scanPath: scan.scan_path,
+    totalFiles: scan.total_files,
+    parsedFiles: scan.parsed_files,
+    calibrationFrames: scan.calibration_frames,
+    summary: scan.summary,
+    items: scan.items.map((item) => ({
+      frameType: item.frame_type,
+      filterName: item.filter_name,
+      exposureSeconds: item.exposure_seconds,
+      binning: item.binning,
+      camera: item.camera,
+      frames: item.frames,
+      temperatureRangeC: item.temperature_range_c,
+      medianTemperatureC: item.median_temperature_c,
+      matchScore: item.match_score,
+      matchStatus: item.match_status,
+      reason: item.reason,
+      sampleFiles: item.sample_files
     })),
     warnings: scan.warnings
   };
