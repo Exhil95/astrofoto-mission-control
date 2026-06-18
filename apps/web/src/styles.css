@@ -2433,6 +2433,17 @@ button {
   gap: 12px;
 }
 
+.multi-session-head > div:first-child {
+  min-width: 0;
+}
+
+.multi-session-head > div:last-child {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .multi-session-head span,
 .multi-session-hero span,
 .multi-session-hero em,
@@ -2481,6 +2492,25 @@ button {
   border-color: rgba(247, 200, 115, 0.5);
   color: #fff4ce;
   background: rgba(247, 200, 115, 0.12);
+}
+
+.multi-calendar-button {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(56, 214, 201, 0.22);
+  border-radius: 8px;
+  color: #dffffb;
+  background: rgba(56, 214, 201, 0.09);
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.multi-calendar-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .multi-session-hero {
@@ -2623,17 +2653,48 @@ button {
   overflow: auto;
 }
 
-.multi-session-list button {
-  position: relative;
+.multi-session-row {
   min-width: 0;
   display: grid;
-  gap: 4px;
+  grid-template-columns: minmax(0, 1fr) 74px;
+  gap: 7px;
+}
+
+.multi-session-pick,
+.multi-session-save {
+  position: relative;
+  min-width: 0;
   border: 1px solid rgba(56, 214, 201, 0.13);
   border-radius: 8px;
   color: #c8d0df;
   background: rgba(56, 214, 201, 0.052);
+}
+
+.multi-session-pick {
+  display: grid;
+  gap: 4px;
   padding: 9px 48px 9px 9px;
   text-align: left;
+}
+
+.multi-session-save {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 8px;
+  color: #dffffb;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.multi-session-save:disabled {
+  cursor: wait;
+  opacity: 0.75;
+}
+
+.multi-session-save svg {
+  flex: 0 0 auto;
 }
 
 .multi-session-list strong,
@@ -3334,6 +3395,20 @@ button {
     width: calc(100% - 28px);
   }
 
+  .multi-session-head {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .multi-session-head > div:last-child {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .multi-night-tabs {
+    flex: 1 1 auto;
+  }
+
   .scene-mode-tabs {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -3363,5 +3438,13 @@ button {
 
   .capture-plan {
     min-height: 176px;
+  }
+
+  .multi-session-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .multi-session-save {
+    min-height: 32px;
   }
 }

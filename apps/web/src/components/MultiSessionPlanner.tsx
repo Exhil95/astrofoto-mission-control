@@ -1,21 +1,31 @@
-import { CalendarDays, CheckCircle2, CloudSun, Moon, Telescope } from "lucide-react";
+import { Archive, CalendarDays, CheckCircle2, CloudSun, Download, Moon, Telescope } from "lucide-react";
 import type { ReactNode } from "react";
 import type { MultiSessionPlan, MultiSessionPlanItem } from "../lib/session";
+
+type MultiSessionArchiveState = "idle" | "saving" | "saved" | "failed";
 
 type MultiSessionPlannerProps = {
   plan: MultiSessionPlan;
   loading: boolean;
   nights: number;
+  archiveState: MultiSessionArchiveState;
+  archivedItemKey: string | null;
   onNightsChange: (nights: number) => void;
   onSelectItem: (item: MultiSessionPlanItem) => void;
+  onArchiveItem: (item: MultiSessionPlanItem) => void;
+  onDownloadCalendar: () => void;
 };
 
 export function MultiSessionPlanner({
   plan,
   loading,
   nights,
+  archiveState,
+  archivedItemKey,
   onNightsChange,
-  onSelectItem
+  onSelectItem,
+  onArchiveItem,
+  onDownloadCalendar
 }: MultiSessionPlannerProps) {
   const bestItem = plan.items[0];
 
@@ -39,6 +49,16 @@ export function MultiSessionPlanner({
             </button>
           ))}
         </div>
+        <button
+          className="multi-calendar-button"
+          type="button"
+          title="Download calendar"
+          disabled={!plan.items.length}
+          onClick={onDownloadCalendar}
+        >
+          <Download size={14} aria-hidden="true" />
+          <span>ICS</span>
+        </button>
       </div>
 
       <div className="multi-session-hero">
@@ -76,14 +96,26 @@ export function MultiSessionPlanner({
           </div>
           <div className="multi-session-list">
             {plan.items.slice(0, 12).map((item) => (
-              <button key={`${item.date}-${item.targetId}`} type="button" onClick={() => onSelectItem(item)}>
-                <span>
-                  {shortDate(item.date)} / {item.fovFit}
-                </span>
-                <strong>{item.targetName}</strong>
-                <em>{item.reason}</em>
-                <b>{item.score}</b>
-              </button>
+              <div className="multi-session-row" key={`${item.date}-${item.targetId}`}>
+                <button className="multi-session-pick" type="button" onClick={() => onSelectItem(item)}>
+                  <span>
+                    {shortDate(item.date)} / {item.fovFit}
+                  </span>
+                  <strong>{item.targetName}</strong>
+                  <em>{item.reason}</em>
+                  <b>{item.score}</b>
+                </button>
+                <button
+                  className="multi-session-save"
+                  type="button"
+                  title="Save planned session"
+                  disabled={archiveState === "saving" && archivedItemKey === itemKey(item)}
+                  onClick={() => onArchiveItem(item)}
+                >
+                  <Archive size={14} aria-hidden="true" />
+                  <span>{archiveLabel(archiveState, archivedItemKey === itemKey(item))}</span>
+                </button>
+              </div>
             ))}
           </div>
         </section>
@@ -149,4 +181,16 @@ function shortDate(dateIso: string) {
   return new Intl.DateTimeFormat("en", { day: "2-digit", month: "short" }).format(
     new Date(`${dateIso}T12:00:00`)
   );
+}
+
+function itemKey(item: MultiSessionPlanItem) {
+  return `${item.date}-${item.targetId}`;
+}
+
+function archiveLabel(state: MultiSessionArchiveState, isActiveItem: boolean) {
+  if (!isActiveItem) return "Plan";
+  if (state === "saving") return "Saving";
+  if (state === "saved") return "Saved";
+  if (state === "failed") return "Retry";
+  return "Plan";
 }

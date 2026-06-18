@@ -109,7 +109,17 @@ export type MultiSessionNightSummary = {
   weatherScore: number;
   moonIlluminationPercent: number;
   whiteNight: boolean;
+  bestTargetId: string;
   bestTargetName: string;
+  catalogId: string;
+  targetType: string;
+  fovFit: string;
+  maxAltitudeDeg: number;
+  startTime: string;
+  endTime: string;
+  bestTime: string;
+  recommendedMode: string;
+  reason: string;
   summary: string;
 };
 
@@ -369,7 +379,17 @@ type ApiMultiSessionPlan = {
     weather_score: number;
     moon_illumination_percent: number;
     white_night: boolean;
+    best_target_id: string;
     best_target_name: string;
+    catalog_id: string;
+    target_type: string;
+    fov_fit: string;
+    max_altitude_deg: number;
+    start_time: string;
+    end_time: string;
+    best_time: string;
+    recommended_mode: string;
+    reason: string;
     summary: string;
   }[];
   warnings: string[];
@@ -891,7 +911,17 @@ export function createFallbackMultiSessionPlan(
       weatherScore: 72,
       moonIlluminationPercent,
       whiteNight: bestNightItem?.whiteNight ?? false,
+      bestTargetId: bestNightItem?.targetId ?? "calibration",
       bestTargetName: bestNightItem?.targetName ?? "Calibration",
+      catalogId: bestNightItem?.catalogId ?? "CAL",
+      targetType: bestNightItem?.targetType ?? "Calibration",
+      fovFit: bestNightItem?.fovFit ?? "Fits",
+      maxAltitudeDeg: bestNightItem?.maxAltitudeDeg ?? 0,
+      startTime: bestNightItem?.startTime ?? "22:00",
+      endTime: bestNightItem?.endTime ?? "02:00",
+      bestTime: bestNightItem?.bestTime ?? "00:00",
+      recommendedMode: bestNightItem?.recommendedMode ?? "Calibration",
+      reason: bestNightItem?.reason ?? "Offline calibration night",
       summary: bestNightItem ? `Offline pick: ${bestNightItem.targetName}` : "Offline calibration night"
     });
   }
@@ -1149,7 +1179,17 @@ function normalizeMultiSessionPlan(plan: ApiMultiSessionPlan): MultiSessionPlan 
       weatherScore: night.weather_score,
       moonIlluminationPercent: night.moon_illumination_percent,
       whiteNight: night.white_night,
+      bestTargetId: night.best_target_id,
       bestTargetName: night.best_target_name,
+      catalogId: night.catalog_id,
+      targetType: night.target_type,
+      fovFit: night.fov_fit,
+      maxAltitudeDeg: night.max_altitude_deg,
+      startTime: night.start_time,
+      endTime: night.end_time,
+      bestTime: night.best_time,
+      recommendedMode: night.recommended_mode,
+      reason: night.reason,
       summary: night.summary
     })),
     warnings: plan.warnings

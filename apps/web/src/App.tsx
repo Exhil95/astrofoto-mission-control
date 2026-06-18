@@ -63,6 +63,7 @@ import {
   type ProcessingPlan as ProcessingPlanModel,
   type SessionArchiveEntry,
   type SessionArchivePayload,
+  type SessionPlan,
   type TonightBoard as TonightBoardModel,
   type SessionSettings
 } from "./lib/session";
@@ -75,6 +76,7 @@ const SkyScene = lazy(() =>
 type SkyDisplayMode = "focus" | "tonight" | "showcase" | "catalog";
 type SkyFitFilter = "All" | "Small" | "Fits" | "Tight" | "Mosaic";
 type WorkspaceMode = "planner" | "capture" | "process" | "frames" | "multi";
+type ArchiveState = "idle" | "saving" | "saved" | "failed";
 
 export function App() {
   const [selectedTargetId, setSelectedTargetId] = useState("ngc7000");
@@ -105,7 +107,9 @@ export function App() {
     });
   const [weatherRefreshTick, setWeatherRefreshTick] = useState(0);
   const forceWeatherRefreshRef = useRef(false);
-  const [archiveState, setArchiveState] = useState<"idle" | "saving" | "saved" | "failed">("idle");
+  const [archiveState, setArchiveState] = useState<ArchiveState>("idle");
+  const [multiArchiveState, setMultiArchiveState] = useState<ArchiveState>("idle");
+  const [multiArchivedItemKey, setMultiArchivedItemKey] = useState<string | null>(null);
   const [isProfileSaving, setIsProfileSaving] = useState(false);
   const [skyAutoRotate, setSkyAutoRotate] = useState(() => {
     return window.localStorage.getItem("astrofoto-sky-auto-rotate") !== "false";
@@ -216,6 +220,51 @@ export function App() {
       date: item.date
     }));
     setWorkspaceMode("capture");
+  };
+
+  const archiveMultiSessionItem = async (item: MultiSessionPlanItem) => {
+    const target = targetCatalog.find((catalogItem) => catalogItem.id === item.targetId);
+    if (!target) return;
+
+    setMultiArchivedItemKey(multiSessionItemKey(item));
+    setMultiArchiveState("saving");
+
+    try {
+      const savedArchive = await saveSessionArchive(
+        createMultiSessionArchivePayload({
+          item,
+          target,
+          selectedProfile,
+          settings: sessionSettings,
+          fov
+        })
+      );
+      setSessionArchives((items) =>
+        [savedArchive, ...items.filter((archive) => archive.id !== savedArchive.id)].slice(0, 5)
+      );
+      setMultiArchiveState("saved");
+      window.setTimeout(() => {
+        setMultiArchiveState("idle");
+        setMultiArchivedItemKey(null);
+      }, 1600);
+    } catch {
+      setMultiArchiveState("failed");
+    }
+  };
+
+  const downloadMultiSessionCalendar = () => {
+    const calendarItems = bestMultiSessionItemsByNight(multiSessionPlan);
+    const content = createMultiSessionCalendar({
+      items: calendarItems,
+      selectedProfile,
+      settings: sessionSettings,
+      fov
+    });
+    downloadTextFile(
+      `${multiSessionPlan.startDate}-${multiSessionPlan.endDate}-astro-plan.ics`,
+      content,
+      "text/calendar;charset=utf-8"
+    );
   };
 
   const selectSensorPreset = (sensorId: string) => {
@@ -1090,8 +1139,12 @@ export function App() {
             plan={multiSessionPlan}
             loading={isMultiSessionLoading}
             nights={multiSessionNights}
+            archiveState={multiArchiveState}
+            archivedItemKey={multiArchivedItemKey}
             onNightsChange={setMultiSessionNights}
             onSelectItem={selectMultiSessionItem}
+            onArchiveItem={archiveMultiSessionItem}
+            onDownloadCalendar={downloadMultiSessionCalendar}
           />
 
           <aside className="multi-context-stack" aria-label="Multi-session context">
@@ -1132,7 +1185,7 @@ function createArchivePayload({
   selectedProfile: EquipmentProfile | null;
   settings: SessionSettings;
   fov: FovResult;
-  sessionPlan: ReturnType<typeof createFallbackSessionPlan>;
+  sessionPlan: SessionPlan;
   capturePlan: CapturePlanModel;
 }): SessionArchivePayload {
   const plannedFrames = capturePlan.exposureSteps.reduce((sum, step) => sum + step.frames, 0);
@@ -1165,8 +1218,67 @@ function createArchivePayload({
   };
 }
 
+function createMultiSessionArchivePayload({
+  item,
+  target,
+  selectedProfile,
+  settings,
+  fov
+}: {
+  item: MultiSessionPlanItem;
+  target: Target;
+  selectedProfile: EquipmentProfile | null;
+  settings: SessionSettings;
+  fov: FovResult;
+}): SessionArchivePayload {
+  const filterNames = filtersForMultiSessionItem(item, target);
+  const windowMinutes = sessionWindowMinutes(item.startTime, item.endTime);
+  const exposureSeconds = item.recommendedMode.toLowerCase().includes("narrowband") ? 300 : 180;
+  const totalIntegrationMinutes = Math.max(45, Math.min(360, windowMinutes - 18));
+  const plannedFrames = Math.max(
+    filterNames.length * 6,
+    Math.round((totalIntegrationMinutes * 60) / exposureSeconds)
+  );
+
+  return {
+    targetId: item.targetId,
+    targetName: item.targetName,
+    sessionDate: item.date,
+    status: "planned",
+    profileId: selectedProfile?.id ?? null,
+    profileName: selectedProfile?.name ?? null,
+    siteName: selectedProfile?.siteName ?? settings.timezone,
+    bortle: settings.bortle,
+    fovHorizontalDeg: fov.horizontalDeg,
+    fovVerticalDeg: fov.verticalDeg,
+    pixelScaleArcsec: fov.pixelScaleArcsec,
+    imagingMode: item.recommendedMode,
+    filterNames,
+    totalIntegrationMinutes,
+    plannedFrames,
+    capturedFrames: 0,
+    windowStart: item.startTime,
+    windowEnd: item.endTime,
+    weatherStatus: weatherStatusFromScore(item.weatherScore),
+    weatherScore: item.weatherScore,
+    moonIlluminationPercent: item.moonIlluminationPercent,
+    whiteNight: item.whiteNight,
+    notes: createMultiSessionNotes(item, target, selectedProfile),
+    captureMarkdown: createMultiSessionMarkdown({
+      item,
+      target,
+      filterNames,
+      totalIntegrationMinutes,
+      plannedFrames,
+      exposureSeconds,
+      selectedProfile,
+      fov
+    })
+  };
+}
+
 function createArchiveNotes(
-  sessionPlan: ReturnType<typeof createFallbackSessionPlan>,
+  sessionPlan: SessionPlan,
   profile: EquipmentProfile | null
 ) {
   return [
@@ -1175,6 +1287,229 @@ function createArchiveNotes(
     `Weather ${sessionPlan.weatherScore}/100: ${sessionPlan.weatherSummary}`,
     `Profile: ${profile?.name ?? "Custom setup"}`
   ].join("\n");
+}
+
+function createMultiSessionNotes(
+  item: MultiSessionPlanItem,
+  target: Target,
+  profile: EquipmentProfile | null
+) {
+  return [
+    item.reason,
+    `Mode: ${item.recommendedMode}`,
+    `FOV: ${item.fovFit}, ${target.angularWidthArcmin} x ${target.angularHeightArcmin} arcmin`,
+    `Weather ${item.weatherScore}/100, Moon ${item.moonIlluminationPercent}%`,
+    item.whiteNight ? "White night: favor narrowband and brighter structures" : "Astronomical darkness available",
+    `Profile: ${profile?.name ?? "Custom setup"}`
+  ].join("\n");
+}
+
+function createMultiSessionMarkdown({
+  item,
+  target,
+  filterNames,
+  totalIntegrationMinutes,
+  plannedFrames,
+  exposureSeconds,
+  selectedProfile,
+  fov
+}: {
+  item: MultiSessionPlanItem;
+  target: Target;
+  filterNames: string[];
+  totalIntegrationMinutes: number;
+  plannedFrames: number;
+  exposureSeconds: number;
+  selectedProfile: EquipmentProfile | null;
+  fov: FovResult;
+}) {
+  const framesPerFilter = Math.max(1, Math.round(plannedFrames / Math.max(1, filterNames.length)));
+  const lights = filterNames
+    .map((filterName) => `- ${filterName}: ${framesPerFilter} x ${exposureSeconds}s`)
+    .join("\n");
+
+  return [
+    `# Multi-session Plan: ${item.targetName}`,
+    "",
+    `- Date: ${item.date}`,
+    `- Window: ${item.startTime} - ${item.endTime}`,
+    `- Mode: ${item.recommendedMode}`,
+    `- Score: ${item.score}/100`,
+    `- Weather: ${item.weatherScore}/100`,
+    `- Moon: ${item.moonIlluminationPercent}%`,
+    `- FOV: ${fov.horizontalDeg.toFixed(2)} x ${fov.verticalDeg.toFixed(2)} deg`,
+    `- Framing: ${item.fovFit}; ${target.framing}`,
+    `- Profile: ${selectedProfile?.name ?? "Custom setup"}`,
+    "",
+    "## Lights",
+    lights,
+    "",
+    `Total planned integration: ${totalIntegrationMinutes} min`,
+    "",
+    "## Notes",
+    `- ${item.reason}`,
+    `- Peak altitude: ${item.maxAltitudeDeg} deg at ${item.bestTime}`,
+    item.whiteNight ? "- White night: keep broadband as backup only" : "- Astronomical darkness check passed",
+    "- Confirm weather trend and first-frame plate solve before committing the full run"
+  ].join("\n");
+}
+
+function filtersForMultiSessionItem(item: MultiSessionPlanItem, target: Target) {
+  const mode = item.recommendedMode.toLowerCase();
+  const targetType = target.type.toLowerCase();
+
+  if (mode.includes("calibration")) return ["Calibration"];
+  if (mode.includes("narrowband") || targetType.includes("nebula") || targetType.includes("remnant")) {
+    return ["Ha", "OIII"];
+  }
+  if (mode.includes("luminance")) return ["L"];
+  if (mode.includes("short")) return ["RGB"];
+  if (targetType.includes("galaxy")) return ["L", "R", "G", "B"];
+  return ["L", "RGB"];
+}
+
+function weatherStatusFromScore(score: number) {
+  if (score >= 72) return "shoot";
+  if (score >= 45) return "risk";
+  return "skip";
+}
+
+function bestMultiSessionItemsByNight(plan: MultiSessionPlanModel) {
+  return plan.nightsSummary
+    .map((night) => {
+      const rankedItem = plan.items.find(
+        (item) => item.date === night.date && item.targetId === night.bestTargetId
+      );
+      if (rankedItem) return rankedItem;
+
+      return {
+        date: night.date,
+        targetId: night.bestTargetId,
+        targetName: night.bestTargetName,
+        catalogId: night.catalogId,
+        targetType: night.targetType,
+        score: night.score,
+        astronomyScore: night.score,
+        weatherScore: night.weatherScore,
+        fovScore: 0,
+        fovFit: night.fovFit,
+        moonIlluminationPercent: night.moonIlluminationPercent,
+        whiteNight: night.whiteNight,
+        maxAltitudeDeg: night.maxAltitudeDeg,
+        startTime: night.startTime,
+        endTime: night.endTime,
+        bestTime: night.bestTime,
+        recommendedMode: night.recommendedMode,
+        reason: night.reason
+      };
+    })
+    .sort((left, right) => left.date.localeCompare(right.date));
+}
+
+function createMultiSessionCalendar({
+  items,
+  selectedProfile,
+  settings,
+  fov
+}: {
+  items: MultiSessionPlanItem[];
+  selectedProfile: EquipmentProfile | null;
+  settings: SessionSettings;
+  fov: FovResult;
+}) {
+  const timezone = settings.timezone || "Europe/Warsaw";
+  const createdAt = toIcsUtc(new Date());
+  const events = items.map((item) =>
+    [
+      "BEGIN:VEVENT",
+      `UID:${icsSafeId(`${item.date}-${item.targetId}`)}@astrofoto-mission-control`,
+      `DTSTAMP:${createdAt}`,
+      `DTSTART;TZID=${timezone}:${toIcsLocal(item.date, item.startTime)}`,
+      `DTEND;TZID=${timezone}:${toIcsLocal(eventEndDate(item.date, item.startTime, item.endTime), item.endTime)}`,
+      `SUMMARY:${escapeIcsText(`${item.targetName} - ${item.recommendedMode}`)}`,
+      `LOCATION:${escapeIcsText(selectedProfile?.siteName ?? timezone)}`,
+      `DESCRIPTION:${escapeIcsText(
+        [
+          item.reason,
+          `Score ${item.score}/100`,
+          `Weather ${item.weatherScore}/100`,
+          `Moon ${item.moonIlluminationPercent}%`,
+          `FOV ${fov.horizontalDeg.toFixed(2)} x ${fov.verticalDeg.toFixed(2)} deg`,
+          item.whiteNight ? "White night" : "Darkness available"
+        ].join("\n")
+      )}`,
+      "END:VEVENT"
+    ].join("\r\n")
+  );
+
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Astrofoto Mission Control//Multi-session Planner//EN",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    `X-WR-CALNAME:${escapeIcsText("Astrofoto Mission Plan")}`,
+    `X-WR-TIMEZONE:${timezone}`,
+    ...events,
+    "END:VCALENDAR"
+  ].join("\r\n");
+}
+
+function downloadTextFile(filename: string, content: string, type: string) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function multiSessionItemKey(item: MultiSessionPlanItem) {
+  return `${item.date}-${item.targetId}`;
+}
+
+function sessionWindowMinutes(startTime: string, endTime: string) {
+  const start = timeToMinutes(startTime);
+  let end = timeToMinutes(endTime);
+  if (end <= start) end += 24 * 60;
+  return Math.max(45, end - start);
+}
+
+function eventEndDate(dateIso: string, startTime: string, endTime: string) {
+  return timeToMinutes(endTime) <= timeToMinutes(startTime) ? addDaysIso(dateIso, 1) : dateIso;
+}
+
+function timeToMinutes(value: string) {
+  const [hours, minutes] = value.split(":").map((part) => Number(part));
+  return hours * 60 + minutes;
+}
+
+function addDaysIso(dateIso: string, days: number) {
+  const nextDate = new Date(`${dateIso}T12:00:00`);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate.toISOString().slice(0, 10);
+}
+
+function toIcsLocal(dateIso: string, time: string) {
+  const [hours, minutes] = time.split(":");
+  return `${dateIso.replace(/-/g, "")}T${hours.padStart(2, "0")}${minutes.padStart(2, "0")}00`;
+}
+
+function toIcsUtc(date: Date) {
+  return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+}
+
+function escapeIcsText(value: string) {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/\n/g, "\\n")
+    .replace(/,/g, "\\,")
+    .replace(/;/g, "\\;");
+}
+
+function icsSafeId(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9-]+/g, "-");
 }
 
 function formatObjectFootprint(target: Target, fov: FovResult) {

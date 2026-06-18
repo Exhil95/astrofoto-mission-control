@@ -394,7 +394,17 @@ def plan_multi_session(payload: MultiSessionPlanRequest) -> MultiSessionPlanResp
                 weather_score=forecast.score,
                 moon_illumination_percent=moon_illumination_percent,
                 white_night=best_item.white_night,
+                best_target_id=best_item.target_id,
                 best_target_name=best_item.target_name,
+                catalog_id=best_item.catalog_id,
+                target_type=best_item.target_type,
+                fov_fit=best_item.fov_fit,
+                max_altitude_deg=best_item.max_altitude_deg,
+                start_time=best_item.start_time,
+                end_time=best_item.end_time,
+                best_time=best_item.best_time,
+                recommended_mode=best_item.recommended_mode,
+                reason=best_item.reason,
                 summary=_multi_session_night_summary(best_item, forecast),
             )
         )

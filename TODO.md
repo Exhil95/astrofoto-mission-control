@@ -29,7 +29,8 @@
 
 ## Phase 3 Roadmap
 
-- [ ] Multi-session Planner: plan several nights across targets, weather windows, Moon, white nights, and equipment profiles.
+- [x] Multi-session Planner: plan several nights across targets, weather windows, Moon, white nights, and equipment profiles.
+- [x] Multi-session export: save selected planner nights to Session Archive and download best-night calendar as `.ics`.
 - [x] Weather cache controls: configurable 15/30/60 minute refresh with manual cache bypass from the UI.
 - [ ] FITS quality scoring: FWHM, eccentricity, background level, star count, and cloud rejection hints.
 - [ ] Frame-to-session import: turn a scanned FITS folder into a captured Session Archive entry.

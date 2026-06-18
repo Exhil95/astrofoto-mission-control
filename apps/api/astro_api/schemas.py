@@ -372,7 +372,17 @@ class MultiSessionNightSummary(BaseModel):
     weather_score: int = Field(ge=0, le=100)
     moon_illumination_percent: int
     white_night: bool
+    best_target_id: str
     best_target_name: str
+    catalog_id: str
+    target_type: str
+    fov_fit: str
+    max_altitude_deg: int
+    start_time: str
+    end_time: str
+    best_time: str
+    recommended_mode: str
+    reason: str
     summary: str
 
 
