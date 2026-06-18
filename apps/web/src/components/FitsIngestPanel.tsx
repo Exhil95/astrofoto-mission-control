@@ -292,7 +292,7 @@ function formatSeconds(seconds: number) {
 }
 
 function importLabel(state: "idle" | "saving" | "saved" | "failed") {
-  if (state === "saving") return "Import";
+  if (state === "saving") return "Saving";
   if (state === "saved") return "Saved";
   if (state === "failed") return "Retry";
   return "Import";
@@ -382,18 +382,26 @@ function createArchiveImportDraft({
 
 function findTargetMatch(targets: Target[], objectName?: string) {
   if (!objectName) return null;
-  const normalizedObject = normalizeText(objectName);
+  const objectAliases = createTextAliases(objectName);
   return (
     targets.find((target) => {
-      const aliases = [target.id, target.name, target.catalogId].map(normalizeText);
-      return aliases.some(
-        (alias) =>
-          alias === normalizedObject ||
-          normalizedObject.includes(alias) ||
-          alias.includes(normalizedObject)
+      const aliases = [target.id, target.name, target.catalogId].flatMap(createTextAliases);
+      return aliases.some((alias) =>
+        objectAliases.some(
+          (objectAlias) =>
+            alias === objectAlias || objectAlias.includes(alias) || alias.includes(objectAlias)
+        )
       );
     }) ?? null
   );
+}
+
+function createTextAliases(value: string) {
+  const normalized = normalizeText(value);
+  const withoutObjectKind = normalizeText(
+    value.replace(/\b(nebula|galaxy|cluster|region|remnant|complex)\b/gi, "")
+  );
+  return Array.from(new Set([normalized, withoutObjectKind].filter(Boolean)));
 }
 
 function normalizeText(value: string) {

@@ -19,6 +19,7 @@ media/
 staticfiles/
 .npm-cache/
 .cache/
+.codex-logs/
 *.log
 *.tsbuildinfo
 apps/web/vite.config.js
