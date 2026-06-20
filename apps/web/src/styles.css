@@ -224,8 +224,51 @@ button {
   gap: 8px;
 }
 
+.top-actions {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .signal-strip svg {
   color: #38d6c9;
+}
+
+.language-switcher {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #cdd5e7;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0 8px;
+}
+
+.language-switcher svg {
+  color: #f7c873;
+}
+
+.language-switcher span {
+  color: #8d95a8;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.language-switcher select {
+  width: 52px;
+  border: 0;
+  color: #ffffff;
+  background: transparent;
+  outline: 0;
+}
+
+.language-switcher option {
+  color: #10131d;
 }
 
 .mission-grid {
@@ -3463,6 +3506,7 @@ button {
     overflow: visible;
   }
 
+  .top-actions,
   .signal-strip,
   .mode-tabs {
     justify-content: flex-start;
@@ -3622,7 +3666,8 @@ button {
   }
 
   .mode-tabs button,
-  .signal-strip span {
+  .signal-strip span,
+  .language-switcher {
     min-width: 92px;
     justify-content: center;
   }

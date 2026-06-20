@@ -6,12 +6,14 @@ import {
   FileSearch,
   GalleryHorizontal,
   Gauge,
+  Languages,
   LocateFixed,
   Moon,
   Radio,
   RotateCw,
   SlidersHorizontal,
-  Telescope
+  Telescope,
+  type LucideIcon
 } from "lucide-react";
 import { TargetRail } from "./components/TargetRail";
 import { FovConsole } from "./components/FovConsole";
@@ -32,6 +34,13 @@ import {
   type SkyForecast
 } from "./lib/forecast";
 import { calculateFov, type FovResult } from "./lib/fov";
+import {
+  languageOptions,
+  languageStorageKey,
+  loadInitialLanguage,
+  translations,
+  type SupportedLanguage
+} from "./lib/i18n";
 import {
   createFallbackProfiles,
   createProfile,
@@ -80,6 +89,16 @@ type SkyFitFilter = "All" | "Small" | "Fits" | "Tight" | "Mosaic";
 type WorkspaceMode = "planner" | "capture" | "process" | "frames" | "multi";
 type ArchiveState = "idle" | "saving" | "saved" | "failed";
 
+const workspaceOrder: WorkspaceMode[] = ["planner", "capture", "process", "frames", "multi"];
+
+const workspaceIcons: Record<WorkspaceMode, LucideIcon> = {
+  planner: LocateFixed,
+  capture: Aperture,
+  process: Activity,
+  frames: FileSearch,
+  multi: CalendarRange
+};
+
 export function App() {
   const [selectedTargetId, setSelectedTargetId] = useState("ngc7000");
   const [focalLengthMm, setFocalLengthMm] = useState(480);
@@ -92,6 +111,7 @@ export function App() {
     const storedMode = window.localStorage.getItem("astrofoto-workspace-mode");
     return isWorkspaceMode(storedMode) ? storedMode : "planner";
   });
+  const [language, setLanguage] = useState<SupportedLanguage>(() => loadInitialLanguage());
   const [isPlanning, setIsPlanning] = useState(false);
   const [isForecastLoading, setIsForecastLoading] = useState(false);
   const [isBoardLoading, setIsBoardLoading] = useState(false);
@@ -168,6 +188,7 @@ export function App() {
   );
   const [sessionArchives, setSessionArchives] = useState<SessionArchiveEntry[]>([]);
   const [calibrationLibrary, setCalibrationLibrary] = useState<CalibrationLibraryResult | null>(null);
+  const text = translations[language];
   const skyTargetTypes = useMemo(
     () => uniqueValues(targetCatalog.map((target) => target.type)),
     [targetCatalog]
@@ -462,6 +483,10 @@ export function App() {
   }, [workspaceMode]);
 
   useEffect(() => {
+    window.localStorage.setItem(languageStorageKey, language);
+  }, [language]);
+
+  useEffect(() => {
     window.localStorage.setItem(
       "astrofoto-weather-refresh-minutes",
       String(weatherRefreshMinutes)
@@ -738,79 +763,66 @@ export function App() {
         <div className="brand">
           <Telescope size={22} aria-hidden="true" />
           <div>
-            <span>Astrofoto</span>
-            <strong>Mission Control</strong>
+            <span>{text.shell.brandKicker}</span>
+            <strong>{text.shell.brandName}</strong>
           </div>
         </div>
 
-        <nav className="mode-tabs" aria-label="Workspace modes">
-          <button
-            className={workspaceMode === "planner" ? "is-active" : ""}
-            type="button"
-            title="Planner"
-            onClick={() => setWorkspaceMode("planner")}
-          >
-            <LocateFixed size={17} aria-hidden="true" />
-            Planner
-          </button>
-          <button
-            className={workspaceMode === "capture" ? "is-active" : ""}
-            type="button"
-            title="Capture"
-            onClick={() => setWorkspaceMode("capture")}
-          >
-            <Aperture size={17} aria-hidden="true" />
-            Capture
-          </button>
-          <button
-            className={workspaceMode === "process" ? "is-active" : ""}
-            type="button"
-            title="Process"
-            onClick={() => setWorkspaceMode("process")}
-          >
-            <Activity size={17} aria-hidden="true" />
-            Process
-          </button>
-          <button
-            className={workspaceMode === "frames" ? "is-active" : ""}
-            type="button"
-            title="Frames"
-            onClick={() => setWorkspaceMode("frames")}
-          >
-            <FileSearch size={17} aria-hidden="true" />
-            Frames
-          </button>
-          <button
-            className={workspaceMode === "multi" ? "is-active" : ""}
-            type="button"
-            title="Multi-session"
-            onClick={() => setWorkspaceMode("multi")}
-          >
-            <CalendarRange size={17} aria-hidden="true" />
-            Multi
-          </button>
+        <nav className="mode-tabs" aria-label={text.shell.workspaceAria}>
+          {workspaceOrder.map((mode) => {
+            const Icon = workspaceIcons[mode];
+            return (
+              <button
+                className={workspaceMode === mode ? "is-active" : ""}
+                key={mode}
+                type="button"
+                title={text.shell.workspaceTitles[mode]}
+                onClick={() => setWorkspaceMode(mode)}
+              >
+                <Icon size={17} aria-hidden="true" />
+                {text.shell.workspaces[mode]}
+              </button>
+            );
+          })}
         </nav>
 
-        <div className="signal-strip" aria-label="Session status">
-          <span>
-            <Moon size={16} aria-hidden="true" />
-            {sessionPlan.moonIlluminationPercent}%
-          </span>
-          <span>
-            <Gauge size={16} aria-hidden="true" />
-            {sessionPlan.conditionScore}/100
-          </span>
-          <span>
-            <Radio size={16} aria-hidden="true" />
-            {isPlanning ? "Sync" : "Live"}
-          </span>
+        <div className="top-actions">
+          <div className="signal-strip" aria-label={text.shell.statusAria}>
+            <span>
+              <Moon size={16} aria-hidden="true" />
+              {sessionPlan.moonIlluminationPercent}%
+            </span>
+            <span>
+              <Gauge size={16} aria-hidden="true" />
+              {sessionPlan.conditionScore}/100
+            </span>
+            <span>
+              <Radio size={16} aria-hidden="true" />
+              {isPlanning ? text.shell.sync : text.shell.live}
+            </span>
+          </div>
+          <label className="language-switcher" title={text.shell.language}>
+            <Languages size={15} aria-hidden="true" />
+            <span>{text.shell.language}</span>
+            <select
+              aria-label={text.shell.language}
+              value={language}
+              onChange={(event) => setLanguage(event.target.value as SupportedLanguage)}
+            >
+              {languageOptions.map((option) => (
+                <option key={option.code} value={option.code}>
+                  {option.shortLabel}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
       </header>
 
       {workspaceMode === "planner" && (
-        <section className="workspace-page planner-page" aria-label="Planner workspace">
-          <aside className="left-stack" aria-label="Targets and profiles">
-            <section className="panel left-panel" aria-label="Target selector">
+        <section className="workspace-page planner-page" aria-label={text.sky.plannerWorkspace}>
+          <aside className="left-stack" aria-label={text.sky.targetsAndProfiles}>
+            <section className="panel left-panel" aria-label={text.sky.targetSelector}>
               <TargetRail
                 targets={targetCatalog}
                 selectedTarget={selectedTarget}
@@ -819,7 +831,7 @@ export function App() {
               />
             </section>
 
-            <section className="panel profile-panel" aria-label="Equipment profiles">
+            <section className="panel profile-panel" aria-label={text.sky.equipmentProfiles}>
               <ProfileDock
                 profiles={profiles}
                 selectedProfileId={selectedProfileId}
@@ -833,12 +845,12 @@ export function App() {
             </section>
           </aside>
 
-          <section className="sky-stage" aria-label="Interactive sky map">
+          <section className="sky-stage" aria-label={text.sky.interactiveMap}>
             <Suspense
               fallback={
                 <div className="sky-loading">
-                  <span>Sky engine</span>
-                  <strong>Initializing WebGL</strong>
+                  <span>{text.sky.skyEngine}</span>
+                  <strong>{text.sky.initializingWebGL}</strong>
                 </div>
               }
             >
@@ -851,52 +863,52 @@ export function App() {
                 onSelectTarget={setSelectedTargetId}
               />
             </Suspense>
-            <div className="scene-controls" aria-label="Sky display controls">
+            <div className="scene-controls" aria-label={text.sky.displayControls}>
               <div className="scene-mode-tabs">
                 <button
                   className={skyDisplayMode === "focus" ? "is-active" : ""}
                   type="button"
-                  title="Show selected target only"
+                  title={text.sky.focusTitle}
                   onClick={() => setSkyDisplayMode("focus")}
                 >
                   <LocateFixed size={14} aria-hidden="true" />
-                  Focus
+                  {text.sky.focus}
                 </button>
                 <button
                   className={skyDisplayMode === "tonight" ? "is-active" : ""}
                   type="button"
-                  title="Show selected target and Tonight Board objects"
+                  title={text.sky.tonightTitle}
                   onClick={() => setSkyDisplayMode("tonight")}
                 >
                   <Moon size={14} aria-hidden="true" />
-                  Tonight
+                  {text.sky.tonight}
                 </button>
                 <button
                   className={skyDisplayMode === "showcase" ? "is-active" : ""}
                   type="button"
-                  title="Rotate through a filtered target showcase"
+                  title={text.sky.showTitle}
                   onClick={() => setSkyDisplayMode("showcase")}
                 >
                   <GalleryHorizontal size={14} aria-hidden="true" />
-                  Show
+                  {text.sky.show}
                 </button>
                 <button
                   className={skyDisplayMode === "catalog" ? "is-active" : ""}
                   type="button"
-                  title="Show filtered catalog targets"
+                  title={text.sky.filterTitle}
                   onClick={() => setSkyDisplayMode("catalog")}
                 >
                   <SlidersHorizontal size={14} aria-hidden="true" />
-                  Filter
+                  {text.sky.filter}
                 </button>
               </div>
 
               {(skyDisplayMode === "showcase" || skyDisplayMode === "catalog") && (
                 <div className="scene-filter-row">
                   <label>
-                    <span>Type</span>
+                    <span>{text.sky.type}</span>
                     <select value={skyTypeFilter} onChange={(event) => setSkyTypeFilter(event.target.value)}>
-                      <option value="All">All</option>
+                      <option value="All">{text.common.all}</option>
                       {skyTargetTypes.map((type) => (
                         <option key={type} value={type}>
                           {type}
@@ -905,9 +917,9 @@ export function App() {
                     </select>
                   </label>
                   <label>
-                    <span>Season</span>
+                    <span>{text.sky.season}</span>
                     <select value={skySeasonFilter} onChange={(event) => setSkySeasonFilter(event.target.value)}>
-                      <option value="All">All</option>
+                      <option value="All">{text.common.all}</option>
                       {skySeasons.map((season) => (
                         <option key={season} value={season}>
                           {season}
@@ -916,16 +928,16 @@ export function App() {
                     </select>
                   </label>
                   <label>
-                    <span>FOV</span>
+                    <span>{text.sky.fov}</span>
                     <select
                       value={skyFitFilter}
                       onChange={(event) => setSkyFitFilter(event.target.value as SkyFitFilter)}
                     >
-                      <option value="All">All</option>
-                      <option value="Small">Small</option>
-                      <option value="Fits">Fits</option>
-                      <option value="Tight">Tight</option>
-                      <option value="Mosaic">Mosaic</option>
+                      <option value="All">{text.common.all}</option>
+                      <option value="Small">{text.sky.fitOptions.Small}</option>
+                      <option value="Fits">{text.sky.fitOptions.Fits}</option>
+                      <option value="Tight">{text.sky.fitOptions.Tight}</option>
+                      <option value="Mosaic">{text.sky.fitOptions.Mosaic}</option>
                     </select>
                   </label>
                 </div>
@@ -934,12 +946,12 @@ export function App() {
             <button
               className={`scene-toggle ${skyAutoRotate ? "is-active" : ""}`}
               type="button"
-              title={skyAutoRotate ? "Disable sky auto-rotate" : "Enable sky auto-rotate"}
+              title={skyAutoRotate ? text.sky.disableAutoRotate : text.sky.enableAutoRotate}
               aria-pressed={skyAutoRotate}
               onClick={() => setSkyAutoRotate((current) => !current)}
             >
               <RotateCw size={15} aria-hidden="true" />
-              <span>{skyAutoRotate ? "Auto" : "Still"}</span>
+              <span>{skyAutoRotate ? text.sky.auto : text.sky.still}</span>
             </button>
             <div className="scene-hud top-left">
               <span>{selectedTarget.type}</span>
@@ -947,12 +959,12 @@ export function App() {
               <em>{skySceneSummary}</em>
             </div>
             <div className="scene-hud bottom-left">
-              <span>Object scale</span>
+              <span>{text.sky.objectScale}</span>
               <strong>{formatObjectFootprint(selectedTarget, fov)}</strong>
               <em>{framingAdvice}</em>
             </div>
             <div className="scene-hud bottom-right">
-              <span>FOV</span>
+              <span>{text.sky.fov}</span>
               <strong>
                 {fov.horizontalDeg.toFixed(2)} x {fov.verticalDeg.toFixed(2)} deg
               </strong>
@@ -1104,7 +1116,7 @@ export function App() {
             <section className="panel frame-expectation-panel" aria-label="Expected capture frames">
               <div className="frame-context-head">
                 <span>{capturePlan.targetName}</span>
-                <strong>Expected Lights</strong>
+                <strong>{text.frames.expectedLights}</strong>
               </div>
               <div className="frame-expectation-list">
                 {capturePlan.exposureSteps.map((step) => (
@@ -1127,8 +1139,8 @@ export function App() {
 
             <section className="panel frame-archive-panel" aria-label="Recent capture archive">
               <div className="frame-context-head">
-                <span>{sessionArchives.length ? "Recent" : "Empty"}</span>
-                <strong>Archive</strong>
+                <span>{sessionArchives.length ? text.frames.recent : text.frames.empty}</span>
+                <strong>{text.frames.archive}</strong>
               </div>
               <div className="frame-archive-list">
                 {sessionArchives.length ? (
@@ -1144,9 +1156,9 @@ export function App() {
                   ))
                 ) : (
                   <div>
-                    <span>No sessions</span>
-                    <strong>Archive waiting</strong>
-                    <em>Capture logs will appear here</em>
+                    <span>{text.frames.noSessions}</span>
+                    <strong>{text.frames.archiveWaiting}</strong>
+                    <em>{text.frames.captureLogsWillAppear}</em>
                   </div>
                 )}
               </div>
@@ -1160,6 +1172,7 @@ export function App() {
           <MultiSessionPlanner
             plan={multiSessionPlan}
             loading={isMultiSessionLoading}
+            language={language}
             nights={multiSessionNights}
             archiveState={multiArchiveState}
             archivedItemKey={multiArchivedItemKey}

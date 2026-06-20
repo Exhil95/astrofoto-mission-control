@@ -35,5 +35,9 @@
 - [x] FITS quality scoring: FWHM, eccentricity, background level, star count, and cloud rejection hints.
 - [x] Frame-to-session import: turn a scanned FITS folder into a captured Session Archive entry.
 - [ ] Internationalization: translate the app into Polish, German, Italian, and Spanish.
+  - [x] Add persisted language selection and shared dictionaries for EN/PL/DE/IT/ES.
+  - [x] Translate the app shell, sky controls, frame context, and Multi-session Planner.
+  - [ ] Translate Capture, Process, FITS ingest, calibration library, profile, and weather panels.
+  - [ ] Localize target metadata, seasons, archive statuses, warnings, Markdown exports, and ICS descriptions.
 - [x] Calibration library browser: reusable dark/flat/bias inventory with temperature/exposure/filter matching.
 - [x] Processing handoff export: PixInsight/Siril-friendly checklist generated from real captured frames.
