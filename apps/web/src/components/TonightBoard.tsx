@@ -1,10 +1,12 @@
 import { ListChecks, Moon, Star, Target } from "lucide-react";
+import { translations, type SupportedLanguage } from "../lib/i18n";
 import type { TonightBoard as TonightBoardModel } from "../lib/session";
 
 type TonightBoardProps = {
   board: TonightBoardModel;
   loading: boolean;
   selectedTargetId: string;
+  language: SupportedLanguage;
   onSelectTarget: (targetId: string) => void;
 };
 
@@ -12,16 +14,19 @@ export function TonightBoard({
   board,
   loading,
   selectedTargetId,
+  language,
   onSelectTarget
 }: TonightBoardProps) {
+  const text = translations[language].tonightBoard;
+
   return (
-    <aside className="tonight-board" aria-label="Tonight Board">
+    <aside className="tonight-board" aria-label={text.aria}>
       <div className="tonight-board-head">
         <div>
-          <span>{loading ? "Ranking" : board.date}</span>
-          <strong>Tonight Board</strong>
+          <span>{loading ? text.ranking : board.date}</span>
+          <strong>{text.title}</strong>
         </div>
-        <div className="tonight-badges" aria-label="Night summary">
+        <div className="tonight-badges" aria-label={text.nightSummary}>
           <span>
             <Moon size={13} aria-hidden="true" />
             {board.moonIlluminationPercent}%
@@ -34,7 +39,7 @@ export function TonightBoard({
       </div>
 
       <div className="tonight-summary">
-        <span>{board.whiteNight ? "White night" : board.weatherStatus}</span>
+        <span>{board.whiteNight ? text.whiteNight : board.weatherStatus}</span>
         <strong>{board.summary}</strong>
       </div>
 
@@ -66,7 +71,7 @@ export function TonightBoard({
 
       <div className="tonight-foot">
         <Target size={13} aria-hidden="true" />
-        <span>{board.items[0]?.reason ?? "Waiting for ranked target"}</span>
+        <span>{board.items[0]?.reason ?? text.waitingTarget}</span>
       </div>
     </aside>
   );

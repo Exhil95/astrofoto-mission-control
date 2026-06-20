@@ -827,6 +827,7 @@ export function App() {
                 targets={targetCatalog}
                 selectedTarget={selectedTarget}
                 fov={fov}
+                language={language}
                 onSelectTarget={setSelectedTargetId}
               />
             </section>
@@ -836,6 +837,7 @@ export function App() {
                 profiles={profiles}
                 selectedProfileId={selectedProfileId}
                 busy={isProfileSaving}
+                language={language}
                 onSelectProfile={selectProfile}
                 onSaveCurrent={saveCurrentProfile}
                 onUpdateProfile={updateExistingProfile}
@@ -982,6 +984,7 @@ export function App() {
                 sensorHeightMm={sensorHeightMm}
                 pixelSizeUm={pixelSizeUm}
                 reducer={reducer}
+                language={language}
                 onSensorPresetChange={selectSensorPreset}
                 onFocalLengthChange={setFocalLengthMm}
                 onSensorWidthChange={changeSensorWidth}
@@ -996,6 +999,7 @@ export function App() {
                 settings={sessionSettings}
                 plan={sessionPlan}
                 loading={isPlanning}
+                language={language}
                 onChange={setSessionSettings}
               />
             </section>
@@ -1011,6 +1015,7 @@ export function App() {
                 settings={sessionSettings}
                 plan={sessionPlan}
                 loading={isPlanning}
+                language={language}
                 onChange={setSessionSettings}
               />
             </section>
@@ -1020,6 +1025,7 @@ export function App() {
               plan={sessionPlan}
               loading={isForecastLoading}
               refreshMinutes={weatherRefreshMinutes}
+              language={language}
               onRefreshMinutesChange={setWeatherRefreshMinutes}
               onRefresh={requestWeatherRefresh}
             />
@@ -1027,10 +1033,16 @@ export function App() {
           </aside>
 
           <section className="capture-command-stack" aria-label="Capture runbook">
-            <SessionTimeline target={selectedTarget} plan={sessionPlan} loading={isPlanning} />
+            <SessionTimeline
+              target={selectedTarget}
+              plan={sessionPlan}
+              loading={isPlanning}
+              language={language}
+            />
             <CapturePlan
               plan={capturePlan}
               loading={isCaptureLoading}
+              language={language}
               archiveState={archiveState}
               archives={sessionArchives}
               onArchive={archiveCurrentSession}
@@ -1042,6 +1054,7 @@ export function App() {
               board={tonightBoard}
               loading={isBoardLoading}
               selectedTargetId={selectedTarget.id}
+              language={language}
               onSelectTarget={setSelectedTargetId}
             />
           </aside>
@@ -1056,6 +1069,7 @@ export function App() {
                 targets={targetCatalog}
                 selectedTarget={selectedTarget}
                 fov={fov}
+                language={language}
                 onSelectTarget={setSelectedTargetId}
               />
             </section>
@@ -1066,6 +1080,7 @@ export function App() {
             capturePlan={capturePlan}
             archives={sessionArchives}
             loading={isProcessingLoading}
+            language={language}
           />
 
           <aside className="process-side-stack" aria-label="Processing context">
@@ -1075,6 +1090,7 @@ export function App() {
                 plan={sessionPlan}
                 loading={isForecastLoading}
                 refreshMinutes={weatherRefreshMinutes}
+                language={language}
                 onRefreshMinutesChange={setWeatherRefreshMinutes}
                 onRefresh={requestWeatherRefresh}
               />
@@ -1089,6 +1105,7 @@ export function App() {
                 sensorHeightMm={sensorHeightMm}
                 pixelSizeUm={pixelSizeUm}
                 reducer={reducer}
+                language={language}
                 onSensorPresetChange={selectSensorPreset}
                 onFocalLengthChange={setFocalLengthMm}
                 onSensorWidthChange={changeSensorWidth}
@@ -1109,6 +1126,7 @@ export function App() {
             settings={sessionSettings}
             fov={fov}
             calibrationLibrary={calibrationLibrary}
+            language={language}
             onArchiveCreated={addSessionArchive}
           />
 
@@ -1134,6 +1152,7 @@ export function App() {
             <CalibrationLibraryPanel
               capturePlan={capturePlan}
               selectedProfile={selectedProfile}
+              language={language}
               onLibraryChange={setCalibrationLibrary}
             />
 
@@ -1188,6 +1207,7 @@ export function App() {
                 settings={sessionSettings}
                 plan={sessionPlan}
                 loading={isPlanning}
+                language={language}
                 onChange={setSessionSettings}
               />
             </section>
@@ -1197,6 +1217,7 @@ export function App() {
                 plan={sessionPlan}
                 loading={isForecastLoading}
                 refreshMinutes={weatherRefreshMinutes}
+                language={language}
                 onRefreshMinutesChange={setWeatherRefreshMinutes}
                 onRefresh={requestWeatherRefresh}
               />

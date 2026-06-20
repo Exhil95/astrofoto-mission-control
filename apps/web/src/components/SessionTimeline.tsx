@@ -1,26 +1,31 @@
 import type { Target } from "../lib/targets";
 import type { SessionPlan } from "../lib/session";
+import { translations, type SupportedLanguage } from "../lib/i18n";
 
 export function SessionTimeline({
   target,
   plan,
-  loading
+  loading,
+  language
 }: {
   target: Target;
   plan: SessionPlan;
   loading: boolean;
+  language: SupportedLanguage;
 }) {
+  const text = translations[language].sessionTimeline;
+
   return (
-    <footer className="timeline" aria-label="Session timeline">
+    <footer className="timeline" aria-label={text.aria}>
       <div className="timeline-target">
-        <span>{loading ? "Planning" : plan.nightLabel}</span>
+        <span>{loading ? text.planning : plan.nightLabel}</span>
         <strong>{target.name}</strong>
         <em>{plan.recommendation}</em>
-        <div className="timeline-score" aria-label="Condition score">
+        <div className="timeline-score" aria-label={text.conditionScore}>
           <span style={{ width: `${plan.conditionScore}%` }} />
         </div>
       </div>
-      <AltitudeChart plan={plan} />
+      <AltitudeChart plan={plan} language={language} />
       <div className="timeline-track">
         {plan.slots.map((slot) => (
           <div className={`timeline-slot ${slot.kind}`} key={`${slot.time}-${slot.label}`}>
@@ -35,7 +40,8 @@ export function SessionTimeline({
   );
 }
 
-function AltitudeChart({ plan }: { plan: SessionPlan }) {
+function AltitudeChart({ plan, language }: { plan: SessionPlan; language: SupportedLanguage }) {
+  const text = translations[language].sessionTimeline;
   const points = plan.altitudeCurve.length ? plan.altitudeCurve : [];
   const polyline = points
     .map((point, index) => {
@@ -51,9 +57,9 @@ function AltitudeChart({ plan }: { plan: SessionPlan }) {
   const peakSlot = plan.slots.find((slot) => slot.label === "Peak");
 
   return (
-    <div className="altitude-chart" aria-label="Target altitude curve">
+    <div className="altitude-chart" aria-label={text.altitudeCurve}>
       <div>
-        <span>Altitude</span>
+        <span>{text.altitude}</span>
         <strong>
           {peakSlot?.time ?? peak.time} / {plan.maxAltitudeDeg.toFixed(0)} deg
         </strong>

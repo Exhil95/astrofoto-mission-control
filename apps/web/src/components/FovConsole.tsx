@@ -1,4 +1,5 @@
 import type { FovResult } from "../lib/fov";
+import { translations, type SupportedLanguage } from "../lib/i18n";
 import type { EquipmentProfile } from "../lib/profiles";
 import { customSensorPreset, sensorPresets } from "../lib/sensors";
 
@@ -11,6 +12,7 @@ type FovConsoleProps = {
   sensorHeightMm: number;
   pixelSizeUm: number;
   reducer: number;
+  language: SupportedLanguage;
   onSensorPresetChange: (sensorId: string) => void;
   onFocalLengthChange: (value: number) => void;
   onSensorWidthChange: (value: number) => void;
@@ -66,6 +68,7 @@ export function FovConsole({
   sensorHeightMm,
   pixelSizeUm,
   reducer,
+  language,
   onSensorPresetChange,
   onFocalLengthChange,
   onSensorWidthChange,
@@ -73,6 +76,7 @@ export function FovConsole({
   onPixelSizeChange,
   onReducerChange
 }: FovConsoleProps) {
+  const text = translations[language].fovConsole;
   const sensorOptions = [customSensorPreset, ...sensorPresets];
   const selectedSensor =
     sensorOptions.find((sensor) => sensor.id === selectedSensorId) ?? customSensorPreset;
@@ -80,12 +84,12 @@ export function FovConsole({
   return (
     <div className="stack">
       <div className="section-title">
-        <span>Optics</span>
+        <span>{text.optics}</span>
         <strong>{fov.effectiveFocalLengthMm.toFixed(0)}mm</strong>
       </div>
 
       <label className="field-row">
-        <span>Sensor catalog</span>
+        <span>{text.sensorCatalog}</span>
         <select
           value={selectedSensorId}
           onChange={(event) => onSensorPresetChange(event.target.value)}
@@ -105,33 +109,33 @@ export function FovConsole({
       </div>
 
       {profile && (
-        <div className="equipment-grid" aria-label="Optical profile metadata">
+        <div className="equipment-grid" aria-label={text.metadata}>
           <div>
-            <span>Camera</span>
+            <span>{text.camera}</span>
             <strong>{profile.cameraName}</strong>
           </div>
           <div>
-            <span>Filters</span>
+            <span>{text.filters}</span>
             <strong>{profile.filterSet}</strong>
           </div>
           <div>
-            <span>Guide</span>
+            <span>{text.guide}</span>
             <strong>{profile.guidingSetup}</strong>
           </div>
           <div>
-            <span>Focuser</span>
+            <span>{text.focuser}</span>
             <strong>{profile.focuserName}</strong>
           </div>
         </div>
       )}
 
       <div className="readout">
-        <span>Image scale</span>
+        <span>{text.imageScale}</span>
         <strong>{fov.pixelScaleArcsec.toFixed(2)} arcsec/px</strong>
       </div>
 
       <Slider
-        label="Focal length"
+        label={text.focalLength}
         value={focalLengthMm}
         min={120}
         max={2400}
@@ -140,7 +144,7 @@ export function FovConsole({
         onChange={onFocalLengthChange}
       />
       <Slider
-        label="Reducer"
+        label={text.reducer}
         value={reducer}
         min={0.6}
         max={1.6}
@@ -149,7 +153,7 @@ export function FovConsole({
         onChange={onReducerChange}
       />
       <Slider
-        label="Sensor width"
+        label={text.sensorWidth}
         value={sensorWidthMm}
         min={5}
         max={43}
@@ -158,7 +162,7 @@ export function FovConsole({
         onChange={onSensorWidthChange}
       />
       <Slider
-        label="Sensor height"
+        label={text.sensorHeight}
         value={sensorHeightMm}
         min={4}
         max={29}
@@ -167,7 +171,7 @@ export function FovConsole({
         onChange={onSensorHeightChange}
       />
       <Slider
-        label="Pixel"
+        label={text.pixel}
         value={pixelSizeUm}
         min={2}
         max={9}
@@ -178,11 +182,11 @@ export function FovConsole({
 
       <div className="metric-grid">
         <div>
-          <span>Horizontal</span>
+          <span>{text.horizontal}</span>
           <strong>{fov.horizontalDeg.toFixed(2)} deg</strong>
         </div>
         <div>
-          <span>Diagonal</span>
+          <span>{text.diagonal}</span>
           <strong>{fov.diagonalDeg.toFixed(2)} deg</strong>
         </div>
       </div>

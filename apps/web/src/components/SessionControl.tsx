@@ -1,4 +1,5 @@
 import { CalendarDays, Gauge, LocateFixed, MapPin } from "lucide-react";
+import { translations, type SupportedLanguage } from "../lib/i18n";
 import { getTodayIsoDate, type SessionPlan, type SessionSettings } from "../lib/session";
 
 const presets = [
@@ -32,18 +33,20 @@ type SessionControlProps = {
   settings: SessionSettings;
   plan: SessionPlan;
   loading: boolean;
+  language: SupportedLanguage;
   onChange: (settings: SessionSettings) => void;
 };
 
-export function SessionControl({ settings, plan, loading, onChange }: SessionControlProps) {
+export function SessionControl({ settings, plan, loading, language, onChange }: SessionControlProps) {
   const update = (next: Partial<SessionSettings>) => onChange({ ...settings, ...next });
   const astroDark = formatMinutes(plan.astronomicalDarknessMinutes);
+  const text = translations[language].sessionControl;
 
   return (
     <div className="stack session-control">
       <div className="section-title">
-        <span>Session</span>
-        <strong>{loading ? "Syncing" : `${plan.conditionScore}/100`}</strong>
+        <span>{text.session}</span>
+        <strong>{loading ? text.syncing : `${plan.conditionScore}/100`}</strong>
       </div>
 
       <div className="session-score">
@@ -58,7 +61,7 @@ export function SessionControl({ settings, plan, loading, onChange }: SessionCon
         <label className="field-row">
           <span>
             <CalendarDays size={15} aria-hidden="true" />
-            Date
+            {text.date}
           </span>
           <input
             type="date"
@@ -67,11 +70,11 @@ export function SessionControl({ settings, plan, loading, onChange }: SessionCon
           />
         </label>
         <button type="button" onClick={() => update({ date: getTodayIsoDate() })}>
-          Tonight
+          {text.tonight}
         </button>
       </div>
 
-      <div className="preset-grid" aria-label="Location presets">
+      <div className="preset-grid" aria-label={text.locationPresets}>
         {presets.map((preset) => (
           <button
             key={preset.id}
@@ -124,7 +127,7 @@ export function SessionControl({ settings, plan, loading, onChange }: SessionCon
       </div>
 
       <label className="field-row">
-        <span>Timezone</span>
+        <span>{text.timezone}</span>
         <input
           type="text"
           value={settings.timezone}
@@ -152,45 +155,46 @@ export function SessionControl({ settings, plan, loading, onChange }: SessionCon
 
       <div className="metric-grid">
         <div>
-          <span>Astro dark</span>
+          <span>{text.astroDark}</span>
           <strong>{astroDark}</strong>
         </div>
         <div>
-          <span>Sun min</span>
+          <span>{text.sunMin}</span>
           <strong>{plan.minSunAltitudeDeg.toFixed(1)} deg</strong>
         </div>
         <div>
-          <span>Moon</span>
+          <span>{text.moon}</span>
           <strong>{plan.moonIlluminationPercent}%</strong>
         </div>
         <div>
-          <span>Altitude</span>
+          <span>{text.altitude}</span>
           <strong>{plan.maxAltitudeDeg} deg</strong>
         </div>
         <div>
-          <span>Seeing</span>
+          <span>{text.seeing}</span>
           <strong>{plan.seeingArcsec.toFixed(1)} arcsec</strong>
         </div>
         <div>
-          <span>Transparency</span>
+          <span>{text.transparency}</span>
           <strong>{plan.transparencyPercent}%</strong>
         </div>
         <div>
-          <span>Weather</span>
-          <strong>{statusLabel(plan.weatherStatus)} {plan.weatherScore}/100</strong>
+          <span>{text.weather}</span>
+          <strong>{statusLabel(plan.weatherStatus, text)} {plan.weatherScore}/100</strong>
         </div>
         <div>
-          <span>Mode</span>
+          <span>{text.mode}</span>
           <strong>{plan.recommendedMode}</strong>
         </div>
       </div>
 
-      <NightProfile plan={plan} />
+      <NightProfile plan={plan} language={language} />
     </div>
   );
 }
 
-function NightProfile({ plan }: { plan: SessionPlan }) {
+function NightProfile({ plan, language }: { plan: SessionPlan; language: SupportedLanguage }) {
+  const text = translations[language].sessionControl;
   const darknessRows = [
     { label: "Civil", minutes: plan.civilDarknessMinutes, kind: "civil" },
     { label: "Nautical", minutes: plan.nauticalDarknessMinutes, kind: "nautical" },
@@ -201,7 +205,7 @@ function NightProfile({ plan }: { plan: SessionPlan }) {
   return (
     <div className={`night-profile ${plan.whiteNight ? "is-white-night" : ""}`}>
       <div className="night-profile-head">
-        <span>Night profile</span>
+        <span>{text.nightProfile}</span>
         <strong>{plan.nightKindLabel}</strong>
       </div>
 
@@ -223,7 +227,7 @@ function NightProfile({ plan }: { plan: SessionPlan }) {
       </div>
 
       <div className="night-flags">
-        <span>{plan.whiteNight ? "White night" : "Astronomical night"}</span>
+        <span>{plan.whiteNight ? text.whiteNight : text.astronomicalNight}</span>
         <strong>Sun {plan.minSunAltitudeDeg.toFixed(1)} deg</strong>
       </div>
 
@@ -234,7 +238,7 @@ function NightProfile({ plan }: { plan: SessionPlan }) {
           <strong>{plan.astronomyScore}/100</strong>
         </div>
         <div>
-          <span>Weather</span>
+          <span>{text.weather}</span>
           <b className={plan.weatherStatus} style={{ width: `${plan.weatherScore}%` }} />
           <strong>{plan.weatherScore}/100</strong>
         </div>
@@ -243,10 +247,10 @@ function NightProfile({ plan }: { plan: SessionPlan }) {
   );
 }
 
-function statusLabel(status: string) {
-  if (status === "shoot") return "Shoot";
-  if (status === "risk") return "Risk";
-  return "Skip";
+function statusLabel(status: string, text: (typeof translations)[SupportedLanguage]["sessionControl"]) {
+  if (status === "shoot") return text.shoot;
+  if (status === "risk") return text.risk;
+  return text.skip;
 }
 
 function formatMinutes(minutes: number) {

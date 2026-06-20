@@ -1,10 +1,12 @@
 import { Archive, CheckSquare, Clipboard, Download, TimerReset } from "lucide-react";
 import { useMemo, useState } from "react";
+import { translations, type SupportedLanguage } from "../lib/i18n";
 import type { CapturePlan as CapturePlanModel, SessionArchiveEntry } from "../lib/session";
 
 type CapturePlanProps = {
   plan: CapturePlanModel;
   loading: boolean;
+  language: SupportedLanguage;
   archiveState: "idle" | "saving" | "saved" | "failed";
   archives: SessionArchiveEntry[];
   onArchive: () => void;
@@ -13,11 +15,13 @@ type CapturePlanProps = {
 export function CapturePlan({
   plan,
   loading,
+  language,
   archiveState,
   archives,
   onArchive
 }: CapturePlanProps) {
   const [copyState, setCopyState] = useState<"idle" | "done" | "failed">("idle");
+  const text = translations[language].capturePlan;
   const filename = useMemo(
     () => `${plan.date}-${plan.targetName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.md`,
     [plan.date, plan.targetName]
@@ -45,27 +49,27 @@ export function CapturePlan({
   };
 
   return (
-    <aside className="capture-plan" aria-label="Capture plan">
+    <aside className="capture-plan" aria-label={text.aria}>
       <div className="capture-head">
         <div>
-          <span>{loading ? "Planning" : plan.date}</span>
-          <strong>Capture Plan</strong>
+          <span>{loading ? text.planning : plan.date}</span>
+          <strong>{text.title}</strong>
         </div>
         <div className="capture-actions">
           <button
             type="button"
             onClick={onArchive}
-            title="Save session archive"
+            title={text.saveSessionArchive}
             disabled={archiveState === "saving"}
           >
             <Archive size={14} aria-hidden="true" />
-            <span>{archiveLabel(archiveState)}</span>
+            <span>{archiveLabel(archiveState, text)}</span>
           </button>
-          <button type="button" onClick={copyMarkdown} title="Copy Markdown">
+          <button type="button" onClick={copyMarkdown} title={text.copyMarkdown}>
             <Clipboard size={14} aria-hidden="true" />
-            <span>{copyState === "done" ? "Copied" : copyState === "failed" ? "Retry" : "Copy"}</span>
+            <span>{copyState === "done" ? text.copied : copyState === "failed" ? text.retry : text.copy}</span>
           </button>
-          <button type="button" onClick={downloadMarkdown} title="Download Markdown">
+          <button type="button" onClick={downloadMarkdown} title={text.downloadMarkdown}>
             <Download size={14} aria-hidden="true" />
             <span>MD</span>
           </button>
@@ -80,7 +84,7 @@ export function CapturePlan({
         <em>{plan.framingNote}</em>
       </div>
 
-      <div className="capture-lights" aria-label="Light frames">
+      <div className="capture-lights" aria-label={text.lightFrames}>
         {plan.exposureSteps.slice(0, 4).map((step) => (
           <div className="capture-light" key={step.filterName}>
             <span>{step.filterName}</span>
@@ -99,12 +103,12 @@ export function CapturePlan({
         </span>
         <span>
           <CheckSquare size={13} aria-hidden="true" />
-          {plan.calibrationFrames.length} cal / {plan.checklist.length} checks
+          {plan.calibrationFrames.length} {text.cal} / {plan.checklist.length} {text.checks}
         </span>
       </div>
 
       {archives.length > 0 && (
-        <div className="archive-strip" aria-label="Recent session archive">
+        <div className="archive-strip" aria-label={text.recentArchive}>
           {archives.slice(0, 2).map((archive) => (
             <div className="archive-chip" key={archive.id}>
               <span>{archive.status}</span>
@@ -121,9 +125,12 @@ export function CapturePlan({
   );
 }
 
-function archiveLabel(state: CapturePlanProps["archiveState"]) {
-  if (state === "saving") return "Saving";
-  if (state === "saved") return "Saved";
-  if (state === "failed") return "Retry";
-  return "Log";
+function archiveLabel(
+  state: CapturePlanProps["archiveState"],
+  text: (typeof translations)[SupportedLanguage]["capturePlan"]
+) {
+  if (state === "saving") return text.saving;
+  if (state === "saved") return text.saved;
+  if (state === "failed") return text.retry;
+  return text.log;
 }

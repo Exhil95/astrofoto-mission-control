@@ -12,6 +12,7 @@ import {
 import type { ReactNode } from "react";
 import { useState } from "react";
 import type { FovResult } from "../lib/fov";
+import { translations, type SupportedLanguage } from "../lib/i18n";
 import type { EquipmentProfile } from "../lib/profiles";
 import {
   saveSessionArchive,
@@ -32,6 +33,7 @@ type FitsIngestPanelProps = {
   settings: SessionSettings;
   fov: FovResult;
   calibrationLibrary: CalibrationLibraryResult | null;
+  language: SupportedLanguage;
   onArchiveCreated: (archive: SessionArchiveEntry) => void;
 };
 
@@ -41,8 +43,11 @@ export function FitsIngestPanel({
   settings,
   fov,
   calibrationLibrary,
+  language,
   onArchiveCreated
 }: FitsIngestPanelProps) {
+  const text = translations[language].fitsIngest;
+  const common = translations[language].common;
   const [scanPath, setScanPath] = useState(".");
   const [recursive, setRecursive] = useState(true);
   const [maxFiles, setMaxFiles] = useState(250);
@@ -63,7 +68,7 @@ export function FitsIngestPanel({
       });
       setResult(scan);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "FITS scan failed");
+      setError(caught instanceof Error ? caught.message : text.failed);
     } finally {
       setLoading(false);
     }
@@ -115,41 +120,41 @@ export function FitsIngestPanel({
   const qualitySummary = result ? summarizeQuality(result.frames) : null;
 
   return (
-    <section className="fits-ingest-panel" aria-label="FITS metadata ingest">
+    <section className="fits-ingest-panel" aria-label={text.aria}>
       <div className="fits-ingest-head">
         <div>
-          <span>{loading ? "Scanning" : result?.scanPath ?? "Frames"}</span>
-          <strong>FITS Ingest</strong>
+          <span>{loading ? text.scanning : result?.scanPath ?? text.frames}</span>
+          <strong>{text.title}</strong>
         </div>
         <div className="fits-head-actions">
-          <button type="button" onClick={runScan} disabled={loading} title="Scan FITS metadata">
+          <button type="button" onClick={runScan} disabled={loading} title={text.scanTitle}>
             <FileSearch size={16} aria-hidden="true" />
-            {loading ? "Scan" : "Scan"}
+            {text.scan}
           </button>
           <button
             type="button"
             onClick={importSession}
             disabled={!importDraft || importState === "saving"}
-            title="Import captured session"
+            title={text.importTitle}
           >
             <Archive size={16} aria-hidden="true" />
-            {importLabel(importState)}
+            {importLabel(importState, text)}
           </button>
           <button
             type="button"
             onClick={downloadHandoff}
             disabled={!result}
-            title="Download processing handoff"
+            title={text.handoffTitle}
           >
             <FileDown size={16} aria-hidden="true" />
-            Handoff
+            {text.handoff}
           </button>
         </div>
       </div>
 
       <div className="fits-scan-controls">
         <label className="fits-path-field">
-          <span>Path</span>
+          <span>{text.path}</span>
           <input
             value={scanPath}
             onChange={(event) => setScanPath(event.target.value)}
@@ -157,7 +162,7 @@ export function FitsIngestPanel({
           />
         </label>
         <label>
-          <span>Limit</span>
+          <span>{text.limit}</span>
           <input
             type="number"
             min={1}
@@ -172,7 +177,7 @@ export function FitsIngestPanel({
             checked={recursive}
             onChange={(event) => setRecursive(event.target.checked)}
           />
-          <span>Recursive</span>
+          <span>{text.recursive}</span>
         </label>
       </div>
 
@@ -183,59 +188,59 @@ export function FitsIngestPanel({
         </div>
       )}
 
-      <div className="fits-metrics" aria-label="FITS summary">
+      <div className="fits-metrics" aria-label={text.summary}>
         <MetricCard
           icon={<Database size={15} aria-hidden="true" />}
-          label="Parsed"
+          label={text.parsed}
           value={result ? `${result.parsedFiles}/${result.totalFiles}` : "--"}
-          detail={result ? `${result.rejectedFiles} rejected` : "waiting"}
+          detail={result ? `${result.rejectedFiles} ${text.rejected}` : common.waiting}
         />
         <MetricCard
           icon={<Clock3 size={15} aria-hidden="true" />}
-          label="Lights"
+          label={text.lights}
           value={result ? `${lightMinutes} min` : "--"}
-          detail={result?.exposureRangeSeconds ?? "exposure"}
+          detail={result?.exposureRangeSeconds ?? text.exposure}
         />
         <MetricCard
           icon={<CheckCircle2 size={15} aria-hidden="true" />}
-          label="Quality"
+          label={text.quality}
           value={qualitySummary ? `Q${qualitySummary.averageScore}` : "--"}
           detail={
             qualitySummary
-              ? `${qualitySummary.reviewFrames} review / FWHM ${formatOptionalNumber(
+              ? `${qualitySummary.reviewFrames} ${text.review} / FWHM ${formatOptionalNumber(
                   qualitySummary.fwhmPx
                 )}`
-              : result?.cameras.join(" / ") || "waiting"
+              : result?.cameras.join(" / ") || common.waiting
           }
         />
         <MetricCard
           icon={<Layers3 size={15} aria-hidden="true" />}
-          label="Filters"
+          label={text.filters}
           value={result?.filters.join(" + ") || "--"}
-          detail={result?.objects.join(" / ") || "object"}
+          detail={result?.objects.join(" / ") || text.object}
         />
       </div>
 
       <div className={`fits-import-card ${importDraft ? "" : "is-disabled"}`}>
         <div>
-          <span>{importDraft ? importDraft.confidence : result ? "No light frames" : "Archive import"}</span>
-          <strong>{importDraft?.targetLabel ?? "Import unavailable"}</strong>
-          <em>{importDraft?.summary ?? (result ? "Scan needs at least one Light frame" : "Scan a folder to create a captured session")}</em>
+          <span>{importDraft ? importDraft.confidence : result ? text.noLightFrames : text.archiveImport}</span>
+          <strong>{importDraft?.targetLabel ?? text.importUnavailable}</strong>
+          <em>{importDraft?.summary ?? (result ? text.scanNeedsLight : text.scanCreateArchive)}</em>
         </div>
-        <b>{importDraft ? `${importDraft.payload.capturedFrames} frames` : "--"}</b>
+        <b>{importDraft ? `${importDraft.payload.capturedFrames} ${text.frames.toLowerCase()}` : "--"}</b>
       </div>
 
       <div className="fits-content">
         <section aria-label="FITS groups">
           <div className="fits-section-title">
             <FolderOpen size={14} aria-hidden="true" />
-            <span>Groups</span>
+            <span>{text.groups}</span>
           </div>
           <div className="fits-group-list">
             {result?.groups.length ? (
               result.groups.map((group) => (
                 <div key={`${group.label}-${group.totalExposureSeconds}`}>
-                  <span>{group.frames} frames</span>
+                  <span>{group.frames} {text.frames.toLowerCase()}</span>
                   <strong>{group.label}</strong>
                   <em>
                     {formatSeconds(group.totalExposureSeconds)} /{" "}
@@ -244,7 +249,7 @@ export function FitsIngestPanel({
                 </div>
               ))
             ) : (
-              <EmptyState label="No groups" />
+              <EmptyState label={text.noGroups} />
             )}
           </div>
         </section>
@@ -252,15 +257,15 @@ export function FitsIngestPanel({
         <section aria-label="FITS frame list">
           <div className="fits-section-title">
             <CheckCircle2 size={14} aria-hidden="true" />
-            <span>Frames</span>
+            <span>{text.frames}</span>
           </div>
           <div className="fits-frame-list">
             {result?.frames.length ? (
               result.frames.slice(0, 12).map((frame) => (
-                <FrameRow key={frame.relativePath} frame={frame} />
+                <FrameRow key={frame.relativePath} frame={frame} language={language} />
               ))
             ) : (
-              <EmptyState label="No frames" />
+              <EmptyState label={text.noFrames} />
             )}
           </div>
         </section>
@@ -274,7 +279,7 @@ export function FitsIngestPanel({
       ) : (
         <div className="fits-warning is-clean">
           <CheckCircle2 size={14} aria-hidden="true" />
-          <span>{result ? "Metadata set looks consistent" : "Awaiting scan"}</span>
+          <span>{result ? text.metadataConsistent : text.awaitingScan}</span>
         </div>
       )}
     </section>
@@ -302,7 +307,8 @@ function MetricCard({
   );
 }
 
-function FrameRow({ frame }: { frame: FitsFrameMetadata }) {
+function FrameRow({ frame, language }: { frame: FitsFrameMetadata; language: SupportedLanguage }) {
+  const text = translations[language].fitsIngest;
   const scoreLabel = frame.qualityScore !== null ? ` / Q${frame.qualityScore}` : "";
   const frameFlags = [...frame.warnings, ...frame.qualityFlags];
   return (
@@ -313,8 +319,8 @@ function FrameRow({ frame }: { frame: FitsFrameMetadata }) {
       </span>
       <strong>{frame.fileName}</strong>
       <em>
-        {frame.filterName ?? "No filter"} / {frame.exposureSeconds ?? "--"}s /{" "}
-        {frame.sensorTemperatureC ?? "--"}C / {frameQualityDetail(frame)}
+        {frame.filterName ?? text.noFilter} / {frame.exposureSeconds ?? "--"}s /{" "}
+        {frame.sensorTemperatureC ?? "--"}C / {frameQualityDetail(frame, text)}
         {frameFlags.length ? ` / ${frameFlags[0]}` : ""}
       </em>
     </div>
@@ -334,11 +340,14 @@ function formatSeconds(seconds: number) {
   return `${Math.round(seconds / 60)}m`;
 }
 
-function frameQualityDetail(frame: FitsFrameMetadata) {
+function frameQualityDetail(
+  frame: FitsFrameMetadata,
+  text: (typeof translations)[SupportedLanguage]["fitsIngest"]
+) {
   if (frame.qualityScore === null) {
-    return frame.backgroundAdu !== null ? `BG ${formatOptionalNumber(frame.backgroundAdu)}` : "quality --";
+    return frame.backgroundAdu !== null ? `BG ${formatOptionalNumber(frame.backgroundAdu)}` : text.qualityMissing;
   }
-  return `${frame.starCount ?? 0} stars / FWHM ${formatOptionalNumber(
+  return `${frame.starCount ?? 0} ${text.stars} / FWHM ${formatOptionalNumber(
     frame.fwhmPx
   )} / e ${formatOptionalNumber(frame.eccentricity)}`;
 }
@@ -587,11 +596,14 @@ function slugify(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80) || "session";
 }
 
-function importLabel(state: "idle" | "saving" | "saved" | "failed") {
-  if (state === "saving") return "Saving";
-  if (state === "saved") return "Saved";
-  if (state === "failed") return "Retry";
-  return "Import";
+function importLabel(
+  state: "idle" | "saving" | "saved" | "failed",
+  text: (typeof translations)[SupportedLanguage]["fitsIngest"]
+) {
+  if (state === "saving") return text.saving;
+  if (state === "saved") return text.saved;
+  if (state === "failed") return text.retry;
+  return text.import;
 }
 
 function createArchiveImportDraft({

@@ -1,12 +1,14 @@
 import { Filter, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { FovResult } from "../lib/fov";
+import { translations, type SupportedLanguage } from "../lib/i18n";
 import type { Target } from "../lib/targets";
 
 type TargetRailProps = {
   targets: Target[];
   selectedTarget: Target;
   fov: FovResult;
+  language: SupportedLanguage;
   onSelectTarget: (targetId: string) => void;
 };
 
@@ -25,7 +27,9 @@ const fitOrder: Record<FitKind, number> = {
   mosaic: 3
 };
 
-export function TargetRail({ targets, selectedTarget, fov, onSelectTarget }: TargetRailProps) {
+export function TargetRail({ targets, selectedTarget, fov, language, onSelectTarget }: TargetRailProps) {
+  const text = translations[language].targetRail;
+  const common = translations[language].common;
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("All");
   const [seasonFilter, setSeasonFilter] = useState("All");
@@ -69,7 +73,7 @@ export function TargetRail({ targets, selectedTarget, fov, onSelectTarget }: Tar
   return (
     <div className="stack target-catalog">
       <div className="section-title">
-        <span>Catalog</span>
+        <span>{text.catalog}</span>
         <strong>
           {catalog.length}/{targets.length}
         </strong>
@@ -78,23 +82,23 @@ export function TargetRail({ targets, selectedTarget, fov, onSelectTarget }: Tar
       <label className="field-row target-search">
         <span>
           <Search size={15} aria-hidden="true" />
-          Search
+          {text.search}
         </span>
         <input
           value={query}
-          placeholder="M42, Cygnus, galaxy"
+          placeholder={text.placeholder}
           onChange={(event) => setQuery(event.target.value)}
         />
       </label>
 
-      <div className="catalog-filter-row" aria-label="Catalog filters">
+      <div className="catalog-filter-row" aria-label={text.filters}>
         <label className="field-row">
           <span>
             <Filter size={14} aria-hidden="true" />
-            Type
+            {text.type}
           </span>
           <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
-            <option value="All">All</option>
+            <option value="All">{common.all}</option>
             {targetTypes.map((type) => (
               <option key={type} value={type}>
                 {type}
@@ -103,9 +107,9 @@ export function TargetRail({ targets, selectedTarget, fov, onSelectTarget }: Tar
           </select>
         </label>
         <label className="field-row">
-          <span>Season</span>
+          <span>{text.season}</span>
           <select value={seasonFilter} onChange={(event) => setSeasonFilter(event.target.value)}>
-            <option value="All">All</option>
+            <option value="All">{common.all}</option>
             {seasons.map((season) => (
               <option key={season} value={season}>
                 {season}
@@ -114,13 +118,13 @@ export function TargetRail({ targets, selectedTarget, fov, onSelectTarget }: Tar
           </select>
         </label>
         <label className="field-row">
-          <span>FOV</span>
+          <span>{text.fov}</span>
           <select value={fitFilter} onChange={(event) => setFitFilter(event.target.value)}>
-            <option value="All">All</option>
-            <option value="fits">Fits</option>
-            <option value="tight">Tight</option>
-            <option value="mosaic">Mosaic</option>
-            <option value="small">Small</option>
+            <option value="All">{common.all}</option>
+            <option value="fits">{text.fitLabels.fits}</option>
+            <option value="tight">{text.fitLabels.tight}</option>
+            <option value="mosaic">{text.fitLabels.mosaic}</option>
+            <option value="small">{text.fitLabels.small}</option>
           </select>
         </label>
       </div>
@@ -146,7 +150,7 @@ export function TargetRail({ targets, selectedTarget, fov, onSelectTarget }: Tar
             </span>
             <span className="target-score">
               <em>{target.magnitude.toFixed(1)}</em>
-              <b className={`fit-chip fit-chip-${fit.kind}`}>{fit.label}</b>
+              <b className={`fit-chip fit-chip-${fit.kind}`}>{text.fitLabels[fit.kind]}</b>
             </span>
           </button>
         ))}
@@ -154,38 +158,38 @@ export function TargetRail({ targets, selectedTarget, fov, onSelectTarget }: Tar
 
       {catalog.length === 0 && (
         <div className="target-empty">
-          <strong>No match</strong>
-          <span>Adjust filters or search.</span>
+          <strong>{text.noMatch}</strong>
+          <span>{text.adjustFilters}</span>
         </div>
       )}
 
       <div className="metric-grid target-detail-grid">
         <div>
-          <span>Type</span>
+          <span>{text.type}</span>
           <strong>{selectedTarget.type}</strong>
         </div>
         <div>
-          <span>Size</span>
+          <span>{text.size}</span>
           <strong>{formatArcmin(selectedTarget)}</strong>
         </div>
         <div>
-          <span>Fit</span>
-          <strong>{selectedFit.label} {Math.round(selectedFit.load * 100)}%</strong>
+          <span>{text.fit}</span>
+          <strong>{text.fitLabels[selectedFit.kind]} {Math.round(selectedFit.load * 100)}%</strong>
         </div>
         <div>
-          <span>Footprint</span>
+          <span>{text.footprint}</span>
           <strong>{formatFootprint(selectedTarget, fov)}</strong>
         </div>
         <div>
-          <span>Season</span>
+          <span>{text.season}</span>
           <strong>{selectedTarget.bestMonths}</strong>
         </div>
         <div>
-          <span>Difficulty</span>
+          <span>{text.difficulty}</span>
           <strong>{selectedTarget.difficulty}</strong>
         </div>
         <div>
-          <span>Signal</span>
+          <span>{text.signal}</span>
           <strong>{selectedTarget.exposureHint}</strong>
         </div>
       </div>

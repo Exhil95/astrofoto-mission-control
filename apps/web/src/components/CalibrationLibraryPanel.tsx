@@ -1,5 +1,6 @@
 import { CheckCircle2, Database, FileSearch, TriangleAlert } from "lucide-react";
 import { useMemo, useState } from "react";
+import { translations, type SupportedLanguage } from "../lib/i18n";
 import type { EquipmentProfile } from "../lib/profiles";
 import {
   fetchCalibrationLibrary,
@@ -11,14 +12,17 @@ import {
 type CalibrationLibraryPanelProps = {
   capturePlan: CapturePlan;
   selectedProfile: EquipmentProfile | null;
+  language: SupportedLanguage;
   onLibraryChange?: (library: CalibrationLibraryResult) => void;
 };
 
 export function CalibrationLibraryPanel({
   capturePlan,
   selectedProfile,
+  language,
   onLibraryChange
 }: CalibrationLibraryPanelProps) {
+  const text = translations[language].calibrationLibrary;
   const [libraryPath, setLibraryPath] = useState(".");
   const [recursive, setRecursive] = useState(true);
   const [maxFiles, setMaxFiles] = useState(800);
@@ -56,32 +60,32 @@ export function CalibrationLibraryPanel({
       setResult(library);
       onLibraryChange?.(library);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Calibration library failed");
+      setError(caught instanceof Error ? caught.message : text.failed);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <section className="panel calibration-library-panel" aria-label="Calibration library">
+    <section className="panel calibration-library-panel" aria-label={text.aria}>
       <div className="frame-context-head">
         <div>
-          <span>{result?.scanPath ?? "Library"}</span>
-          <strong>Calibration</strong>
+          <span>{result?.scanPath ?? text.library}</span>
+          <strong>{text.calibration}</strong>
         </div>
-        <button type="button" onClick={scanLibrary} disabled={loading} title="Scan calibration library">
+        <button type="button" onClick={scanLibrary} disabled={loading} title={text.scanTitle}>
           <FileSearch size={15} aria-hidden="true" />
-          <span>{loading ? "Scan" : "Scan"}</span>
+          <span>{text.scan}</span>
         </button>
       </div>
 
       <div className="calibration-controls">
         <label className="calibration-path-field">
-          <span>Path</span>
+          <span>{text.path}</span>
           <input value={libraryPath} onChange={(event) => setLibraryPath(event.target.value)} />
         </label>
         <label>
-          <span>Temp</span>
+          <span>{text.temp}</span>
           <input
             value={targetTemperature}
             onChange={(event) => setTargetTemperature(event.target.value)}
@@ -89,7 +93,7 @@ export function CalibrationLibraryPanel({
           />
         </label>
         <label>
-          <span>Limit</span>
+          <span>{text.limit}</span>
           <input
             type="number"
             min={1}
@@ -104,14 +108,14 @@ export function CalibrationLibraryPanel({
             checked={recursive}
             onChange={(event) => setRecursive(event.target.checked)}
           />
-          <span>Recursive</span>
+          <span>{text.recursive}</span>
         </label>
       </div>
 
       <div className="calibration-target-strip">
         <Database size={13} aria-hidden="true" />
-        <span>{targetFilters.join("+") || "filters"}</span>
-        <b>{targetExposureSeconds.map((value) => `${value}s`).join("+") || "exposure"}</b>
+        <span>{targetFilters.join("+") || text.filters}</span>
+        <b>{targetExposureSeconds.map((value) => `${value}s`).join("+") || text.exposure}</b>
       </div>
 
       {error && (
@@ -122,17 +126,19 @@ export function CalibrationLibraryPanel({
       )}
 
       <div className="calibration-library-summary">
-        <span>{result ? `${result.calibrationFrames} frames` : "Awaiting scan"}</span>
-        <strong>{result ? `${bestMatches} strong matches` : "No library loaded"}</strong>
-        <em>{result?.summary ?? `${targetBinning ?? "binning"} / ${selectedProfile?.cameraName ?? "camera"}`}</em>
+        <span>{result ? `${result.calibrationFrames} ${text.frames}` : text.awaitingScan}</span>
+        <strong>{result ? `${bestMatches} ${text.strongMatches}` : text.noLibrary}</strong>
+        <em>{result?.summary ?? `${targetBinning ?? "binning"} / ${selectedProfile?.cameraName ?? text.camera}`}</em>
       </div>
 
       <div className="calibration-library-list">
         {result?.items.length ? (
-          result.items.slice(0, 6).map((item) => <CalibrationRow item={item} key={itemKey(item)} />)
+          result.items.slice(0, 6).map((item) => (
+            <CalibrationRow item={item} key={itemKey(item)} language={language} />
+          ))
         ) : (
           <div className="fits-empty">
-            <span>No calibration groups</span>
+            <span>{text.noGroups}</span>
           </div>
         )}
       </div>
@@ -145,14 +151,21 @@ export function CalibrationLibraryPanel({
       ) : (
         <div className="fits-warning is-clean">
           <CheckCircle2 size={14} aria-hidden="true" />
-          <span>{result ? "Calibration coverage looks usable" : "Awaiting calibration scan"}</span>
+          <span>{result ? text.coverageUsable : text.awaitingCalibrationScan}</span>
         </div>
       )}
     </section>
   );
 }
 
-function CalibrationRow({ item }: { item: CalibrationLibraryItem }) {
+function CalibrationRow({
+  item,
+  language
+}: {
+  item: CalibrationLibraryItem;
+  language: SupportedLanguage;
+}) {
+  const text = translations[language].calibrationLibrary;
   return (
     <div className={`calibration-row is-${item.matchStatus}`}>
       <span>
@@ -160,7 +173,7 @@ function CalibrationRow({ item }: { item: CalibrationLibraryItem }) {
       </span>
       <strong>{calibrationLabel(item)}</strong>
       <em>
-        {item.frames} frames / {item.reason}
+        {item.frames} {text.frames} / {item.reason}
       </em>
     </div>
   );

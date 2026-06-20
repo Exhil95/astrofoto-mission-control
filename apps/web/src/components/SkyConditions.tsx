@@ -1,6 +1,7 @@
 import { CloudSun, Droplets, Eye, RefreshCw, Wind } from "lucide-react";
 import type { ReactNode } from "react";
 import type { ForecastRefreshMinutes, SkyForecast, SkyForecastHour } from "../lib/forecast";
+import { translations, type SupportedLanguage } from "../lib/i18n";
 import type { SessionPlan } from "../lib/session";
 
 type SkyConditionsProps = {
@@ -8,6 +9,7 @@ type SkyConditionsProps = {
   plan: SessionPlan;
   loading: boolean;
   refreshMinutes: ForecastRefreshMinutes;
+  language: SupportedLanguage;
   onRefreshMinutesChange: (minutes: ForecastRefreshMinutes) => void;
   onRefresh: () => void;
 };
@@ -17,9 +19,11 @@ export function SkyConditions({
   plan,
   loading,
   refreshMinutes,
+  language,
   onRefreshMinutesChange,
   onRefresh
 }: SkyConditionsProps) {
+  const text = translations[language].skyConditions;
   const bestHour = forecast.hours.reduce(
     (best, hour) => (hour.imagingScore > best.imagingScore ? hour : best),
     forecast.hours[0] ?? emptyHour
@@ -30,24 +34,24 @@ export function SkyConditions({
   const maxGust = Math.max(...forecast.hours.map((hour) => hour.windGustKmh), 0);
   const minVisibility = Math.min(...forecast.hours.map((hour) => hour.visibilityKm), 99);
   const warnings = plan.astronomicalDarknessMinutes === 0
-    ? ["No astro dark", ...forecast.warnings]
+    ? [text.noAstroDark, ...forecast.warnings]
     : forecast.warnings;
 
   return (
     <div className="stack sky-conditions">
       <div className="section-title">
-        <span>Sky Conditions</span>
-        <strong>{loading ? "Syncing" : `${forecast.score}/100`}</strong>
+        <span>{text.title}</span>
+        <strong>{loading ? text.syncing : `${forecast.score}/100`}</strong>
       </div>
 
-      <div className="weather-cache-controls" aria-label="Weather cache controls">
+      <div className="weather-cache-controls" aria-label={text.cacheControls}>
         <div className="weather-refresh-tabs">
           {[15, 30, 60].map((minutes) => (
             <button
               className={refreshMinutes === minutes ? "is-active" : ""}
               key={minutes}
               type="button"
-              title={`Refresh every ${minutes} minutes`}
+              title={`${text.refreshEvery} ${minutes} min`}
               onClick={() => onRefreshMinutesChange(minutes as ForecastRefreshMinutes)}
             >
               {minutes}m
@@ -57,7 +61,7 @@ export function SkyConditions({
         <button
           className="weather-refresh-button"
           type="button"
-          title="Refresh weather now"
+          title={text.refreshNow}
           onClick={onRefresh}
           disabled={loading}
         >
@@ -66,21 +70,21 @@ export function SkyConditions({
       </div>
 
       <div className={`condition-score ${forecast.status}`}>
-        <span>{statusLabel(forecast.status)}</span>
+        <span>{statusLabel(forecast.status, text)}</span>
         <strong>{forecast.summary}</strong>
         <em>
-          Best {bestHour.time} / {bestHour.imagingScore}/100
+          {text.best} {bestHour.time} / {bestHour.imagingScore}/100
         </em>
       </div>
 
       <div className="condition-metrics">
-        <Metric icon={<CloudSun size={15} aria-hidden="true" />} label="Cloud" value={`${averageCloud}%`} />
-        <Metric icon={<Droplets size={15} aria-hidden="true" />} label="Humidity" value={`${averageHumidity}%`} />
-        <Metric icon={<Wind size={15} aria-hidden="true" />} label="Gust" value={`${maxGust.toFixed(0)} km/h`} />
-        <Metric icon={<Eye size={15} aria-hidden="true" />} label="Vis" value={`${minVisibility.toFixed(1)} km`} />
+        <Metric icon={<CloudSun size={15} aria-hidden="true" />} label={text.cloud} value={`${averageCloud}%`} />
+        <Metric icon={<Droplets size={15} aria-hidden="true" />} label={text.humidity} value={`${averageHumidity}%`} />
+        <Metric icon={<Wind size={15} aria-hidden="true" />} label={text.gust} value={`${maxGust.toFixed(0)} km/h`} />
+        <Metric icon={<Eye size={15} aria-hidden="true" />} label={text.visibility} value={`${minVisibility.toFixed(1)} km`} />
       </div>
 
-      <div className="cloud-strip" aria-label="Cloud forecast by hour">
+      <div className="cloud-strip" aria-label={text.cloudForecast}>
         {forecast.hours.map((hour) => (
           <div className={`cloud-hour ${hour.risk}`} key={hour.time}>
             <div className="cloud-bar" aria-hidden="true">
@@ -100,9 +104,9 @@ export function SkyConditions({
       </div>
 
       <div className="condition-source">
-        <span>Source</span>
+        <span>{text.source}</span>
         <strong>
-          {sourceLabel(forecast.source)} / high cloud {averageHighCloud}%
+          {sourceLabel(forecast.source)} / {text.highCloud} {averageHighCloud}%
         </strong>
       </div>
     </div>
@@ -151,10 +155,13 @@ function average(values: number[]) {
   return Math.round(values.reduce((total, value) => total + value, 0) / values.length);
 }
 
-function statusLabel(status: SkyForecast["status"]) {
-  if (status === "shoot") return "Shoot";
-  if (status === "risk") return "Risk";
-  return "Skip";
+function statusLabel(
+  status: SkyForecast["status"],
+  text: (typeof translations)[SupportedLanguage]["skyConditions"]
+) {
+  if (status === "shoot") return text.shoot;
+  if (status === "risk") return text.risk;
+  return text.skip;
 }
 
 function sourceLabel(source: string) {

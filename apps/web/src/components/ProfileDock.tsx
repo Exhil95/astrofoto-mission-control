@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
+import { translations, type SupportedLanguage } from "../lib/i18n";
 import { profileToPayload, type EquipmentProfile, type ProfilePayload } from "../lib/profiles";
 import { sensorPresets } from "../lib/sensors";
 
@@ -18,6 +19,7 @@ type ProfileDockProps = {
   profiles: EquipmentProfile[];
   selectedProfileId: number | null;
   busy: boolean;
+  language: SupportedLanguage;
   onSelectProfile: (profileId: number) => void;
   onSaveCurrent: () => Promise<void> | void;
   onUpdateProfile: (profileId: number, payload: ProfilePayload) => Promise<void> | void;
@@ -29,12 +31,14 @@ export function ProfileDock({
   profiles,
   selectedProfileId,
   busy,
+  language,
   onSelectProfile,
   onSaveCurrent,
   onUpdateProfile,
   onDuplicateProfile,
   onDeleteProfile
 }: ProfileDockProps) {
+  const text = translations[language].profileDock;
   const selectedProfile =
     profiles.find((profile) => profile.id === selectedProfileId) ?? profiles[0];
   const [editorOpen, setEditorOpen] = useState(false);
@@ -65,7 +69,7 @@ export function ProfileDock({
 
     const payload = sanitizeDraft(draft);
     if (!payload.name || !payload.siteName || !payload.timezone || !payload.telescopeName) {
-      setError("Complete required fields.");
+      setError(text.completeRequired);
       return;
     }
 
@@ -76,7 +80,7 @@ export function ProfileDock({
 
   const requestDelete = async () => {
     if (!selectedProfile || profiles.length <= 1) return;
-    const confirmed = window.confirm(`Delete profile "${selectedProfile.name}"?`);
+    const confirmed = window.confirm(`${text.deleteConfirm} "${selectedProfile.name}"?`);
     if (confirmed) await onDeleteProfile(selectedProfile.id);
   };
 
@@ -114,14 +118,14 @@ export function ProfileDock({
   return (
     <div className="stack profile-dock">
       <div className="section-title">
-        <span>Profile</span>
+        <span>{text.profile}</span>
         <strong>{profiles.length}</strong>
       </div>
 
       <label className="field-row">
         <span>
           <Database size={15} aria-hidden="true" />
-          Equipment + site
+          {text.equipmentSite}
         </span>
         <select
           value={selectedProfile?.id ?? ""}
@@ -161,37 +165,37 @@ export function ProfileDock({
             <div>
               <span>
                 <Telescope size={14} aria-hidden="true" />
-                Focal
+                {text.focal}
               </span>
               <strong>{selectedProfile.focalLengthMm.toFixed(0)}mm</strong>
             </div>
             <div>
-              <span>Aperture</span>
+              <span>{text.aperture}</span>
               <strong>{selectedProfile.apertureMm.toFixed(0)}mm</strong>
             </div>
             <div>
-              <span>Sensor</span>
+              <span>{text.sensor}</span>
               <strong>{selectedProfile.sensorWidthMm.toFixed(1)}mm</strong>
             </div>
             <div>
-              <span>Filters</span>
+              <span>{text.filters}</span>
               <strong>{selectedProfile.filterSet}</strong>
             </div>
             <div>
-              <span>Guide</span>
+              <span>{text.guide}</span>
               <strong>{selectedProfile.guidingSetup}</strong>
             </div>
           </div>
 
-          <div className="profile-actions" aria-label="Profile actions">
-            <button type="button" onClick={openEditor} disabled={busy} title="Edit profile">
+          <div className="profile-actions" aria-label={text.actions}>
+            <button type="button" onClick={openEditor} disabled={busy} title={text.edit}>
               <Pencil size={15} aria-hidden="true" />
             </button>
             <button
               type="button"
               onClick={() => onDuplicateProfile(selectedProfile.id)}
               disabled={busy}
-              title="Duplicate profile"
+              title={text.duplicate}
             >
               <Copy size={15} aria-hidden="true" />
             </button>
@@ -199,7 +203,7 @@ export function ProfileDock({
               type="button"
               onClick={requestDelete}
               disabled={busy || profiles.length <= 1}
-              title="Delete profile"
+              title={text.delete}
             >
               <Trash2 size={15} aria-hidden="true" />
             </button>
@@ -214,7 +218,7 @@ export function ProfileDock({
         disabled={busy}
       >
         <Save size={15} aria-hidden="true" />
-        {busy ? "Saving" : "Save current"}
+        {busy ? text.saving : text.saveCurrent}
       </button>
 
       {editorOpen && selectedProfile && createPortal(
@@ -222,14 +226,14 @@ export function ProfileDock({
           <form className="profile-editor" onSubmit={submitProfile}>
             <div className="profile-editor-head">
               <div>
-                <span>Profile Manager</span>
+                <span>{text.manager}</span>
                 <strong>{selectedProfile.name}</strong>
               </div>
               <button
                 className="icon-button"
                 type="button"
                 onClick={() => setEditorOpen(false)}
-                title="Close"
+                title={text.close}
               >
                 <X size={17} aria-hidden="true" />
               </button>
@@ -237,7 +241,7 @@ export function ProfileDock({
 
             <div className="profile-form-grid">
               <label className="field-row">
-                <span>Name</span>
+                <span>{text.labels.name}</span>
                 <input
                   value={draft.name}
                   maxLength={80}
@@ -246,7 +250,7 @@ export function ProfileDock({
                 />
               </label>
               <label className="field-row">
-                <span>Site</span>
+                <span>{text.labels.site}</span>
                 <input
                   value={draft.siteName}
                   maxLength={80}
@@ -255,7 +259,7 @@ export function ProfileDock({
                 />
               </label>
               <label className="field-row">
-                <span>Telescope</span>
+                <span>{text.labels.telescope}</span>
                 <input
                   value={draft.telescopeName}
                   maxLength={80}
@@ -264,7 +268,7 @@ export function ProfileDock({
                 />
               </label>
               <label className="field-row">
-                <span>Telescope type</span>
+                <span>{text.labels.telescopeType}</span>
                 <input
                   value={draft.telescopeType}
                   maxLength={80}
@@ -272,7 +276,7 @@ export function ProfileDock({
                 />
               </label>
               <label className="field-row">
-                <span>Timezone</span>
+                <span>{text.labels.timezone}</span>
                 <input
                   value={draft.timezone}
                   maxLength={64}
@@ -281,7 +285,7 @@ export function ProfileDock({
                 />
               </label>
               <label className="field-row">
-                <span>Latitude</span>
+                <span>{text.labels.latitude}</span>
                 <input
                   type="number"
                   value={draft.latitudeDeg}
@@ -292,7 +296,7 @@ export function ProfileDock({
                 />
               </label>
               <label className="field-row">
-                <span>Longitude</span>
+                <span>{text.labels.longitude}</span>
                 <input
                   type="number"
                   value={draft.longitudeDeg}
@@ -303,7 +307,7 @@ export function ProfileDock({
                 />
               </label>
               <label className="field-row">
-                <span>Bortle</span>
+                <span>{text.labels.bortle}</span>
                 <input
                   type="number"
                   value={draft.bortle}
@@ -314,7 +318,7 @@ export function ProfileDock({
                 />
               </label>
               <label className="field-row">
-                <span>Aperture</span>
+                <span>{text.labels.aperture}</span>
                 <input
                   type="number"
                   value={draft.apertureMm}
@@ -325,7 +329,7 @@ export function ProfileDock({
                 />
               </label>
               <label className="field-row">
-                <span>Focal length</span>
+                <span>{text.labels.focalLength}</span>
                 <input
                   type="number"
                   value={draft.focalLengthMm}
@@ -336,7 +340,7 @@ export function ProfileDock({
                 />
               </label>
               <label className="field-row">
-                <span>Reducer name</span>
+                <span>{text.labels.reducerName}</span>
                 <input
                   value={draft.reducerName}
                   maxLength={80}
@@ -344,7 +348,7 @@ export function ProfileDock({
                 />
               </label>
               <label className="field-row">
-                <span>Reducer</span>
+                <span>{text.labels.reducer}</span>
                 <input
                   type="number"
                   value={draft.reducer}
@@ -355,7 +359,7 @@ export function ProfileDock({
                 />
               </label>
               <label className="field-row">
-                <span>Camera</span>
+                <span>{text.labels.camera}</span>
                 <input
                   value={draft.cameraName}
                   maxLength={80}
@@ -363,9 +367,9 @@ export function ProfileDock({
                 />
               </label>
               <label className="field-row">
-                <span>Sensor preset</span>
+                <span>{text.labels.sensorPreset}</span>
                 <select value={sensorSelectValue} onChange={(event) => selectSensor(event.target.value)}>
-                  <option value="custom">Custom sensor</option>
+                  <option value="custom">{text.labels.customSensor}</option>
                   {sensorPresets.map((sensor) => (
                     <option key={sensor.id} value={sensor.id}>
                       {sensor.name}
@@ -374,7 +378,7 @@ export function ProfileDock({
                 </select>
               </label>
               <label className="field-row">
-                <span>Sensor name</span>
+                <span>{text.labels.sensorName}</span>
                 <input
                   value={draft.sensorName}
                   maxLength={80}
@@ -383,7 +387,7 @@ export function ProfileDock({
                 />
               </label>
               <label className="field-row">
-                <span>Sensor width</span>
+                <span>{text.labels.sensorWidth}</span>
                 <input
                   type="number"
                   value={draft.sensorWidthMm}
@@ -394,7 +398,7 @@ export function ProfileDock({
                 />
               </label>
               <label className="field-row">
-                <span>Sensor height</span>
+                <span>{text.labels.sensorHeight}</span>
                 <input
                   type="number"
                   value={draft.sensorHeightMm}
@@ -405,7 +409,7 @@ export function ProfileDock({
                 />
               </label>
               <label className="field-row">
-                <span>Pixel size</span>
+                <span>{text.labels.pixelSize}</span>
                 <input
                   type="number"
                   value={draft.pixelSizeUm}
@@ -416,7 +420,7 @@ export function ProfileDock({
                 />
               </label>
               <label className="field-row">
-                <span>Filter set</span>
+                <span>{text.labels.filterSet}</span>
                 <input
                   value={draft.filterSet}
                   maxLength={120}
@@ -424,7 +428,7 @@ export function ProfileDock({
                 />
               </label>
               <label className="field-row">
-                <span>Filter wheel</span>
+                <span>{text.labels.filterWheel}</span>
                 <input
                   value={draft.filterWheel}
                   maxLength={80}
@@ -432,7 +436,7 @@ export function ProfileDock({
                 />
               </label>
               <label className="field-row">
-                <span>Guiding</span>
+                <span>{text.labels.guiding}</span>
                 <input
                   value={draft.guidingSetup}
                   maxLength={100}
@@ -440,7 +444,7 @@ export function ProfileDock({
                 />
               </label>
               <label className="field-row">
-                <span>Guide camera</span>
+                <span>{text.labels.guideCamera}</span>
                 <input
                   value={draft.guideCameraName}
                   maxLength={80}
@@ -448,7 +452,7 @@ export function ProfileDock({
                 />
               </label>
               <label className="field-row">
-                <span>Focuser</span>
+                <span>{text.labels.focuser}</span>
                 <input
                   value={draft.focuserName}
                   maxLength={80}
@@ -456,7 +460,7 @@ export function ProfileDock({
                 />
               </label>
               <label className="field-row">
-                <span>Mount</span>
+                <span>{text.labels.mount}</span>
                 <input
                   value={draft.mountName}
                   maxLength={80}
@@ -470,11 +474,11 @@ export function ProfileDock({
             <div className="profile-editor-actions">
               <button type="button" onClick={() => setEditorOpen(false)} disabled={busy}>
                 <X size={15} aria-hidden="true" />
-                Cancel
+                {text.cancel}
               </button>
               <button type="submit" disabled={busy}>
                 <Check size={15} aria-hidden="true" />
-                Save changes
+                {text.saveChanges}
               </button>
             </div>
           </form>
