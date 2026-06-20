@@ -1,6 +1,13 @@
 import { Archive, CalendarDays, CheckCircle2, CloudSun, Download, Moon, Telescope } from "lucide-react";
 import type { ReactNode } from "react";
-import { languageLocale, translations, type SupportedLanguage } from "../lib/i18n";
+import {
+  languageLocale,
+  translateFovFit,
+  translateKnownText,
+  translateKnownTexts,
+  translations,
+  type SupportedLanguage
+} from "../lib/i18n";
 import type { MultiSessionPlan, MultiSessionPlanItem } from "../lib/session";
 
 type MultiSessionArchiveState = "idle" | "saving" | "saved" | "failed";
@@ -73,7 +80,7 @@ export function MultiSessionPlanner({
             {plan.nights} {text.nights}
           </span>
           <strong>{bestItem?.targetName ?? text.noTarget}</strong>
-          <em>{plan.summary}</em>
+          <em>{translateKnownText(language, plan.summary)}</em>
         </div>
         <b>{bestItem?.score ?? 0}</b>
       </div>
@@ -84,7 +91,7 @@ export function MultiSessionPlanner({
             className={night.whiteNight ? "white-night" : night.weatherStatus}
             key={night.date}
             type="button"
-            title={night.summary}
+            title={translateKnownText(language, night.summary)}
           >
             <span>{shortDate(night.date, language)}</span>
             <strong>{night.score}</strong>
@@ -104,10 +111,10 @@ export function MultiSessionPlanner({
               <div className="multi-session-row" key={`${item.date}-${item.targetId}`}>
                 <button className="multi-session-pick" type="button" onClick={() => onSelectItem(item)}>
                   <span>
-                    {shortDate(item.date, language)} / {item.fovFit}
+                    {shortDate(item.date, language)} / {translateFovFit(language, item.fovFit)}
                   </span>
                   <strong>{item.targetName}</strong>
-                  <em>{item.reason}</em>
+                  <em>{translateKnownText(language, item.reason)}</em>
                   <b>{item.score}</b>
                 </button>
                 <button
@@ -151,7 +158,7 @@ export function MultiSessionPlanner({
             />
           </div>
           <div className="multi-warning-list">
-            {(plan.warnings.length ? plan.warnings : [text.planReady]).map((warning) => (
+            {(plan.warnings.length ? translateKnownTexts(language, plan.warnings) : [text.planReady]).map((warning) => (
               <span key={warning}>{warning}</span>
             ))}
           </div>

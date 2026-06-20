@@ -18,6 +18,20 @@ type SkySceneProps = {
 const MAX_COMPARISON_WIDTH = 2.9;
 const MAX_COMPARISON_HEIGHT = 2.0;
 const DEFAULT_DEGREE_SCALE = 0.62;
+const SELECTED_SCENE_POSITION: [number, number, number] = [0, 0, 0.65];
+const SKY_OBJECT_SLOTS = [
+  { left: "8%", top: "25%" },
+  { left: "96%", top: "25%" },
+  { left: "8%", top: "50%" },
+  { left: "96%", top: "50%" },
+  { left: "8%", top: "75%" },
+  { left: "96%", top: "75%" },
+  { left: "31%", top: "86%" },
+  { left: "69%", top: "86%" },
+  { left: "43%", top: "91%" },
+  { left: "57%", top: "91%" },
+  { left: "50%", top: "17%" }
+];
 
 type ComparisonSize = {
   fovWidth: number;
@@ -72,24 +86,7 @@ function TargetMarker({
     );
   }
 
-  return (
-    <group ref={groupRef} position={position} onClick={onSelect}>
-      <Html center transform sprite distanceFactor={9.6}>
-        <button
-          className="sky-object-thumb"
-          style={{ "--target-tint": target.tint } as CSSProperties}
-          type="button"
-          title={`${target.catalogId} ${target.name}`}
-          onClick={(event) => {
-            event.stopPropagation();
-            onSelect();
-          }}
-        >
-          <img src={target.imageUrl} alt="" draggable={false} />
-        </button>
-      </Html>
-    </group>
-  );
+  return null;
 }
 
 function SelectedScalePlate({
@@ -126,9 +123,9 @@ function SelectedScalePlate({
       center
       transform
       sprite
-      distanceFactor={7.4}
+      distanceFactor={5.8}
       position={[position[0], position[1], position[2] + 0.01]}
-      zIndexRange={[12, 4]}
+      zIndexRange={[28, 14]}
     >
       <div
         className="selected-scale-plate"
@@ -158,17 +155,10 @@ function SelectedScalePlate({
 
 function SkyObjects({ targets, selectedTarget, fov, autoRotate, layoutMode, onSelectTarget }: SkySceneProps) {
   const groupRef = useRef<Group>(null);
-  const sceneTargets = useMemo(
-    () =>
-      targets.map((target, index) => ({
-        target,
-        position: scenePosition(target, index, targets.length, target.id === selectedTarget.id, layoutMode)
-      })),
+  const companionTargets = useMemo(
+    () => layoutCompanionTargets(targets, selectedTarget, layoutMode),
     [targets, selectedTarget.id, layoutMode]
   );
-  const selectedScenePosition =
-    sceneTargets.find((item) => item.target.id === selectedTarget.id)?.position ??
-    scenePosition(selectedTarget, 0, 1, true, layoutMode);
 
   useFrame((state) => {
     if (!groupRef.current || !autoRotate) return;
@@ -180,47 +170,73 @@ function SkyObjects({ targets, selectedTarget, fov, autoRotate, layoutMode, onSe
     <group ref={groupRef}>
       <SelectedScalePlate
         target={selectedTarget}
-        position={selectedScenePosition}
+        position={SELECTED_SCENE_POSITION}
         fov={fov}
       />
-      {sceneTargets.map(({ target, position }) => (
-        <TargetMarker
-          key={target.id}
-          target={target}
-          position={position}
-          selected={target.id === selectedTarget.id}
-          onSelect={() => onSelectTarget(target.id)}
-        />
-      ))}
+      <TargetMarker
+        target={selectedTarget}
+        position={SELECTED_SCENE_POSITION}
+        selected
+        onSelect={() => onSelectTarget(selectedTarget.id)}
+      />
+      <Html fullscreen zIndexRange={[3, 2]} style={{ pointerEvents: "none" }}>
+        <div className="sky-object-layer">
+          {companionTargets.map(({ target, slot }) => (
+            <button
+              key={target.id}
+              className="sky-object-thumb"
+              style={
+                {
+                  "--target-tint": target.tint,
+                  left: slot.left,
+                  top: slot.top
+                } as CSSProperties
+              }
+              type="button"
+              title={`${target.catalogId} ${target.name}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                onSelectTarget(target.id);
+              }}
+            >
+              <img src={target.imageUrl} alt="" draggable={false} />
+            </button>
+          ))}
+        </div>
+      </Html>
     </group>
   );
 }
 
-function scenePosition(
-  target: Target,
-  index: number,
-  total: number,
-  selected: boolean,
+function layoutCompanionTargets(
+  targets: Target[],
+  selectedTarget: Target,
   layoutMode: "sky" | "showcase"
-): [number, number, number] {
-  if (layoutMode === "sky") return target.position;
-  if (selected) return [0, 0, 0.65];
+) {
+  const companionTargets = targets.filter((target) => target.id !== selectedTarget.id);
+  const orderedCompanions =
+    layoutMode === "sky"
+      ? sortByRelativeSkyAngle(companionTargets, selectedTarget)
+      : companionTargets;
 
-  const safeTotal = Math.max(1, total - 1);
-  const angle = (index / safeTotal) * Math.PI * 2 - Math.PI / 2;
-  const radiusX = total > 8 ? 2.45 : 2.15;
-  const radiusY = total > 8 ? 1.42 : 1.2;
-  const depth = index % 2 === 0 ? -0.18 : 0.1;
-
-  return [
-    roundPosition(Math.cos(angle) * radiusX),
-    roundPosition(Math.sin(angle) * radiusY),
-    roundPosition(depth)
-  ];
+  return orderedCompanions.map((target, index) => ({
+    target,
+    slot: SKY_OBJECT_SLOTS[index % SKY_OBJECT_SLOTS.length]
+  }));
 }
 
-function roundPosition(value: number) {
-  return Math.round(value * 100) / 100;
+function sortByRelativeSkyAngle(targets: Target[], selectedTarget: Target) {
+  return [...targets].sort((left, right) => {
+    const leftAngle = Math.atan2(
+      left.position[1] - selectedTarget.position[1],
+      left.position[0] - selectedTarget.position[0]
+    );
+    const rightAngle = Math.atan2(
+      right.position[1] - selectedTarget.position[1],
+      right.position[0] - selectedTarget.position[0]
+    );
+    return leftAngle - rightAngle;
+  });
 }
 
 export function SkyScene(props: SkySceneProps) {

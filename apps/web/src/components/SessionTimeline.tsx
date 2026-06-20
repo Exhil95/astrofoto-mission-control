@@ -1,6 +1,6 @@
 import type { Target } from "../lib/targets";
 import type { SessionPlan } from "../lib/session";
-import { translations, type SupportedLanguage } from "../lib/i18n";
+import { translateKnownText, translations, type SupportedLanguage } from "../lib/i18n";
 
 export function SessionTimeline({
   target,
@@ -18,9 +18,9 @@ export function SessionTimeline({
   return (
     <footer className="timeline" aria-label={text.aria}>
       <div className="timeline-target">
-        <span>{loading ? text.planning : plan.nightLabel}</span>
+        <span>{loading ? text.planning : translateKnownText(language, plan.nightLabel)}</span>
         <strong>{target.name}</strong>
-        <em>{plan.recommendation}</em>
+        <em>{translateKnownText(language, plan.recommendation)}</em>
         <div className="timeline-score" aria-label={text.conditionScore}>
           <span style={{ width: `${plan.conditionScore}%` }} />
         </div>
@@ -31,8 +31,8 @@ export function SessionTimeline({
           <div className={`timeline-slot ${slot.kind}`} key={`${slot.time}-${slot.label}`}>
             <b style={{ opacity: 0.25 + slot.intensity * 0.75 }} />
             <span>{slot.time}</span>
-            <strong>{slot.label}</strong>
-            <em>{slot.value}</em>
+            <strong>{translateKnownText(language, slot.label)}</strong>
+            <em>{translateKnownText(language, slot.value)}</em>
           </div>
         ))}
       </div>

@@ -1,5 +1,11 @@
 import { ListChecks, Moon, Star, Target } from "lucide-react";
-import { translations, type SupportedLanguage } from "../lib/i18n";
+import {
+  translateFovFit,
+  translateKnownText,
+  translateWeatherStatus,
+  translations,
+  type SupportedLanguage
+} from "../lib/i18n";
 import type { TonightBoard as TonightBoardModel } from "../lib/session";
 
 type TonightBoardProps = {
@@ -39,8 +45,8 @@ export function TonightBoard({
       </div>
 
       <div className="tonight-summary">
-        <span>{board.whiteNight ? text.whiteNight : board.weatherStatus}</span>
-        <strong>{board.summary}</strong>
+        <span>{board.whiteNight ? text.whiteNight : translateWeatherStatus(language, board.weatherStatus)}</span>
+        <strong>{translateKnownText(language, board.summary)}</strong>
       </div>
 
       <div className="tonight-list">
@@ -63,7 +69,7 @@ export function TonightBoard({
             </span>
             <span className="tonight-score">
               <b>{item.score}</b>
-              <small>{item.fovFit}</small>
+              <small>{translateFovFit(language, item.fovFit)}</small>
             </span>
           </button>
         ))}
@@ -71,7 +77,7 @@ export function TonightBoard({
 
       <div className="tonight-foot">
         <Target size={13} aria-hidden="true" />
-        <span>{board.items[0]?.reason ?? text.waitingTarget}</span>
+        <span>{board.items[0]?.reason ? translateKnownText(language, board.items[0].reason) : text.waitingTarget}</span>
       </div>
     </aside>
   );

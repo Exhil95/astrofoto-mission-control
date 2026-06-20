@@ -1,7 +1,7 @@
 import { CloudSun, Droplets, Eye, RefreshCw, Wind } from "lucide-react";
 import type { ReactNode } from "react";
 import type { ForecastRefreshMinutes, SkyForecast, SkyForecastHour } from "../lib/forecast";
-import { translations, type SupportedLanguage } from "../lib/i18n";
+import { translateKnownText, translateKnownTexts, translations, type SupportedLanguage } from "../lib/i18n";
 import type { SessionPlan } from "../lib/session";
 
 type SkyConditionsProps = {
@@ -36,6 +36,7 @@ export function SkyConditions({
   const warnings = plan.astronomicalDarknessMinutes === 0
     ? [text.noAstroDark, ...forecast.warnings]
     : forecast.warnings;
+  const localizedWarnings = translateKnownTexts(language, warnings);
 
   return (
     <div className="stack sky-conditions">
@@ -71,7 +72,7 @@ export function SkyConditions({
 
       <div className={`condition-score ${forecast.status}`}>
         <span>{statusLabel(forecast.status, text)}</span>
-        <strong>{forecast.summary}</strong>
+        <strong>{translateKnownText(language, forecast.summary)}</strong>
         <em>
           {text.best} {bestHour.time} / {bestHour.imagingScore}/100
         </em>
@@ -98,7 +99,7 @@ export function SkyConditions({
       </div>
 
       <div className="weather-flags">
-        {warnings.slice(0, 4).map((warning) => (
+        {localizedWarnings.slice(0, 4).map((warning) => (
           <span key={warning}>{warning}</span>
         ))}
       </div>

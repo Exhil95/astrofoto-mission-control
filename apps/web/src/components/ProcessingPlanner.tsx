@@ -1,5 +1,5 @@
 import { Archive, CheckCircle2, GitCompare, Sparkles, TriangleAlert } from "lucide-react";
-import { translations, type SupportedLanguage } from "../lib/i18n";
+import { translateKnownText, translateKnownTexts, translations, type SupportedLanguage } from "../lib/i18n";
 import type {
   CapturePlan,
   ProcessingPlan,
@@ -45,7 +45,7 @@ export function ProcessingPlanner({
         <strong>
           {plan.gradientRisk} / {plan.gradientScore}
         </strong>
-        <em>{plan.warnings[0] ?? plan.normalization}</em>
+        <em>{plan.warnings[0] ? translateKnownText(language, plan.warnings[0]) : plan.normalization}</em>
       </div>
 
       <div className="processing-decision-grid" aria-label={text.recommendations}>
@@ -76,7 +76,7 @@ export function ProcessingPlanner({
               <div key={step.label}>
                 <span>{step.label}</span>
                 <strong>{step.action}</strong>
-                <em>{step.reason}</em>
+                <em>{translateKnownText(language, step.reason)}</em>
               </div>
             ))}
           </div>
@@ -102,7 +102,7 @@ export function ProcessingPlanner({
       <div className="processing-footer">
         <div>
           <Sparkles size={14} aria-hidden="true" />
-          <span>{plan.warnings.length ? plan.warnings.join(" / ") : text.cleanPath}</span>
+          <span>{plan.warnings.length ? translateKnownTexts(language, plan.warnings).join(" / ") : text.cleanPath}</span>
         </div>
         <div>
           <Archive size={14} aria-hidden="true" />

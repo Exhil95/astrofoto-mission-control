@@ -1,7 +1,14 @@
 import { Filter, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { FovResult } from "../lib/fov";
-import { translations, type SupportedLanguage } from "../lib/i18n";
+import {
+  translateDifficulty,
+  translateExposureHint,
+  translateSeason,
+  translateTargetType,
+  translations,
+  type SupportedLanguage
+} from "../lib/i18n";
 import type { Target } from "../lib/targets";
 
 type TargetRailProps = {
@@ -101,7 +108,7 @@ export function TargetRail({ targets, selectedTarget, fov, language, onSelectTar
             <option value="All">{common.all}</option>
             {targetTypes.map((type) => (
               <option key={type} value={type}>
-                {type}
+                {translateTargetType(language, type)}
               </option>
             ))}
           </select>
@@ -112,7 +119,7 @@ export function TargetRail({ targets, selectedTarget, fov, language, onSelectTar
             <option value="All">{common.all}</option>
             {seasons.map((season) => (
               <option key={season} value={season}>
-                {season}
+                {translateSeason(language, season)}
               </option>
             ))}
           </select>
@@ -166,7 +173,7 @@ export function TargetRail({ targets, selectedTarget, fov, language, onSelectTar
       <div className="metric-grid target-detail-grid">
         <div>
           <span>{text.type}</span>
-          <strong>{selectedTarget.type}</strong>
+          <strong>{translateTargetType(language, selectedTarget.type)}</strong>
         </div>
         <div>
           <span>{text.size}</span>
@@ -186,11 +193,11 @@ export function TargetRail({ targets, selectedTarget, fov, language, onSelectTar
         </div>
         <div>
           <span>{text.difficulty}</span>
-          <strong>{selectedTarget.difficulty}</strong>
+          <strong>{translateDifficulty(language, selectedTarget.difficulty)}</strong>
         </div>
         <div>
           <span>{text.signal}</span>
-          <strong>{selectedTarget.exposureHint}</strong>
+          <strong>{translateExposureHint(language, selectedTarget.exposureHint)}</strong>
         </div>
       </div>
     </div>

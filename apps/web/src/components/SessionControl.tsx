@@ -1,5 +1,5 @@
 import { CalendarDays, Gauge, LocateFixed, MapPin } from "lucide-react";
-import { translations, type SupportedLanguage } from "../lib/i18n";
+import { translateKnownText, translations, type SupportedLanguage } from "../lib/i18n";
 import { getTodayIsoDate, type SessionPlan, type SessionSettings } from "../lib/session";
 
 const presets = [
@@ -50,11 +50,11 @@ export function SessionControl({ settings, plan, loading, language, onChange }: 
       </div>
 
       <div className="session-score">
-        <span>{plan.nightKindLabel}</span>
+        <span>{translateKnownText(language, plan.nightKindLabel)}</span>
         <strong>
           {plan.startTime} - {plan.endTime}
         </strong>
-        <em>{plan.recommendation}</em>
+        <em>{translateKnownText(language, plan.recommendation)}</em>
       </div>
 
       <div className="date-control">
@@ -206,7 +206,7 @@ function NightProfile({ plan, language }: { plan: SessionPlan; language: Support
     <div className={`night-profile ${plan.whiteNight ? "is-white-night" : ""}`}>
       <div className="night-profile-head">
         <span>{text.nightProfile}</span>
-        <strong>{plan.nightKindLabel}</strong>
+        <strong>{translateKnownText(language, plan.nightKindLabel)}</strong>
       </div>
 
       <div className="darkness-bars">

@@ -1,6 +1,6 @@
 import { CheckCircle2, Database, FileSearch, TriangleAlert } from "lucide-react";
 import { useMemo, useState } from "react";
-import { translations, type SupportedLanguage } from "../lib/i18n";
+import { translateKnownText, translateKnownTexts, translations, type SupportedLanguage } from "../lib/i18n";
 import type { EquipmentProfile } from "../lib/profiles";
 import {
   fetchCalibrationLibrary,
@@ -146,7 +146,7 @@ export function CalibrationLibraryPanel({
       {result?.warnings.length ? (
         <div className="fits-warning">
           <TriangleAlert size={14} aria-hidden="true" />
-          <span>{result.warnings.join(" / ")}</span>
+          <span>{translateKnownTexts(language, result.warnings).join(" / ")}</span>
         </div>
       ) : (
         <div className="fits-warning is-clean">
@@ -173,7 +173,7 @@ function CalibrationRow({
       </span>
       <strong>{calibrationLabel(item)}</strong>
       <em>
-        {item.frames} {text.frames} / {item.reason}
+        {item.frames} {text.frames} / {translateKnownText(language, item.reason)}
       </em>
     </div>
   );

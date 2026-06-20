@@ -1715,6 +1715,799 @@ export const translations = {
 
 export type AppTranslations = (typeof translations)[SupportedLanguage];
 
+const targetTypeLabels: Record<SupportedLanguage, Record<string, string>> = {
+  en: {},
+  pl: {
+    "Dark nebula": "Ciemna mgławica",
+    "Emission nebula": "Mgławica emisyjna",
+    Galaxy: "Galaktyka",
+    "Globular cluster": "Gromada kulista",
+    "Planetary nebula": "Mgławica planetarna",
+    "Reflection nebula": "Mgławica refleksyjna",
+    "Supernova remnant": "Pozostałość po supernowej"
+  },
+  de: {
+    "Dark nebula": "Dunkelnebel",
+    "Emission nebula": "Emissionsnebel",
+    Galaxy: "Galaxie",
+    "Globular cluster": "Kugelsternhaufen",
+    "Planetary nebula": "Planetarischer Nebel",
+    "Reflection nebula": "Reflexionsnebel",
+    "Supernova remnant": "Supernovaüberrest"
+  },
+  it: {
+    "Dark nebula": "Nebulosa oscura",
+    "Emission nebula": "Nebulosa a emissione",
+    Galaxy: "Galassia",
+    "Globular cluster": "Ammasso globulare",
+    "Planetary nebula": "Nebulosa planetaria",
+    "Reflection nebula": "Nebulosa a riflessione",
+    "Supernova remnant": "Resto di supernova"
+  },
+  es: {
+    "Dark nebula": "Nebulosa oscura",
+    "Emission nebula": "Nebulosa de emisión",
+    Galaxy: "Galaxia",
+    "Globular cluster": "Cúmulo globular",
+    "Planetary nebula": "Nebulosa planetaria",
+    "Reflection nebula": "Nebulosa de reflexión",
+    "Supernova remnant": "Remanente de supernova"
+  }
+};
+
+const seasonLabels: Record<SupportedLanguage, Record<string, string>> = {
+  en: {},
+  pl: { Spring: "Wiosna", Summer: "Lato", Autumn: "Jesień", Winter: "Zima" },
+  de: { Spring: "Frühling", Summer: "Sommer", Autumn: "Herbst", Winter: "Winter" },
+  it: { Spring: "Primavera", Summer: "Estate", Autumn: "Autunno", Winter: "Inverno" },
+  es: { Spring: "Primavera", Summer: "Verano", Autumn: "Otoño", Winter: "Invierno" }
+};
+
+const difficultyLabels: Record<SupportedLanguage, Record<string, string>> = {
+  en: {},
+  pl: { Easy: "Łatwy", Medium: "Średni", Hard: "Trudny" },
+  de: { Easy: "Einfach", Medium: "Mittel", Hard: "Schwer" },
+  it: { Easy: "Facile", Medium: "Medio", Hard: "Difficile" },
+  es: { Easy: "Fácil", Medium: "Medio", Hard: "Difícil" }
+};
+
+const framingLabels: Record<SupportedLanguage, Record<string, string>> = {
+  en: {},
+  pl: {
+    "Compact cluster": "Zwarta gromada",
+    "Edge-on galaxy": "Galaktyka z boku",
+    "Galaxy group": "Grupa galaktyk",
+    "Galaxy pair": "Para galaktyk",
+    "Large nebula": "Duża mgławica",
+    "Long nebula": "Długa mgławica",
+    "Low galaxy": "Niska galaktyka",
+    "Low nebula": "Niska mgławica",
+    "Medium galaxy": "Średnia galaktyka",
+    "Medium nebula": "Średnia mgławica",
+    "Mosaic field": "Pole mozaiki",
+    "Orion complex": "Kompleks Oriona",
+    "Small dark nebula": "Mała ciemna mgławica",
+    "Small galaxy": "Mała galaktyka",
+    "Small nebula": "Mała mgławica",
+    "Small reflection nebula": "Mała mgławica refleksyjna",
+    "Small remnant": "Mała pozostałość",
+    "Tiny nebula": "Bardzo mała mgławica",
+    "Wide cluster": "Szeroka gromada",
+    "Wide galaxy": "Szeroka galaktyka"
+  },
+  de: {
+    "Compact cluster": "Kompakter Haufen",
+    "Edge-on galaxy": "Kantenlage-Galaxie",
+    "Galaxy group": "Galaxiengruppe",
+    "Galaxy pair": "Galaxienpaar",
+    "Large nebula": "Großer Nebel",
+    "Long nebula": "Langer Nebel",
+    "Low galaxy": "Tief stehende Galaxie",
+    "Low nebula": "Tief stehender Nebel",
+    "Medium galaxy": "Mittlere Galaxie",
+    "Medium nebula": "Mittlerer Nebel",
+    "Mosaic field": "Mosaikfeld",
+    "Orion complex": "Orion-Komplex",
+    "Small dark nebula": "Kleiner Dunkelnebel",
+    "Small galaxy": "Kleine Galaxie",
+    "Small nebula": "Kleiner Nebel",
+    "Small reflection nebula": "Kleiner Reflexionsnebel",
+    "Small remnant": "Kleiner Überrest",
+    "Tiny nebula": "Winziger Nebel",
+    "Wide cluster": "Weites Haufenfeld",
+    "Wide galaxy": "Weite Galaxie"
+  },
+  it: {
+    "Compact cluster": "Ammasso compatto",
+    "Edge-on galaxy": "Galassia di taglio",
+    "Galaxy group": "Gruppo di galassie",
+    "Galaxy pair": "Coppia di galassie",
+    "Large nebula": "Nebulosa grande",
+    "Long nebula": "Nebulosa lunga",
+    "Low galaxy": "Galassia bassa",
+    "Low nebula": "Nebulosa bassa",
+    "Medium galaxy": "Galassia media",
+    "Medium nebula": "Nebulosa media",
+    "Mosaic field": "Campo mosaico",
+    "Orion complex": "Complesso di Orione",
+    "Small dark nebula": "Piccola nebulosa oscura",
+    "Small galaxy": "Piccola galassia",
+    "Small nebula": "Piccola nebulosa",
+    "Small reflection nebula": "Piccola nebulosa a riflessione",
+    "Small remnant": "Piccolo resto",
+    "Tiny nebula": "Nebulosa minuscola",
+    "Wide cluster": "Ammasso ampio",
+    "Wide galaxy": "Galassia ampia"
+  },
+  es: {
+    "Compact cluster": "Cúmulo compacto",
+    "Edge-on galaxy": "Galaxia de canto",
+    "Galaxy group": "Grupo de galaxias",
+    "Galaxy pair": "Par de galaxias",
+    "Large nebula": "Nebulosa grande",
+    "Long nebula": "Nebulosa larga",
+    "Low galaxy": "Galaxia baja",
+    "Low nebula": "Nebulosa baja",
+    "Medium galaxy": "Galaxia media",
+    "Medium nebula": "Nebulosa media",
+    "Mosaic field": "Campo mosaico",
+    "Orion complex": "Complejo de Orión",
+    "Small dark nebula": "Nebulosa oscura pequeña",
+    "Small galaxy": "Galaxia pequeña",
+    "Small nebula": "Nebulosa pequeña",
+    "Small reflection nebula": "Nebulosa de reflexión pequeña",
+    "Small remnant": "Remanente pequeño",
+    "Tiny nebula": "Nebulosa diminuta",
+    "Wide cluster": "Cúmulo amplio",
+    "Wide galaxy": "Galaxia amplia"
+  }
+};
+
+const archiveStatusLabels: Record<SupportedLanguage, Record<string, string>> = {
+  en: {},
+  pl: { planned: "planowana", captured: "zebrana", processed: "obrobiona", skipped: "pominięta" },
+  de: { planned: "geplant", captured: "aufgenommen", processed: "bearbeitet", skipped: "übersprungen" },
+  it: { planned: "pianificata", captured: "catturata", processed: "elaborata", skipped: "saltata" },
+  es: { planned: "planificada", captured: "capturada", processed: "procesada", skipped: "omitida" }
+};
+
+const weatherStatusLabels: Record<SupportedLanguage, Record<string, string>> = {
+  en: {},
+  pl: { shoot: "focić", risk: "ryzyko", skip: "odpuścić", unknown: "nieznana" },
+  de: { shoot: "aufnehmen", risk: "Risiko", skip: "auslassen", unknown: "unbekannt" },
+  it: { shoot: "scatta", risk: "rischio", skip: "salta", unknown: "sconosciuto" },
+  es: { shoot: "capturar", risk: "riesgo", skip: "saltar", unknown: "desconocido" }
+};
+
+const knownTextLabels: Record<SupportedLanguage, Record<string, string>> = {
+  en: {},
+  pl: {
+    "Heavy cloud cover": "Duże zachmurzenie",
+    "Patchy cloud risk": "Ryzyko przelotnych chmur",
+    "High cloud can soften contrast": "Chmury wysokie mogą obniżyć kontrast",
+    "Low cloud or fog risk": "Ryzyko niskich chmur lub mgły",
+    "Dew heaters recommended": "Zalecane grzałki przeciwroszeniowe",
+    "Wind gusts can hurt guiding": "Porywy wiatru mogą psuć guiding",
+    "Precipitation risk": "Ryzyko opadów",
+    "Reduced visibility": "Ograniczona widoczność",
+    "No major weather flags": "Brak dużych ostrzeżeń pogodowych",
+    "Forecast provider unavailable": "Dostawca prognozy niedostępny",
+    "Offline weather estimate": "Szacunek pogody offline",
+    "Offline clear estimate": "Szacunek czystego nieba offline",
+    "Offline risk estimate": "Szacunek ryzyka offline",
+    "No multi-session candidates found": "Brak kandydatów multi-session",
+    "No strong session in this range; keep calibration or scouting as fallback": "Brak mocnej sesji w tym zakresie; zostaw kalibrację lub scouting jako plan B",
+    "White-night range: narrowband targets get a planning bonus": "Zakres białych nocy: obiekty narrowband dostają bonus planowania",
+    "Offline multi-session estimate": "Szacunek multi-session offline",
+    "High gradient risk: inspect channel backgrounds": "Wysokie ryzyko gradientu: sprawdź tła kanałów",
+    "Severe gradient risk: capture sky flats and keep background extraction conservative": "Bardzo duże ryzyko gradientu: zrób sky flats i ostrożnie wyciągaj tło",
+    "High gradient risk: use local normalization and inspect channel backgrounds": "Wysokie ryzyko gradientu: użyj lokalnej normalizacji i sprawdź tła kanałów",
+    "Low frame count: rejection and drizzle will be fragile": "Mało klatek: rejection i drizzle będą kruche",
+    "White night broadband: expect weak color and stronger gradients": "Broadband w białą noc: oczekuj słabego koloru i mocniejszych gradientów",
+    "Astronomical darkness available": "Dostępna noc astronomiczna",
+    "Darkness available": "Dostępna ciemność",
+    "White night": "Biała noc"
+  },
+  de: {
+    "Heavy cloud cover": "Starke Bewölkung",
+    "Patchy cloud risk": "Risiko einzelner Wolkenfelder",
+    "High cloud can soften contrast": "Hohe Wolken können Kontrast mindern",
+    "Low cloud or fog risk": "Risiko für tiefe Wolken oder Nebel",
+    "Dew heaters recommended": "Taukappenheizung empfohlen",
+    "Wind gusts can hurt guiding": "Windböen können Guiding stören",
+    "Precipitation risk": "Niederschlagsrisiko",
+    "Reduced visibility": "Reduzierte Sicht",
+    "No major weather flags": "Keine größeren Wetterwarnungen",
+    "Forecast provider unavailable": "Wetteranbieter nicht verfügbar",
+    "Offline weather estimate": "Offline-Wetterschätzung",
+    "Offline clear estimate": "Offline-Klarhimmel-Schätzung",
+    "Offline risk estimate": "Offline-Risikoschätzung",
+    "No multi-session candidates found": "Keine Multi-Session-Kandidaten gefunden",
+    "No strong session in this range; keep calibration or scouting as fallback": "Keine starke Session in diesem Zeitraum; Kalibrierung oder Scouting als Backup behalten",
+    "White-night range: narrowband targets get a planning bonus": "Weiße-Nächte-Zeitraum: Schmalbandziele bekommen Planungsbonus",
+    "Offline multi-session estimate": "Offline-Multi-Session-Schätzung",
+    "High gradient risk: inspect channel backgrounds": "Hohes Gradientenrisiko: Kanalhintergründe prüfen",
+    "Severe gradient risk: capture sky flats and keep background extraction conservative": "Sehr hohes Gradientenrisiko: Skyflats aufnehmen und Hintergrundextraktion konservativ halten",
+    "High gradient risk: use local normalization and inspect channel backgrounds": "Hohes Gradientenrisiko: lokale Normalisierung nutzen und Kanalhintergründe prüfen",
+    "Low frame count: rejection and drizzle will be fragile": "Wenige Frames: Rejection und Drizzle sind fragil",
+    "White night broadband: expect weak color and stronger gradients": "Broadband in weißer Nacht: schwache Farbe und stärkere Gradienten erwarten",
+    "Astronomical darkness available": "Astronomische Dunkelheit verfügbar",
+    "Darkness available": "Dunkelheit verfügbar",
+    "White night": "Weiße Nacht"
+  },
+  it: {
+    "Heavy cloud cover": "Copertura nuvolosa forte",
+    "Patchy cloud risk": "Rischio nuvole sparse",
+    "High cloud can soften contrast": "Le nubi alte possono ridurre il contrasto",
+    "Low cloud or fog risk": "Rischio nubi basse o nebbia",
+    "Dew heaters recommended": "Fasce anticondensa consigliate",
+    "Wind gusts can hurt guiding": "Le raffiche possono disturbare la guida",
+    "Precipitation risk": "Rischio precipitazioni",
+    "Reduced visibility": "Visibilità ridotta",
+    "No major weather flags": "Nessun avviso meteo importante",
+    "Forecast provider unavailable": "Provider meteo non disponibile",
+    "Offline weather estimate": "Stima meteo offline",
+    "Offline clear estimate": "Stima cielo sereno offline",
+    "Offline risk estimate": "Stima rischio offline",
+    "No multi-session candidates found": "Nessun candidato multi-sessione trovato",
+    "No strong session in this range; keep calibration or scouting as fallback": "Nessuna sessione forte in questo intervallo; tieni calibrazione o scouting come fallback",
+    "White-night range: narrowband targets get a planning bonus": "Intervallo di notti bianche: i target narrowband ricevono un bonus",
+    "Offline multi-session estimate": "Stima multi-sessione offline",
+    "High gradient risk: inspect channel backgrounds": "Rischio gradiente alto: controlla i fondi dei canali",
+    "Severe gradient risk: capture sky flats and keep background extraction conservative": "Rischio gradiente severo: acquisisci sky flat e resta conservativo sull'estrazione fondo",
+    "High gradient risk: use local normalization and inspect channel backgrounds": "Rischio gradiente alto: usa normalizzazione locale e controlla i fondi",
+    "Low frame count: rejection and drizzle will be fragile": "Pochi frame: rejection e drizzle saranno fragili",
+    "White night broadband: expect weak color and stronger gradients": "Broadband in notte bianca: colore debole e gradienti più forti",
+    "Astronomical darkness available": "Buio astronomico disponibile",
+    "Darkness available": "Buio disponibile",
+    "White night": "Notte bianca"
+  },
+  es: {
+    "Heavy cloud cover": "Cobertura nubosa fuerte",
+    "Patchy cloud risk": "Riesgo de nubes dispersas",
+    "High cloud can soften contrast": "La nube alta puede suavizar el contraste",
+    "Low cloud or fog risk": "Riesgo de nube baja o niebla",
+    "Dew heaters recommended": "Calentadores antirocío recomendados",
+    "Wind gusts can hurt guiding": "Las rachas pueden perjudicar el guiado",
+    "Precipitation risk": "Riesgo de precipitación",
+    "Reduced visibility": "Visibilidad reducida",
+    "No major weather flags": "Sin avisos meteorológicos importantes",
+    "Forecast provider unavailable": "Proveedor meteorológico no disponible",
+    "Offline weather estimate": "Estimación meteorológica offline",
+    "Offline clear estimate": "Estimación de cielo despejado offline",
+    "Offline risk estimate": "Estimación de riesgo offline",
+    "No multi-session candidates found": "No se encontraron candidatos multisesión",
+    "No strong session in this range; keep calibration or scouting as fallback": "Sin sesión fuerte en este rango; deja calibración o scouting como respaldo",
+    "White-night range: narrowband targets get a planning bonus": "Rango de noches blancas: los objetivos narrowband reciben bonus",
+    "Offline multi-session estimate": "Estimación multisesión offline",
+    "High gradient risk: inspect channel backgrounds": "Riesgo alto de gradiente: revisa fondos de canales",
+    "Severe gradient risk: capture sky flats and keep background extraction conservative": "Riesgo severo de gradiente: captura sky flats y sé conservador con el fondo",
+    "High gradient risk: use local normalization and inspect channel backgrounds": "Riesgo alto de gradiente: usa normalización local y revisa fondos",
+    "Low frame count: rejection and drizzle will be fragile": "Pocos frames: rejection y drizzle serán frágiles",
+    "White night broadband: expect weak color and stronger gradients": "Broadband en noche blanca: color débil y gradientes más fuertes",
+    "Astronomical darkness available": "Oscuridad astronómica disponible",
+    "Darkness available": "Oscuridad disponible",
+    "White night": "Noche blanca"
+  }
+};
+
+const extraKnownTextLabels: Record<SupportedLanguage, Record<string, string>> = {
+  en: {},
+  pl: {
+    "Matched target": "Dopasowany obiekt",
+    "Header target": "Obiekt z nagłówka",
+    "Folder import": "Import z folderu",
+    "Missing exposure": "Brak ekspozycji",
+    "Missing frame type": "Brak typu klatki",
+    "Missing DATE-OBS": "Brak DATE-OBS",
+    "Could not measure FWHM": "Nie udało się zmierzyć FWHM",
+    "Bloated stars": "Spuchnięte gwiazdy",
+    "Elongated stars": "Wydłużone gwiazdy",
+    "Mild star elongation": "Lekko wydłużone gwiazdy",
+    "Noisy background": "Zaszumione tło",
+    "Bright background": "Jasne tło",
+    "Clipped highlights": "Przepalone światła",
+    "Slight clipping": "Lekki clipping",
+    "No FITS files parsed": "Nie sparsowano plików FITS",
+    "No light frames found": "Nie znaleziono lightów",
+    "No flats found": "Nie znaleziono flatów",
+    "No darks found": "Nie znaleziono darków",
+    "No reusable bias frames found": "Nie znaleziono biasów do ponownego użycia",
+    "No calibration frames found": "Nie znaleziono klatek kalibracyjnych",
+    "reusable bias": "bias do ponownego użycia",
+    "temperature unknown": "temperatura nieznana",
+    "binning unknown": "binning nieznany",
+    "camera match": "kamera dopasowana",
+    "camera unknown": "kamera nieznana",
+    "no filter target": "brak filtra docelowego",
+    "filter unknown": "filtr nieznany",
+    "no exposure target": "brak ekspozycji docelowej",
+    match: "dopasowanie",
+    usable: "używalne",
+    review: "review",
+    accepted: "zaakceptowane",
+    "Missing reusable flats for": "Brak flatów do ponownego użycia dla",
+    "Missing reusable darks for": "Brak darków do ponownego użycia dla",
+    "Missing flats for filters": "Brak flatów dla filtrów",
+    "Mixed exposures in": "Mieszane ekspozycje w",
+    "light frames flagged for quality": "lightów oznaczonych jako jakościowe ryzyko",
+    "calibration frames": "klatek kalibracyjnych",
+    "strong matches": "mocnych dopasowań",
+    "usable groups": "używalnych grup",
+    frames: "klatek",
+    "filter mismatch": "niezgodność filtra",
+    filter: "filtr",
+    "camera mismatch": "niezgodność kamery",
+    "binning mismatch": "niezgodność binningu",
+    "close to": "blisko",
+    exact: "dokładnie",
+    close: "blisko",
+    "temp gap": "różnica temperatury",
+    vs: "vs"
+  },
+  de: {
+    "Matched target": "Ziel abgeglichen",
+    "Header target": "Ziel aus Header",
+    "Folder import": "Ordnerimport",
+    "Missing exposure": "Belichtung fehlt",
+    "Missing frame type": "Frame-Typ fehlt",
+    "Missing DATE-OBS": "DATE-OBS fehlt",
+    "Could not measure FWHM": "FWHM konnte nicht gemessen werden",
+    "Bloated stars": "Aufgeblähte Sterne",
+    "Elongated stars": "Längliche Sterne",
+    "Mild star elongation": "Leichte Sternelongation",
+    "Noisy background": "Rauschiger Hintergrund",
+    "Bright background": "Heller Hintergrund",
+    "Clipped highlights": "Ausgebrannte Highlights",
+    "Slight clipping": "Leichtes Clipping",
+    "No FITS files parsed": "Keine FITS-Dateien geparst",
+    "No light frames found": "Keine Light-Frames gefunden",
+    "No flats found": "Keine Flats gefunden",
+    "No darks found": "Keine Darks gefunden",
+    "No reusable bias frames found": "Keine wiederverwendbaren Bias-Frames gefunden",
+    "No calibration frames found": "Keine Kalibrierframes gefunden",
+    "reusable bias": "wiederverwendbarer Bias",
+    "temperature unknown": "Temperatur unbekannt",
+    "binning unknown": "Binning unbekannt",
+    "camera match": "Kamera passt",
+    "camera unknown": "Kamera unbekannt",
+    "no filter target": "kein Zielfilter",
+    "filter unknown": "Filter unbekannt",
+    "no exposure target": "keine Zielbelichtung",
+    match: "Treffer",
+    usable: "nutzbar",
+    review: "Prüfung",
+    accepted: "akzeptiert",
+    "Missing reusable flats for": "Fehlende wiederverwendbare Flats für",
+    "Missing reusable darks for": "Fehlende wiederverwendbare Darks für",
+    "Missing flats for filters": "Fehlende Flats für Filter",
+    "Mixed exposures in": "Gemischte Belichtungen in",
+    "light frames flagged for quality": "Light-Frames mit Qualitätsflag",
+    "calibration frames": "Kalibrierframes",
+    "strong matches": "starke Treffer",
+    "usable groups": "nutzbare Gruppen",
+    frames: "Frames",
+    "filter mismatch": "Filter-Abweichung",
+    filter: "Filter",
+    "camera mismatch": "Kamera-Abweichung",
+    "binning mismatch": "Binning-Abweichung",
+    "close to": "nahe bei",
+    exact: "exakt",
+    close: "nah",
+    "temp gap": "Temperaturlücke",
+    vs: "vs."
+  },
+  it: {
+    "Matched target": "Target abbinato",
+    "Header target": "Target dall'header",
+    "Folder import": "Import da cartella",
+    "Missing exposure": "Esposizione mancante",
+    "Missing frame type": "Tipo frame mancante",
+    "Missing DATE-OBS": "DATE-OBS mancante",
+    "Could not measure FWHM": "Impossibile misurare FWHM",
+    "Bloated stars": "Stelle gonfie",
+    "Elongated stars": "Stelle allungate",
+    "Mild star elongation": "Leggero allungamento stelle",
+    "Noisy background": "Fondo rumoroso",
+    "Bright background": "Fondo luminoso",
+    "Clipped highlights": "Alte luci clippate",
+    "Slight clipping": "Clipping leggero",
+    "No FITS files parsed": "Nessun FITS analizzato",
+    "No light frames found": "Nessun light trovato",
+    "No flats found": "Nessun flat trovato",
+    "No darks found": "Nessun dark trovato",
+    "No reusable bias frames found": "Nessun bias riutilizzabile trovato",
+    "No calibration frames found": "Nessun frame di calibrazione trovato",
+    "reusable bias": "bias riutilizzabile",
+    "temperature unknown": "temperatura sconosciuta",
+    "binning unknown": "binning sconosciuto",
+    "camera match": "camera abbinata",
+    "camera unknown": "camera sconosciuta",
+    "no filter target": "nessun filtro target",
+    "filter unknown": "filtro sconosciuto",
+    "no exposure target": "nessuna esposizione target",
+    match: "match",
+    usable: "utilizzabile",
+    review: "revisione",
+    accepted: "accettato",
+    "Missing reusable flats for": "Flat riutilizzabili mancanti per",
+    "Missing reusable darks for": "Dark riutilizzabili mancanti per",
+    "Missing flats for filters": "Flat mancanti per filtri",
+    "Mixed exposures in": "Esposizioni miste in",
+    "light frames flagged for quality": "light segnalati per qualità",
+    "calibration frames": "frame di calibrazione",
+    "strong matches": "match forti",
+    "usable groups": "gruppi utilizzabili",
+    frames: "frame",
+    "filter mismatch": "filtro non coerente",
+    filter: "filtro",
+    "camera mismatch": "camera non coerente",
+    "binning mismatch": "binning non coerente",
+    "close to": "vicino a",
+    exact: "esatto",
+    close: "vicino",
+    "temp gap": "scarto temperatura",
+    vs: "vs"
+  },
+  es: {
+    "Matched target": "Objeto coincidente",
+    "Header target": "Objeto del encabezado",
+    "Folder import": "Importación de carpeta",
+    "Missing exposure": "Exposición ausente",
+    "Missing frame type": "Tipo de frame ausente",
+    "Missing DATE-OBS": "DATE-OBS ausente",
+    "Could not measure FWHM": "No se pudo medir FWHM",
+    "Bloated stars": "Estrellas hinchadas",
+    "Elongated stars": "Estrellas elongadas",
+    "Mild star elongation": "Elongación leve de estrellas",
+    "Noisy background": "Fondo ruidoso",
+    "Bright background": "Fondo brillante",
+    "Clipped highlights": "Altas luces recortadas",
+    "Slight clipping": "Clipping leve",
+    "No FITS files parsed": "No se analizaron FITS",
+    "No light frames found": "No se encontraron lights",
+    "No flats found": "No se encontraron flats",
+    "No darks found": "No se encontraron darks",
+    "No reusable bias frames found": "No se encontraron bias reutilizables",
+    "No calibration frames found": "No se encontraron frames de calibración",
+    "reusable bias": "bias reutilizable",
+    "temperature unknown": "temperatura desconocida",
+    "binning unknown": "binning desconocido",
+    "camera match": "cámara coincidente",
+    "camera unknown": "cámara desconocida",
+    "no filter target": "sin filtro objetivo",
+    "filter unknown": "filtro desconocido",
+    "no exposure target": "sin exposición objetivo",
+    match: "coincide",
+    usable: "usable",
+    review: "revisión",
+    accepted: "aceptado",
+    "Missing reusable flats for": "Faltan flats reutilizables para",
+    "Missing reusable darks for": "Faltan darks reutilizables para",
+    "Missing flats for filters": "Faltan flats para filtros",
+    "Mixed exposures in": "Exposiciones mezcladas en",
+    "light frames flagged for quality": "lights marcados por calidad",
+    "calibration frames": "frames de calibración",
+    "strong matches": "coincidencias fuertes",
+    "usable groups": "grupos usables",
+    frames: "frames",
+    "filter mismatch": "filtro no coincide",
+    filter: "filtro",
+    "camera mismatch": "cámara no coincide",
+    "binning mismatch": "binning no coincide",
+    "close to": "cerca de",
+    exact: "exacto",
+    close: "cercano",
+    "temp gap": "brecha de temperatura",
+    vs: "vs"
+  }
+};
+
+export function translateTargetType(language: SupportedLanguage, value: string) {
+  return lookupLabel(targetTypeLabels, language, value);
+}
+
+export function translateSeason(language: SupportedLanguage, value: string) {
+  return lookupLabel(seasonLabels, language, value);
+}
+
+export function translateDifficulty(language: SupportedLanguage, value: string) {
+  return lookupLabel(difficultyLabels, language, value);
+}
+
+export function translateTargetFraming(language: SupportedLanguage, value: string) {
+  return lookupLabel(framingLabels, language, value);
+}
+
+export function translateArchiveStatus(language: SupportedLanguage, value: string) {
+  return lookupLabel(archiveStatusLabels, language, value);
+}
+
+export function translateWeatherStatus(language: SupportedLanguage, value: string) {
+  return lookupLabel(weatherStatusLabels, language, value);
+}
+
+export function translateFovFit(language: SupportedLanguage, value: string) {
+  const normalized = value.toLowerCase();
+  if (normalized.includes("large mosaic")) return translations[language].targetRail.fitLabels.mosaic;
+  if (normalized.includes("mosaic")) return translations[language].targetRail.fitLabels.mosaic;
+  if (normalized.includes("tight")) return translations[language].targetRail.fitLabels.tight;
+  if (normalized.includes("small")) return translations[language].targetRail.fitLabels.small;
+  if (normalized.includes("fits")) return translations[language].targetRail.fitLabels.fits;
+  return value;
+}
+
+export function translateExposureHint(language: SupportedLanguage, value: string) {
+  if (language === "en") return value;
+  const replacements: Record<SupportedLanguage, Array<[RegExp, string]>> = {
+    en: [],
+    pl: [
+      [/Dark sky/g, "Ciemne niebo"],
+      [/Deep/g, "Głęboka"],
+      [/Long focal/g, "Długa ogniskowa"],
+      [/Long/g, "Długie"],
+      [/Short/g, "Krótkie"],
+      [/careful stretch/g, "ostrożny stretch"],
+      [/with/g, "z"],
+      [/blue reflection/g, "niebieską refleksją"],
+      [/cluster field/g, "polem gromady"],
+      [/core detail/g, "detalem centrum"],
+      [/dust lane/g, "pasmem pyłu"],
+      [/dust lanes/g, "pasmami pyłu"],
+      [/stars/g, "gwiazdami"],
+      [/reflection/g, "refleksją"],
+      [/Protect highlights/g, "Chroń światła"],
+      [/subs/g, "suby"],
+      [/detail/g, "detal"],
+      [/shell/g, "powłoka"],
+      [/helmet shell/g, "powłoka hełmu"],
+      [/rich/g, "bogate"],
+      [/blend/g, "mieszanka"],
+      [/pillars/g, "filary"],
+      [/mosaic/g, "mozaika"],
+      [/group/g, "grupa"],
+      [/Southern horizon/g, "Południowy horyzont"],
+      [/Wide/g, "Szerokie"],
+      [/narrowband/g, "narrowband"]
+    ],
+    de: [
+      [/Dark sky/g, "Dunkler Himmel"],
+      [/Deep/g, "Tiefe"],
+      [/Long focal/g, "Lange Brennweite"],
+      [/Long/g, "Lange"],
+      [/Short/g, "Kurze"],
+      [/careful stretch/g, "vorsichtiger Stretch"],
+      [/with/g, "mit"],
+      [/blue reflection/g, "blauer Reflexion"],
+      [/cluster field/g, "Haufenfeld"],
+      [/core detail/g, "Kerndetail"],
+      [/dust lane/g, "Staubband"],
+      [/dust lanes/g, "Staubbändern"],
+      [/stars/g, "Sternen"],
+      [/reflection/g, "Reflexion"],
+      [/Protect highlights/g, "Highlights schützen"],
+      [/subs/g, "Subs"],
+      [/detail/g, "Detail"],
+      [/shell/g, "Schale"],
+      [/helmet shell/g, "Helmschale"],
+      [/rich/g, "reich"],
+      [/blend/g, "Mischung"],
+      [/pillars/g, "Säulen"],
+      [/mosaic/g, "Mosaik"],
+      [/group/g, "Gruppe"],
+      [/Southern horizon/g, "Südhorizont"],
+      [/Wide/g, "Weite"],
+      [/narrowband/g, "Schmalband"]
+    ],
+    it: [
+      [/Dark sky/g, "Cielo scuro"],
+      [/Deep/g, "Profonda"],
+      [/Long focal/g, "Lunga focale"],
+      [/Long/g, "Lunga"],
+      [/Short/g, "Brevi"],
+      [/careful stretch/g, "stretch delicato"],
+      [/with/g, "con"],
+      [/blue reflection/g, "riflessione blu"],
+      [/cluster field/g, "campo ammasso"],
+      [/core detail/g, "dettaglio nucleo"],
+      [/dust lane/g, "banda di polvere"],
+      [/dust lanes/g, "bande di polvere"],
+      [/stars/g, "stelle"],
+      [/reflection/g, "riflessione"],
+      [/Protect highlights/g, "Proteggi alte luci"],
+      [/subs/g, "sub"],
+      [/detail/g, "dettaglio"],
+      [/shell/g, "guscio"],
+      [/helmet shell/g, "guscio elmo"],
+      [/rich/g, "ricco"],
+      [/blend/g, "blend"],
+      [/pillars/g, "pilastri"],
+      [/mosaic/g, "mosaico"],
+      [/group/g, "gruppo"],
+      [/Southern horizon/g, "Orizzonte sud"],
+      [/Wide/g, "Ampia"],
+      [/narrowband/g, "narrowband"]
+    ],
+    es: [
+      [/Dark sky/g, "Cielo oscuro"],
+      [/Deep/g, "Profunda"],
+      [/Long focal/g, "Focal larga"],
+      [/Long/g, "Larga"],
+      [/Short/g, "Cortas"],
+      [/careful stretch/g, "stretch cuidadoso"],
+      [/with/g, "con"],
+      [/blue reflection/g, "reflexión azul"],
+      [/cluster field/g, "campo de cúmulo"],
+      [/core detail/g, "detalle del núcleo"],
+      [/dust lane/g, "banda de polvo"],
+      [/dust lanes/g, "bandas de polvo"],
+      [/stars/g, "estrellas"],
+      [/reflection/g, "reflexión"],
+      [/Protect highlights/g, "Proteger altas luces"],
+      [/subs/g, "subs"],
+      [/detail/g, "detalle"],
+      [/shell/g, "cáscara"],
+      [/helmet shell/g, "casco"],
+      [/rich/g, "rico"],
+      [/blend/g, "mezcla"],
+      [/pillars/g, "pilares"],
+      [/mosaic/g, "mosaico"],
+      [/group/g, "grupo"],
+      [/Southern horizon/g, "Horizonte sur"],
+      [/Wide/g, "Amplia"],
+      [/narrowband/g, "narrowband"]
+    ]
+  };
+
+  return replacements[language].reduce(
+    (result, [pattern, replacement]) => result.replace(pattern, replacement),
+    value
+  );
+}
+
+export function translateKnownText(language: SupportedLanguage, value: string) {
+  const exact = lookupLabel(knownTextLabels, language, value);
+  if (exact !== value) return exact;
+  const extraExact = lookupLabel(extraKnownTextLabels, language, value);
+  if (extraExact !== value) return extraExact;
+  if (language === "en") return value;
+
+  let translated = value;
+  const phrase = (key: string) => lookupLabel(extraKnownTextLabels, language, key);
+  translated = translated.replace(/\b(Fits|Tight|Small|Mosaic|Large mosaic)\b/g, (match) =>
+    translateFovFit(language, match)
+  );
+  translated = translated.replace(/\bWhite night\b/g, lookupLabel(knownTextLabels, language, "White night"));
+  translated = translated.replace(/\bDarkness available\b/g, lookupLabel(knownTextLabels, language, "Darkness available"));
+  translated = translated.replace(/\bWeather skip\b/g, weatherSkipLabel(language));
+  translated = translated.replace(/\bWeather risk\b/g, weatherRiskLabel(language));
+  translated = translated.replace(/\boffline multi-night estimate\b/g, offlineMultiNightEstimateLabel(language));
+  translated = translated.replace(/\boffline estimate\b/g, offlineEstimateLabel(language));
+  translated = translated.replace(/\bMissing reusable flats for\b/g, phrase("Missing reusable flats for"));
+  translated = translated.replace(/\bMissing reusable darks for\b/g, phrase("Missing reusable darks for"));
+  translated = translated.replace(/\bMissing flats for filters\b/g, phrase("Missing flats for filters"));
+  translated = translated.replace(/\bMixed exposures in\b/g, phrase("Mixed exposures in"));
+  translated = translated.replace(/\blight frames flagged for quality\b/g, phrase("light frames flagged for quality"));
+  translated = translated.replace(/\bcalibration frames\b/g, phrase("calibration frames"));
+  translated = translated.replace(/\bstrong matches\b/g, phrase("strong matches"));
+  translated = translated.replace(/\busable groups\b/g, phrase("usable groups"));
+  translated = translated.replace(/\breusable bias\b/g, phrase("reusable bias"));
+  translated = translated.replace(/\btemperature unknown\b/g, phrase("temperature unknown"));
+  translated = translated.replace(/\bbinning unknown\b/g, phrase("binning unknown"));
+  translated = translated.replace(/\bcamera match\b/g, phrase("camera match"));
+  translated = translated.replace(/\bcamera unknown\b/g, phrase("camera unknown"));
+  translated = translated.replace(/\bno filter target\b/g, phrase("no filter target"));
+  translated = translated.replace(/\bfilter unknown\b/g, phrase("filter unknown"));
+  translated = translated.replace(/\bno exposure target\b/g, phrase("no exposure target"));
+  translated = translated.replace(/\bfilter mismatch\b/g, phrase("filter mismatch"));
+  translated = translated.replace(/\bcamera mismatch\b/g, phrase("camera mismatch"));
+  translated = translated.replace(/\bbinning mismatch\b/g, phrase("binning mismatch"));
+  translated = translated.replace(/\bclose to\b/g, phrase("close to"));
+  translated = translated.replace(/\btemp gap\b/g, phrase("temp gap"));
+  translated = translated.replace(/\bframes\b/g, phrase("frames"));
+  translated = translated.replace(/\bfilter\b/g, phrase("filter"));
+  translated = translated.replace(/\bexact\b/g, phrase("exact"));
+  translated = translated.replace(/\bclose\b/g, phrase("close"));
+  translated = translated.replace(/\bvs\b/g, phrase("vs"));
+  translated = translated.replace(/\bframe\b/g, frameLabel(language));
+  translated = translated.replace(/\bstart with short block\b/g, shortBlockLabel(language));
+  translated = translated.replace(/\bkeep as backup or calibration night\b/g, backupCalibrationLabel(language));
+  translated = translated.replace(/\bcalibration only\b/g, calibrationOnlyLabel(language));
+  return translated;
+}
+
+export function translateKnownTexts(language: SupportedLanguage, values: string[]) {
+  return values.map((value) => translateKnownText(language, value));
+}
+
+function lookupLabel(
+  labels: Record<SupportedLanguage, Record<string, string>>,
+  language: SupportedLanguage,
+  value: string
+) {
+  return labels[language][value] ?? value;
+}
+
+function weatherSkipLabel(language: SupportedLanguage) {
+  return {
+    en: "Weather skip",
+    pl: "Pogoda do odpuszczenia",
+    de: "Wetter: auslassen",
+    it: "Meteo da saltare",
+    es: "Tiempo para saltar"
+  }[language];
+}
+
+function weatherRiskLabel(language: SupportedLanguage) {
+  return {
+    en: "Weather risk",
+    pl: "Ryzyko pogody",
+    de: "Wetterrisiko",
+    it: "Rischio meteo",
+    es: "Riesgo meteorológico"
+  }[language];
+}
+
+function offlineEstimateLabel(language: SupportedLanguage) {
+  return {
+    en: "offline estimate",
+    pl: "szacunek offline",
+    de: "Offline-Schätzung",
+    it: "stima offline",
+    es: "estimación offline"
+  }[language];
+}
+
+function offlineMultiNightEstimateLabel(language: SupportedLanguage) {
+  return {
+    en: "offline multi-night estimate",
+    pl: "wielonocny szacunek offline",
+    de: "Offline-Mehrnacht-Schätzung",
+    it: "stima multi-notte offline",
+    es: "estimación multinoche offline"
+  }[language];
+}
+
+function frameLabel(language: SupportedLanguage) {
+  return {
+    en: "frame",
+    pl: "kadr",
+    de: "Bildfeld",
+    it: "inquadratura",
+    es: "encuadre"
+  }[language];
+}
+
+function shortBlockLabel(language: SupportedLanguage) {
+  return {
+    en: "start with short block",
+    pl: "zacznij od krótkiego bloku",
+    de: "mit kurzem Block starten",
+    it: "inizia con un blocco breve",
+    es: "empieza con un bloque corto"
+  }[language];
+}
+
+function backupCalibrationLabel(language: SupportedLanguage) {
+  return {
+    en: "keep as backup or calibration night",
+    pl: "zostaw jako backup albo noc kalibracji",
+    de: "als Backup oder Kalibriernacht behalten",
+    it: "tieni come backup o notte di calibrazione",
+    es: "dejar como respaldo o noche de calibración"
+  }[language];
+}
+
+function calibrationOnlyLabel(language: SupportedLanguage) {
+  return {
+    en: "calibration only",
+    pl: "tylko kalibracja",
+    de: "nur Kalibrierung",
+    it: "solo calibrazione",
+    es: "solo calibración"
+  }[language];
+}
+
 export function isSupportedLanguage(value: unknown): value is SupportedLanguage {
   return typeof value === "string" && supportedLanguages.includes(value as SupportedLanguage);
 }
