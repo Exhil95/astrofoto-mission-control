@@ -36,4 +36,4 @@
 - [x] Frame-to-session import: turn a scanned FITS folder into a captured Session Archive entry.
 - [ ] Internationalization: translate the app into Polish, German, Italian, and Spanish.
 - [x] Calibration library browser: reusable dark/flat/bias inventory with temperature/exposure/filter matching.
-- [ ] Processing handoff export: PixInsight/Siril-friendly checklist generated from real captured frames.
+- [x] Processing handoff export: PixInsight/Siril-friendly checklist generated from real captured frames.

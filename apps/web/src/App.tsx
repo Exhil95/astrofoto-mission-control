@@ -58,6 +58,7 @@ import {
   fetchTonightBoard,
   getTodayIsoDate,
   saveSessionArchive,
+  type CalibrationLibraryResult,
   type CapturePlan as CapturePlanModel,
   type MultiSessionPlan as MultiSessionPlanModel,
   type MultiSessionPlanItem,
@@ -166,6 +167,7 @@ export function App() {
     createFallbackMultiSessionPlan(targetCatalog, sessionSettings, fov, multiSessionNights)
   );
   const [sessionArchives, setSessionArchives] = useState<SessionArchiveEntry[]>([]);
+  const [calibrationLibrary, setCalibrationLibrary] = useState<CalibrationLibraryResult | null>(null);
   const skyTargetTypes = useMemo(
     () => uniqueValues(targetCatalog.map((target) => target.type)),
     [targetCatalog]
@@ -1094,6 +1096,7 @@ export function App() {
             selectedProfile={selectedProfile}
             settings={sessionSettings}
             fov={fov}
+            calibrationLibrary={calibrationLibrary}
             onArchiveCreated={addSessionArchive}
           />
 
@@ -1119,6 +1122,7 @@ export function App() {
             <CalibrationLibraryPanel
               capturePlan={capturePlan}
               selectedProfile={selectedProfile}
+              onLibraryChange={setCalibrationLibrary}
             />
 
             <section className="panel frame-archive-panel" aria-label="Recent capture archive">

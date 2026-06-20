@@ -11,11 +11,13 @@ import {
 type CalibrationLibraryPanelProps = {
   capturePlan: CapturePlan;
   selectedProfile: EquipmentProfile | null;
+  onLibraryChange?: (library: CalibrationLibraryResult) => void;
 };
 
 export function CalibrationLibraryPanel({
   capturePlan,
-  selectedProfile
+  selectedProfile,
+  onLibraryChange
 }: CalibrationLibraryPanelProps) {
   const [libraryPath, setLibraryPath] = useState(".");
   const [recursive, setRecursive] = useState(true);
@@ -52,6 +54,7 @@ export function CalibrationLibraryPanel({
         targetCamera: selectedProfile?.cameraName ?? null
       });
       setResult(library);
+      onLibraryChange?.(library);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Calibration library failed");
     } finally {

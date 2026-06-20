@@ -3,6 +3,7 @@ import {
   CheckCircle2,
   Clock3,
   Database,
+  FileDown,
   FileSearch,
   FolderOpen,
   Layers3,
@@ -15,6 +16,8 @@ import type { EquipmentProfile } from "../lib/profiles";
 import {
   saveSessionArchive,
   scanFitsFrames,
+  type CalibrationLibraryItem,
+  type CalibrationLibraryResult,
   type FitsFrameMetadata,
   type FitsScanResult,
   type SessionArchiveEntry,
@@ -28,6 +31,7 @@ type FitsIngestPanelProps = {
   selectedProfile: EquipmentProfile | null;
   settings: SessionSettings;
   fov: FovResult;
+  calibrationLibrary: CalibrationLibraryResult | null;
   onArchiveCreated: (archive: SessionArchiveEntry) => void;
 };
 
@@ -36,6 +40,7 @@ export function FitsIngestPanel({
   selectedProfile,
   settings,
   fov,
+  calibrationLibrary,
   onArchiveCreated
 }: FitsIngestPanelProps) {
   const [scanPath, setScanPath] = useState(".");
@@ -87,6 +92,25 @@ export function FitsIngestPanel({
     }
   };
 
+  const downloadHandoff = () => {
+    if (!result) return;
+    const targetName = importDraft?.targetLabel ?? mostCommon(result.objects) ?? "captured-session";
+    const sessionDate = importDraft?.payload.sessionDate ?? settings.date;
+    const markdown = createProcessingHandoffMarkdown({
+      scan: result,
+      calibrationLibrary,
+      targetName,
+      sessionDate,
+      selectedProfile,
+      fov
+    });
+    downloadTextFile(
+      `${sessionDate}-${slugify(targetName)}-processing-handoff.md`,
+      markdown,
+      "text/markdown;charset=utf-8"
+    );
+  };
+
   const lightMinutes = result ? Math.round(result.totalLightSeconds / 60) : 0;
   const qualitySummary = result ? summarizeQuality(result.frames) : null;
 
@@ -110,6 +134,15 @@ export function FitsIngestPanel({
           >
             <Archive size={16} aria-hidden="true" />
             {importLabel(importState)}
+          </button>
+          <button
+            type="button"
+            onClick={downloadHandoff}
+            disabled={!result}
+            title="Download processing handoff"
+          >
+            <FileDown size={16} aria-hidden="true" />
+            Handoff
           </button>
         </div>
       </div>
@@ -358,6 +391,200 @@ function medianNumber(values: Array<number | null>) {
 function formatOptionalNumber(value: number | null) {
   if (value === null) return "--";
   return Number.isInteger(value) ? `${value}` : value.toFixed(value < 1 ? 2 : 1);
+}
+
+function createProcessingHandoffMarkdown({
+  scan,
+  calibrationLibrary,
+  targetName,
+  sessionDate,
+  selectedProfile,
+  fov
+}: {
+  scan: FitsScanResult;
+  calibrationLibrary: CalibrationLibraryResult | null;
+  targetName: string;
+  sessionDate: string;
+  selectedProfile: EquipmentProfile | null;
+  fov: FovResult;
+}) {
+  const lightFrames = scan.frames.filter((frame) => frame.frameType === "Light");
+  const acceptedLights = lightFrames.filter(isAcceptedLight);
+  const reviewLights = lightFrames.filter((frame) => !isAcceptedLight(frame));
+  const calibrationFrames = scan.frames.filter(isCalibrationFrame);
+  const filters = uniqueNonEmpty(lightFrames.map((frame) => frame.filterName));
+  const totalIntegrationMinutes = Math.round(scan.totalLightSeconds / 60);
+  const acceptedIntegrationMinutes = Math.round(
+    acceptedLights.reduce((sum, frame) => sum + (frame.exposureSeconds ?? 0), 0) / 60
+  );
+
+  return [
+    `# Processing Handoff: ${targetName}`,
+    "",
+    "## Session",
+    `- Date: ${sessionDate}`,
+    `- FITS scan: ${scan.scanPath}`,
+    `- Profile: ${selectedProfile?.name ?? "Custom setup"}`,
+    `- Camera: ${scan.cameras.join(", ") || selectedProfile?.cameraName || "unknown"}`,
+    `- FOV: ${fov.horizontalDeg.toFixed(2)} x ${fov.verticalDeg.toFixed(2)} deg`,
+    `- Filters: ${filters.join(", ") || "Unknown"}`,
+    `- Integration: ${totalIntegrationMinutes} min scanned / ${acceptedIntegrationMinutes} min accepted`,
+    `- ${qualitySummaryLabel(lightFrames)}`,
+    "",
+    "## Quality Gate",
+    `- Accepted lights: ${acceptedLights.length}`,
+    `- Review/reject lights: ${reviewLights.length}`,
+    "- Reject or isolate frames marked with low Q, elongated stars, sparse stars, clipping, clouds, or inconsistent metadata.",
+    "- Keep review frames out of the first stack. Re-test them only if the final integration is too shallow.",
+    "",
+    "## PixInsight WBPP Checklist",
+    "- Add accepted Light frames only. Use FILTER, EXPTIME, CCD-TEMP, GAIN/OFFSET, and BINNING keywords for grouping.",
+    "- Add master or raw Bias/Dark/Flat frames from the calibration section below.",
+    "- Enable Subframe Weighting and Local Normalization when gradients or passing cloud risk is visible.",
+    "- Use CosmeticCorrection only after checking hot-pixel behavior against matched darks.",
+    "- Run Blink/SubframeSelector on the review list before deciding whether any borderline frame returns to the set.",
+    "",
+    "## Siril Outline",
+    "```text",
+    ...createSirilOutline(filters),
+    "```",
+    "",
+    "## Light Groups",
+    ...createLightGroupLines(lightFrames),
+    "",
+    "## Accepted Light Manifest",
+    ...createFrameManifest(acceptedLights, true),
+    "",
+    "## Review Light Manifest",
+    ...(reviewLights.length ? createFrameManifest(reviewLights, true) : ["- none"]),
+    "",
+    "## Calibration Frames In Current Scan",
+    ...createCalibrationFrameLines(calibrationFrames),
+    "",
+    "## Calibration Library Matches",
+    ...createCalibrationLibraryLines(calibrationLibrary),
+    "",
+    "## Scan Warnings",
+    ...(scan.warnings.length ? scan.warnings.map((warning) => `- ${warning}`) : ["- none"])
+  ].join("\n");
+}
+
+function isAcceptedLight(frame: FitsFrameMetadata) {
+  return frame.status === "ready" && (frame.qualityScore === null || frame.qualityScore >= 60);
+}
+
+function isCalibrationFrame(frame: FitsFrameMetadata) {
+  return ["Flat", "Dark flat", "Dark", "Bias"].includes(frame.frameType);
+}
+
+function createSirilOutline(filters: string[]) {
+  const filterList = filters.length ? filters : ["filter"];
+  return filterList.flatMap((filterName) => {
+    const filterSlug = slugify(filterName);
+    return [
+      `# ${filterName}`,
+      `# Stage accepted ${filterName} lights in work/lights/${filterSlug}`,
+      `convert work/lights/${filterSlug} -out=lights_${filterSlug}`,
+      `preprocess lights_${filterSlug} -bias=master_bias -dark=master_dark -flat=master_flat_${filterSlug}`,
+      `register pp_lights_${filterSlug}`,
+      `stack r_pp_lights_${filterSlug} rej 3 3 -norm=addscale`,
+      ""
+    ];
+  });
+}
+
+function createLightGroupLines(frames: FitsFrameMetadata[]) {
+  const groups = groupFrames(frames, (frame) =>
+    [frame.filterName ?? "No filter", `${frame.exposureSeconds ?? "--"}s`, frame.binning ?? "binning --"].join(" / ")
+  );
+
+  if (!groups.length) return ["- none"];
+  return groups.map(({ key, frames: groupFrames }) => {
+    const integrationMinutes = Math.round(
+      groupFrames.reduce((sum, frame) => sum + (frame.exposureSeconds ?? 0), 0) / 60
+    );
+    const acceptedCount = groupFrames.filter(isAcceptedLight).length;
+    return `- ${key}: ${groupFrames.length} frames, ${acceptedCount} accepted, ${integrationMinutes} min`;
+  });
+}
+
+function createFrameManifest(frames: FitsFrameMetadata[], includeQuality: boolean) {
+  if (!frames.length) return ["- none"];
+  return frames.map((frame) => {
+    const quality = includeQuality ? ` / Q${frame.qualityScore ?? "--"} / ${frameReviewReason(frame)}` : "";
+    return `- ${frame.relativePath} | ${frame.filterName ?? "No filter"} | ${
+      frame.exposureSeconds ?? "--"
+    }s${quality}`;
+  });
+}
+
+function createCalibrationFrameLines(frames: FitsFrameMetadata[]) {
+  const groups = groupFrames(frames, (frame) =>
+    [
+      frame.frameType,
+      frame.filterName ?? "all filters",
+      frame.exposureSeconds !== null ? `${frame.exposureSeconds}s` : "exposure --",
+      frame.sensorTemperatureC !== null ? `${frame.sensorTemperatureC}C` : "temp --"
+    ].join(" / ")
+  );
+
+  if (!groups.length) return ["- none in current scan"];
+  return groups.map(({ key, frames: groupFrames }) => `- ${key}: ${groupFrames.length} frames`);
+}
+
+function createCalibrationLibraryLines(library: CalibrationLibraryResult | null) {
+  if (!library) return ["- No separate calibration library scan attached"];
+  const rows = [
+    `- Library scan: ${library.scanPath}`,
+    `- ${library.summary}`,
+    ...library.items.slice(0, 12).map(formatCalibrationLibraryItem)
+  ];
+  if (library.warnings.length) {
+    rows.push(...library.warnings.map((warning) => `- Warning: ${warning}`));
+  }
+  return rows;
+}
+
+function formatCalibrationLibraryItem(item: CalibrationLibraryItem) {
+  return `- ${item.matchStatus} Q${item.matchScore}: ${[
+    item.frameType,
+    item.filterName,
+    item.exposureSeconds !== null ? `${item.exposureSeconds}s` : null,
+    item.temperatureRangeC
+  ]
+    .filter(Boolean)
+    .join(" / ")} (${item.frames} frames, ${item.reason})`;
+}
+
+function frameReviewReason(frame: FitsFrameMetadata) {
+  const reasons = [...frame.qualityFlags, ...frame.warnings];
+  if (frame.qualityScore !== null && frame.qualityScore < 60) reasons.unshift("low quality score");
+  return reasons.length ? reasons.join(", ") : "accepted";
+}
+
+function groupFrames<T>(items: T[], keyFor: (item: T) => string) {
+  const grouped = items.reduce((accumulator, item) => {
+    const key = keyFor(item);
+    const group = accumulator.get(key) ?? [];
+    group.push(item);
+    accumulator.set(key, group);
+    return accumulator;
+  }, new Map<string, T[]>());
+  return [...grouped.entries()].map(([key, frames]) => ({ key, frames }));
+}
+
+function downloadTextFile(filename: string, content: string, type: string) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function slugify(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80) || "session";
 }
 
 function importLabel(state: "idle" | "saving" | "saved" | "failed") {
