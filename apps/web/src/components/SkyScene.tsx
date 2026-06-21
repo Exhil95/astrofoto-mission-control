@@ -157,7 +157,7 @@ function SkyObjects({ targets, selectedTarget, fov, autoRotate, layoutMode, onSe
   const groupRef = useRef<Group>(null);
   const companionTargets = useMemo(
     () => layoutCompanionTargets(targets, selectedTarget, layoutMode),
-    [targets, selectedTarget.id, layoutMode]
+    [targets, selectedTarget, layoutMode]
   );
 
   useFrame((state) => {

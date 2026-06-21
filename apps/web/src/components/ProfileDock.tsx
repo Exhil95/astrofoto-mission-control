@@ -50,7 +50,7 @@ export function ProfileDock({
   useEffect(() => {
     if (selectedProfile) setDraft(profileToPayload(selectedProfile));
     setError("");
-  }, [selectedProfile?.id]);
+  }, [selectedProfile]);
 
   const sensorSelectValue = useMemo(() => {
     return sensorPresets.some((sensor) => sensor.id === draft.sensorId) ? draft.sensorId : "custom";

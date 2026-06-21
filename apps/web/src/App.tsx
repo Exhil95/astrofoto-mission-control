@@ -41,7 +41,6 @@ import {
   translateArchiveStatus,
   translateFovFit,
   translateKnownText,
-  translateKnownTexts,
   translateSeason,
   translateTargetFraming,
   translateTargetType,
@@ -60,6 +59,14 @@ import {
   type ProfilePayload
 } from "./lib/profiles";
 import { sensorPresets } from "./lib/sensors";
+import {
+  curateSkyTargets,
+  filterSkyTargets,
+  formatObjectFootprint,
+  isSkyDisplayMode,
+  type SkyDisplayMode,
+  type SkyFitFilter
+} from "./lib/sky";
 import {
   createFallbackCapturePlan,
   createFallbackMultiSessionPlan,
@@ -91,8 +98,6 @@ const SkyScene = lazy(() =>
   import("./components/SkyScene").then((module) => ({ default: module.SkyScene }))
 );
 
-type SkyDisplayMode = "focus" | "tonight" | "showcase" | "catalog";
-type SkyFitFilter = "All" | "Small" | "Fits" | "Tight" | "Mosaic";
 type WorkspaceMode = "planner" | "capture" | "process" | "frames" | "multi";
 type ArchiveState = "idle" | "saving" | "saved" | "failed";
 
@@ -1820,16 +1825,6 @@ function icsSafeId(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9-]+/g, "-");
 }
 
-function formatObjectFootprint(target: Target, fov: FovResult) {
-  const widthPercent = Math.round((target.angularWidthArcmin / (fov.horizontalDeg * 60)) * 100);
-  const heightPercent = Math.round((target.angularHeightArcmin / (fov.verticalDeg * 60)) * 100);
-  return `${target.angularWidthArcmin} x ${target.angularHeightArcmin}' / ${widthPercent}% x ${heightPercent}%`;
-}
-
-function isSkyDisplayMode(value: string | null): value is SkyDisplayMode {
-  return value === "focus" || value === "tonight" || value === "showcase" || value === "catalog";
-}
-
 function isWorkspaceMode(value: string | null): value is WorkspaceMode {
   return (
     value === "planner" ||
@@ -1842,71 +1837,6 @@ function isWorkspaceMode(value: string | null): value is WorkspaceMode {
 
 function isForecastRefreshMinutes(value: number): value is ForecastRefreshMinutes {
   return value === 15 || value === 30 || value === 60;
-}
-
-function filterSkyTargets(
-  targets: Target[],
-  fov: FovResult,
-  typeFilter: string,
-  seasonFilter: string,
-  fitFilter: SkyFitFilter
-) {
-  return targets.filter((target) => {
-    const fit = calculateFitLabel(target, fov);
-    return (
-      (typeFilter === "All" || target.type === typeFilter) &&
-      (seasonFilter === "All" || target.season === seasonFilter) &&
-      (fitFilter === "All" || fit === fitFilter)
-    );
-  });
-}
-
-function curateSkyTargets({
-  mode,
-  selectedTarget,
-  allTargets,
-  filteredTargets,
-  tonightTargetIds,
-  showcaseIndex
-}: {
-  mode: SkyDisplayMode;
-  selectedTarget: Target;
-  allTargets: Target[];
-  filteredTargets: Target[];
-  tonightTargetIds: string[];
-  showcaseIndex: number;
-}) {
-  if (mode === "focus") return [selectedTarget];
-
-  if (mode === "tonight") {
-    const tonightTargets = tonightTargetIds
-      .map((targetId) => allTargets.find((target) => target.id === targetId))
-      .filter((target): target is Target => Boolean(target));
-    return uniqueTargets([selectedTarget, ...tonightTargets]).slice(0, 6);
-  }
-
-  if (mode === "showcase") {
-    const showcasedTargets = rotatingWindow(filteredTargets, showcaseIndex, 7);
-    return uniqueTargets([selectedTarget, ...showcasedTargets]).slice(0, 8);
-  }
-
-  return uniqueTargets([selectedTarget, ...filteredTargets]).slice(0, 12);
-}
-
-function rotatingWindow(targets: Target[], index: number, limit: number) {
-  if (!targets.length) return [];
-  return Array.from({ length: Math.min(limit, targets.length) }, (_, offset) => {
-    return targets[(index + offset) % targets.length];
-  });
-}
-
-function uniqueTargets(targets: Target[]) {
-  const seenTargetIds = new Set<string>();
-  return targets.filter((target) => {
-    if (seenTargetIds.has(target.id)) return false;
-    seenTargetIds.add(target.id);
-    return true;
-  });
 }
 
 function sceneSummary({
@@ -1996,17 +1926,6 @@ function analyzeFraming(target: Target, fov: FovResult, language: SupportedLangu
     es: "panel único"
   }[language];
   return `${marginLabel} +${marginPercent}% / ${singlePanel}`;
-}
-
-function calculateFitLabel(target: Target, fov: FovResult): SkyFitFilter {
-  const load = Math.max(
-    target.angularWidthArcmin / (fov.horizontalDeg * 60),
-    target.angularHeightArcmin / (fov.verticalDeg * 60)
-  );
-  if (load <= 0.18) return "Small";
-  if (load <= 0.78) return "Fits";
-  if (load <= 1.05) return "Tight";
-  return "Mosaic";
 }
 
 function uniqueValues(values: string[]) {

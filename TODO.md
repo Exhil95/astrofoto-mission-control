@@ -41,3 +41,15 @@
   - [x] Localize target metadata, seasons, archive statuses, warnings, Markdown exports, and ICS descriptions.
 - [x] Calibration library browser: reusable dark/flat/bias inventory with temperature/exposure/filter matching.
 - [x] Processing handoff export: PixInsight/Siril-friendly checklist generated from real captured frames.
+
+## Quality Roadmap
+
+- [x] Full application audit with documentation refresh and active frontend linting.
+- [x] Extract sky/FOV catalog rules from the main App component into a dedicated domain module.
+- [ ] Move Markdown and ICS export builders into dedicated `apps/web/src/lib/exports` modules.
+- [ ] Split `i18n.ts` into per-language dictionaries plus dynamic translation helpers.
+- [ ] Add unit tests for sky target filtering, FOV-fit labels, Markdown exports, and ICS output.
+- [ ] Split backend planning services by use case: session, capture, processing, tonight board, and multi-session.
+- [ ] Split FITS ingest UI into presentation, archive-draft, and export helpers.
+- [ ] Add Playwright smoke tests for Planner, Session, Frames, and Multi workflows.
+- [ ] Document and prototype SQLite-to-Postgres migration path for profiles and session archive.

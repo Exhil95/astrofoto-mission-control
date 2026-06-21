@@ -1,93 +1,227 @@
 # Homelab Deploy
 
-Astrofoto Mission Control is meant to run behind Caddy as the only public entrypoint.
-The API stores equipment profiles in SQLite at `/data/astrofoto.sqlite3`, backed by the
-`astrofoto-data` Docker volume.
+Astrofoto Mission Control jest przygotowane do pracy w homelabie za Caddy. Caddy jest jedynym publicznym entrypointem, web UI działa jako osobny serwis, a API jest dostępne przez `/api`.
 
-## First Run
+## Szybki Deploy
+
+Z repo root:
 
 ```powershell
 .\scripts\deploy.ps1
 ```
 
-Open `http://localhost` unless you changed `CADDY_SITE_ADDRESS`.
+Skrypt:
 
-## Ops Scripts
+1. tworzy `.env` z `.env.example`, jeśli go nie ma,
+2. waliduje `docker compose config`,
+3. uruchamia `docker compose up -d --build`,
+4. pokazuje `docker compose ps`,
+5. sprawdza `http://localhost/health`.
 
-Run these from the repository root:
-
-```powershell
-.\scripts\dev.ps1 -Install       # local API + web dev servers
-.\scripts\test.ps1               # API pytest/ruff and web production build
-.\scripts\deploy.ps1             # docker compose up -d --build
-.\scripts\backup-profiles.ps1    # copy /data/astrofoto.sqlite3 to backups/
-.\scripts\restore-profiles.ps1 -Path .\backups\astrofoto-YYYYMMDD-HHMMSS.sqlite3
-```
-
-Use `.\scripts\dev.ps1 -Restart` when a stale local process is holding ports
-`8000` or `5173`. Use `.\scripts\deploy.ps1 -NoBuild` for a fast restart after
-configuration-only changes.
-
-## Required `.env` Review
-
-- `CADDY_SITE_ADDRESS`: use `:80` for LAN-only HTTP or a real domain for Caddy-managed TLS.
-- `PUBLIC_BASE_URL`: the URL you expect to open in the browser.
-- `CORS_ORIGINS`: include `PUBLIC_BASE_URL` and any direct dev origins you use.
-- `PROFILE_DATABASE_URL`: keep `sqlite:////data/astrofoto.sqlite3` for Docker persistence.
-- `FITS_LIBRARY_ROOT_HOST`: host folder with `.fit`, `.fits`, or `.fts` frames mounted read-only into the API.
-- `FITS_LIBRARY_ROOT`: container path for FITS scans, usually `/data/fits`.
-- `POSTGRES_PASSWORD`, `MINIO_ROOT_PASSWORD`, `S3_SECRET_ACCESS_KEY`: replace before leaving the service up on a shared network.
-
-## Health Checks
+Szybki restart bez buildu:
 
 ```powershell
-docker compose ps
-docker compose logs -f api caddy
+.\scripts\deploy.ps1 -NoBuild
 ```
 
-Caddy exposes a lightweight probe:
+Logi po deployu:
 
 ```powershell
-curl http://localhost/health
+.\scripts\deploy.ps1 -Logs
 ```
 
-## Data Volumes
+## `.env` Checklist
 
-- `astrofoto-data`: SQLite profile database at `/data/astrofoto.sqlite3`.
-- `FITS_LIBRARY_ROOT_HOST`: read-only bind mount for captured FITS frames, defaulting to `./data/fits`.
-- `postgres-data`: reserved relational database volume for future app data.
-- `redis-data`: Valkey cache data.
-- `minio-data`: object storage.
-- `caddy-data` and `caddy-config`: certificates and Caddy state.
+Przed zostawieniem stacka na stałe przejrzyj:
 
-The API automatically adds new equipment profile columns on startup, so existing
-SQLite profile databases can keep telescope, reducer, camera, filter, guiding,
-focuser, and mount metadata without a manual migration step.
-
-## FITS Frame Library
-
-Place captured frames under the host folder from `FITS_LIBRARY_ROOT_HOST`, for example:
-
-```powershell
-.\data\fits\2026-06-15-north-america\
+```env
+CADDY_SITE_ADDRESS=:80
+PUBLIC_BASE_URL=http://localhost
+CORS_ORIGINS=http://localhost,http://localhost:5173
+POSTGRES_PASSWORD=change-me
+MINIO_ROOT_PASSWORD=change-me-minio
+S3_SECRET_ACCESS_KEY=change-me-minio
+FITS_LIBRARY_ROOT_HOST=./data/fits
+FITS_LIBRARY_ROOT=/data/fits
 ```
 
-The API only scans inside `FITS_LIBRARY_ROOT`, reads FITS headers, and returns metadata
-such as frame type, filter, exposure, gain, offset, sensor temperature, object name,
-camera, and calibration groups. The bind mount is read-only, so the app cannot modify
-raw capture data.
+Rekomendacje:
 
-## Backup Profiles
+- LAN HTTP: `CADDY_SITE_ADDRESS=:80`.
+- Domena z TLS Caddy: `CADDY_SITE_ADDRESS=astro.example.com`.
+- Jeśli używasz domeny, dodaj ją do `PUBLIC_BASE_URL` i `CORS_ORIGINS`.
+- Sekrety zmień przed wystawieniem usług poza własny komputer.
+
+## Serwisy Compose
+
+### `caddy`
+
+- porty: `80`, `443`,
+- config: `infra/Caddyfile`,
+- proxy web i API,
+- health endpoint `/health`.
+
+### `web`
+
+- zbudowany frontend,
+- zależy od zdrowego API,
+- healthcheck przez lokalny fetch.
+
+### `api`
+
+- FastAPI,
+- profile i archive w SQLite,
+- FITS library read-only,
+- target image cache.
+
+### `postgres`
+
+Obecnie zarezerwowany pod przyszłe dane aplikacyjne. SQLite jest nadal systemem zapisu profili i archive.
+
+### `redis`
+
+Valkey. Zarezerwowany pod cache/kolejki.
+
+### `minio`
+
+Object storage dla przyszłych dużych assetów. Konsola jest zbindowana lokalnie:
+
+```text
+127.0.0.1:9001
+```
+
+## Wolumeny
+
+- `astrofoto-data`: `/data`, SQLite i cache obrazów.
+- `postgres-data`: Postgres.
+- `redis-data`: Valkey.
+- `minio-data`: MinIO.
+- `caddy-data`: certyfikaty i dane Caddy.
+- `caddy-config`: config state Caddy.
+
+## SQLite
+
+Domyślny Docker URL:
+
+```env
+PROFILE_DATABASE_URL=sqlite:////data/astrofoto.sqlite3
+```
+
+API automatycznie zapewnia aktualne kolumny profili i archive przy starcie. Nie ma jeszcze pełnego systemu migracji, więc backup SQLite przed dużymi zmianami jest obowiązkowy.
+
+## Backup
 
 ```powershell
 .\scripts\backup-profiles.ps1
 ```
 
-## Restore Profiles
+Backup trafia do:
+
+```text
+backups/astrofoto-YYYYMMDD-HHMMSS.sqlite3
+```
+
+## Restore
 
 ```powershell
 .\scripts\restore-profiles.ps1 -Path .\backups\astrofoto-YYYYMMDD-HHMMSS.sqlite3
 ```
 
-Use the exact backup filename you want to restore. The restore script asks for
-confirmation and attempts to create a pre-restore backup first.
+Restore pyta o potwierdzenie i próbuje zrobić pre-restore backup.
+
+## FITS Library
+
+Domyślnie:
+
+```text
+data/fits
+```
+
+Przykład struktury:
+
+```text
+data/fits/
+  2026-06-15-north-america/
+    Light/
+    Flat/
+    Dark/
+    Bias/
+```
+
+API skanuje wyłącznie wewnątrz `FITS_LIBRARY_ROOT`. Próba wyjścia poza root kończy się błędem.
+
+Obsługiwane rozszerzenia:
+
+- `.fit`
+- `.fits`
+- `.fts`
+
+Mount w Compose jest read-only:
+
+```yaml
+${FITS_LIBRARY_ROOT_HOST:-./data/fits}:${FITS_LIBRARY_ROOT:-/data/fits}:ro
+```
+
+## Health I Diagnostyka
+
+Status:
+
+```powershell
+docker compose ps
+```
+
+Logi:
+
+```powershell
+docker compose logs -f api web caddy
+```
+
+Health przez Caddy:
+
+```powershell
+curl http://localhost/health
+```
+
+Health API bezpośrednio w kontenerze:
+
+```powershell
+docker compose exec api python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/health').read())"
+```
+
+Walidacja Caddy:
+
+```powershell
+docker compose exec caddy caddy validate --config /etc/caddy/Caddyfile
+```
+
+## Aktualizacja
+
+Typowy flow:
+
+```powershell
+git pull
+.\scripts\test.ps1
+.\scripts\backup-profiles.ps1
+.\scripts\deploy.ps1
+```
+
+Przy zmianach tylko w `.env` albo Caddy:
+
+```powershell
+.\scripts\deploy.ps1 -NoBuild
+```
+
+## Bezpieczeństwo
+
+- Nie wystawiaj MinIO publicznie bez osobnej konfiguracji auth/TLS.
+- Nie używaj domyślnych sekretów z `.env.example`.
+- FITS mount trzymaj read-only.
+- Dla domeny użyj Caddy-managed TLS.
+- Jeśli aplikacja ma być dostępna spoza LAN, rozważ reverse proxy za VPN albo access control.
+
+## Znane Ograniczenia
+
+- PostgreSQL i MinIO są gotowe infrastrukturalnie, ale większość danych aplikacyjnych nadal zapisuje SQLite.
+- Nie ma jeszcze pełnego migration framework.
+- Nie ma jeszcze background workerów dla długich zadań.
+- FITS scan działa synchronicznie i powinien mieć rozsądny `max_files`.
