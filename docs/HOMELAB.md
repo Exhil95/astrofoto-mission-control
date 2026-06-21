@@ -77,6 +77,7 @@ Przed zostawieniem stacka na stałe przejrzyj:
 CADDY_SITE_ADDRESS=:80
 PUBLIC_BASE_URL=http://localhost
 CORS_ORIGINS=http://localhost,http://localhost:5173
+AUTH_SESSION_TTL_HOURS=720
 POSTGRES_PASSWORD=change-me
 MINIO_ROOT_PASSWORD=change-me-minio
 S3_SECRET_ACCESS_KEY=change-me-minio
@@ -88,6 +89,7 @@ Rekomendacje:
 
 - LAN HTTP: `CADDY_SITE_ADDRESS=:80`.
 - Domena z TLS Caddy: `CADDY_SITE_ADDRESS=astro.example.com`.
+- `AUTH_SESSION_TTL_HOURS=720` daje 30 dni sesji. Dla dostepu spoza LAN rozwaz krotszy TTL, np. `168`.
 - Jeśli używasz domeny, dodaj ją do `PUBLIC_BASE_URL` i `CORS_ORIGINS`.
 - Sekrety zmień przed wystawieniem usług poza własny komputer.
 
@@ -175,6 +177,8 @@ Backup trafia do:
 ```text
 backups/astrofoto-YYYYMMDD-HHMMSS.sqlite3
 ```
+
+Backup SQLite zawiera profile, Session Archive, lokalne konta operatorow i hashe hasel. Traktuj ten plik jak sekret.
 
 ## Restore
 
@@ -268,6 +272,12 @@ Przy zmianach tylko w `.env` albo Caddy:
 
 ## Bezpieczeństwo
 
+- Login/rejestracja uzywa lokalnych kont operatorow w SQLite. Hasla sa hashowane przez PBKDF2-SHA256, a bearer tokeny sa przechowywane jako SHA-256.
+- Minimalna dlugosc hasla w API to 8 znakow, ale dla homelabu uzywaj passphrase 16+ znakow.
+- Nie udostepniaj aplikacji poza LAN bez TLS. Dla domeny uzyj Caddy-managed TLS i ustaw `PUBLIC_BASE_URL` oraz `CORS_ORIGINS` na prawdziwy origin.
+- Trzymaj `CORS_ORIGINS` wasko. Nie dodawaj `*` przy bearer tokenach.
+- Backup SQLite zawiera `auth_users` i `auth_sessions`, wiec przechowuj go offline albo w zaszyfrowanym miejscu.
+- Przy podejrzeniu wycieku tokena wyloguj operatora w UI. Jesli chcesz uniewaznic wszystkie sesje, po backupie usun wpisy z tabeli `auth_sessions` w SQLite i zrestartuj API.
 - Nie wystawiaj MinIO publicznie bez osobnej konfiguracji auth/TLS.
 - Nie używaj domyślnych sekretów z `.env.example`.
 - FITS mount trzymaj read-only.
