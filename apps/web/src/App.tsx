@@ -8,13 +8,16 @@ import {
   Gauge,
   Languages,
   LocateFixed,
+  LogOut,
   Moon,
   Radio,
   RotateCw,
   SlidersHorizontal,
   Telescope,
+  UserCircle,
   type LucideIcon
 } from "lucide-react";
+import { AuthLanding } from "./components/AuthLanding";
 import { TargetRail } from "./components/TargetRail";
 import { FovConsole } from "./components/FovConsole";
 import { ProfileDock } from "./components/ProfileDock";
@@ -35,6 +38,12 @@ import {
   createMultiSessionNotes,
   createSessionArchiveNotes
 } from "./lib/exports/markdown";
+import {
+  clearAuthSession,
+  loadAuthSession,
+  saveAuthSession,
+  type AuthSession
+} from "./lib/auth";
 import {
   createFallbackSkyForecast,
   fetchSkyForecast,
@@ -117,6 +126,30 @@ const workspaceIcons: Record<WorkspaceMode, LucideIcon> = {
 };
 
 export function App() {
+  const [authSession, setAuthSession] = useState<AuthSession | null>(() => loadAuthSession());
+
+  function enterApp(session: AuthSession) {
+    saveAuthSession(session);
+    setAuthSession(session);
+  }
+
+  function leaveApp() {
+    clearAuthSession();
+    setAuthSession(null);
+  }
+
+  if (!authSession) return <AuthLanding onComplete={enterApp} />;
+
+  return <MissionControlApp authSession={authSession} onLogout={leaveApp} />;
+}
+
+function MissionControlApp({
+  authSession,
+  onLogout
+}: {
+  authSession: AuthSession;
+  onLogout: () => void;
+}) {
   const [selectedTargetId, setSelectedTargetId] = useState("ngc7000");
   const [focalLengthMm, setFocalLengthMm] = useState(480);
   const [sensorWidthMm, setSensorWidthMm] = useState(23.5);
@@ -837,6 +870,17 @@ export function App() {
               ))}
             </select>
           </label>
+          <button
+            aria-label={`Log out ${authSession.displayName}`}
+            className="account-pill"
+            title={`Log out ${authSession.displayName}`}
+            type="button"
+            onClick={onLogout}
+          >
+            <UserCircle size={16} aria-hidden="true" />
+            <span>{authSession.displayName}</span>
+            <LogOut size={15} aria-hidden="true" />
+          </button>
         </div>
       </header>
 

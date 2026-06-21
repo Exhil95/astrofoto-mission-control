@@ -1,5 +1,16 @@
 # User Guide
 
+## Ekran Startowy
+
+Pierwszy ekran jest bramka operatora. Pozwala:
+
+- wejsc do aplikacji w trybie demo bez konfiguracji konta,
+- zalogowac sie lokalna sesja frontendu,
+- zalozyc podstawowy profil operatora,
+- szybko zobaczyc, ze aplikacja obejmuje Tonight Board, FOV Console, Capture Runbook, Multi-session Planner i FITS Review.
+
+Sesja startowa jest zapisywana w `localStorage` pod kluczem `astrofoto-auth-session`. To jest warstwa UX przygotowana pod docelowe backendowe konta i uprawnienia.
+
 Ten dokument opisuje aplikację z perspektywy osoby planującej i prowadzącej sesję astrofoto.
 
 ## Główna Nawigacja
