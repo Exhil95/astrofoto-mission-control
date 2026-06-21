@@ -144,9 +144,9 @@ Aktualny audyt dodał:
 
 Największe świadome hot spoty do dalszej redukcji:
 
-- `apps/web/src/App.tsx` nadal jest głównym orkiestratorem wielu workflow,
-- `apps/web/src/lib/i18n.ts` jest duży, bo trzyma pięć języków i tłumaczenia eksportów,
-- `apps/web/src/components/FitsIngestPanel.tsx` łączy UI, export Markdown i draft archiwum,
-- `apps/api/astro_api/services.py` zawiera dużo logiki planowania w jednym module.
+- `apps/web/src/App.tsx` nadal jest glownym orkiestratorem wielu workflow,
+- `apps/web/src/components/FitsIngestPanel.tsx` laczy UI, skan FITS i draft archiwum,
+- `apps/api/astro_api/fits_ingest.py` laczy parser FITS, scoring i calibration matching,
+- `apps/web/src/styles.css` jest nadal globalnym arkuszem dla calej aplikacji.
 
 Te miejsca są opisane dokładniej w [docs/AUDIT.md](docs/AUDIT.md).

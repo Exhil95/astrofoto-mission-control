@@ -69,7 +69,9 @@ Najważniejsze moduły:
 
 - `main.py`: routing FastAPI.
 - `schemas.py`: request/response models.
-- `services.py`: logika planowania.
+- `services.py`: compatibility facade dla publicznych funkcji planowania.
+- `session_planning.py`, `capture_planning.py`, `processing_planning.py`: use-case modules dla planowania.
+- `tonight_board.py`, `multi_session_planning.py`, `planning_common.py`: ranking nocy, multi-session i wspolne scoringi.
 - `astro_engine.py`: obliczenia astronomiczne.
 - `forecast.py`: Open-Meteo i cache.
 - `fits_ingest.py`: FITS scan, metadata extraction, quality score.
@@ -186,9 +188,9 @@ Obecnie profile i archiwum są w SQLite, mimo że Postgres jest już w stacku. T
 Docelowo:
 
 - `App.tsx` ma być orkiestratorem, nie miejscem logiki domenowej.
-- eksporty Markdown/ICS powinny być w `lib/exports`.
-- `i18n.ts` powinien być podzielony na słowniki per język.
-- `services.py` powinien zostać rozbity według use case.
+- eksporty Markdown/ICS sa w `lib/exports`.
+- `i18n.ts` jest fasada, a slowniki sa w plikach per jezyk.
+- backendowe planowanie jest rozbite wedlug use case z `services.py` jako fasada.
 - FITS ingest powinien mieć osobne moduły dla parsera, scoringu i calibration matching.
 
 Aktualny stan i rekomendacje są w [AUDIT.md](AUDIT.md).

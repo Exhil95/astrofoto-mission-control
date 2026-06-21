@@ -108,7 +108,13 @@ Najwazniejsze pliki:
 
 - `astro_api/main.py`: endpointy FastAPI.
 - `astro_api/schemas.py`: kontrakty Pydantic.
-- `astro_api/services.py`: planowanie sesji, capture plan, processing plan, multi-session.
+- `astro_api/services.py`: compatibility facade dla publicznych funkcji planowania.
+- `astro_api/session_planning.py`: plan pojedynczej sesji i timeline.
+- `astro_api/capture_planning.py`: capture runbook i Markdown plan.
+- `astro_api/processing_planning.py`: rekomendacje stackowania i obrobki.
+- `astro_api/tonight_board.py`: ranking targetow na jedna noc.
+- `astro_api/multi_session_planning.py`: planowanie wielu nocy.
+- `astro_api/planning_common.py`: wspolne scoringi i etykiety planowania.
 - `astro_api/astro_engine.py`: astronomia, Slonce, Ksiezyc, wysokosc targetow.
 - `astro_api/forecast.py`: Open-Meteo i cache prognozy.
 - `astro_api/fits_ingest.py`: skan FITS i quality scoring.
@@ -157,7 +163,6 @@ Te pliki sa najwieksze i wymagaja ostroznosci:
 - `apps/web/src/styles.css`: globalny CSS.
 - `apps/web/src/App.tsx`: orkiestracja workflow.
 - `apps/web/src/lib/session.ts`: typy, fallbacki i klient API.
-- `apps/api/astro_api/services.py`: wiele strategii planowania.
 - `apps/web/src/components/FitsIngestPanel.tsx`: UI, archive import draft i flow skanu.
 - `apps/api/astro_api/fits_ingest.py`: skan FITS, scoring i biblioteka kalibracji.
 
@@ -165,9 +170,9 @@ Te pliki sa najwieksze i wymagaja ostroznosci:
 
 Najbezpieczniejsza kolejnosc:
 
-1. Podzielic `services.py` na `session_planning.py`, `capture_planning.py`, `processing_planning.py`, `multi_session.py`.
-2. Podzielic `FitsIngestPanel.tsx` na prezentacje, archive-draft i export helpers.
-3. Dodac Playwright smoke tests dla Planner, Session, Frames i Multi.
+1. Podzielic `FitsIngestPanel.tsx` na prezentacje, archive-draft i export helpers.
+2. Dodac Playwright smoke tests dla Planner, Session, Frames i Multi.
+3. Udokumentowac i przeprototypowac migracje SQLite -> Postgres.
 4. Podzielic `styles.css` na warstwy albo CSS modules dopiero po ustabilizowaniu designu.
 
 ## Debugging

@@ -85,11 +85,9 @@ Największe pliki:
 | Plik | Ryzyko |
 | --- | --- |
 | `apps/web/src/styles.css` | globalny CSS, duże ryzyko przypadkowych regresji layoutu |
-| `apps/web/src/lib/i18n.ts` | wszystkie języki i dynamiczne tłumaczenia w jednym pliku |
-| `apps/web/src/App.tsx` | orkiestruje zbyt wiele workflow |
+| `apps/web/src/App.tsx` | orkiestruje wiele workflow |
 | `apps/web/src/lib/session.ts` | klient API, typy i fallbacki w jednym module |
-| `apps/api/astro_api/services.py` | wiele use case planowania w jednym module |
-| `apps/web/src/components/FitsIngestPanel.tsx` | UI, Markdown export i archive import draft razem |
+| `apps/web/src/components/FitsIngestPanel.tsx` | UI, scan flow i archive import draft razem |
 | `apps/api/astro_api/fits_ingest.py` | parser, scoring i calibration matching razem |
 
 ## Ocena Ryzyk
@@ -137,15 +135,15 @@ Rekomendacja:
 
 ### Średnie
 
-`services.py` jest centrum backendowego planowania.
+`services.py` jest juz compatibility facade dla backendowego planowania. Logika use-case mieszka w osobnych modulach.
 
 Rekomendacja:
-
 - `session_planning.py`,
 - `capture_planning.py`,
 - `processing_planning.py`,
-- `multi_session.py`,
-- `tonight_board.py`.
+- `tonight_board.py`,
+- `multi_session_planning.py`,
+- `planning_common.py`.
 
 ### Średnie
 
@@ -197,13 +195,10 @@ Braki:
 
 ## Priorytet Następnych Refaktorów
 
-1. Wyciągnąć eksporty Markdown/ICS z UI do `src/lib/exports`.
-2. Podzielić `i18n.ts` na folder per język.
-3. Dodać testy dla `lib/sky.ts` i exportów.
-4. Rozbić `services.py` według use case.
-5. Rozbić `FitsIngestPanel.tsx` na UI + export helpers + archive draft helpers.
-6. Dodać Playwright smoke dla trybów Planner/Sesja/Klatki/Multi.
-7. Dodać dokument migracji SQLite -> Postgres.
+1. Rozbic `FitsIngestPanel.tsx` na UI + export helpers + archive draft helpers.
+2. Dodac Playwright smoke dla trybow Planner/Sesja/Klatki/Multi.
+3. Dodac dokument migracji SQLite -> Postgres.
+4. Podzielic `styles.css` na warstwy po stabilizacji designu.
 
 ## Kryterium Done Dla Obecnego Passa
 
