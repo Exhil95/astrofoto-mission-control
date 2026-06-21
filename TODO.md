@@ -59,8 +59,9 @@
 - [x] Frontend start screen with login, registration, demo entry, and program teaser.
 - [x] Backend auth foundation: users table, password hashing, session tokens, and `/api/auth/*` endpoints.
 - [x] Connect start screen login/register to backend auth with clear offline/demo fallback.
-- [ ] Scope profiles and session archive by authenticated user before exposing outside LAN.
-- [ ] Add auth and ownership tests for profiles, archive, and FITS handoff workflows.
+- [x] Scope profiles and session archive by authenticated user before exposing outside LAN.
+- [x] Add auth and ownership tests for profiles and session archive workflows.
+- [ ] Add FITS handoff auth/ownership coverage.
 - [ ] Add homelab auth notes: password policy, token lifetime, backup/restore, and reverse proxy headers.
 - [ ] Fix mojibake in Polish documentation and keep all docs UTF-8 clean.
 

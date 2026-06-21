@@ -39,25 +39,33 @@ ARCHIVE_COLUMNS = [
     "updated_at",
 ]
 
+ARCHIVE_OWNER_COLUMN = "owner_user_id"
 
-def list_session_archives(limit: int = 12) -> list[SessionArchiveResponse]:
+
+def list_session_archives(
+    limit: int = 12, owner_user_id: int | None = None
+) -> list[SessionArchiveResponse]:
     _ensure_store()
     with _connect() as connection:
         rows = connection.execute(
             f"""
             SELECT {', '.join(ARCHIVE_COLUMNS)}
             FROM session_archives
+            WHERE {owner_where_clause(owner_user_id)}
             ORDER BY session_date DESC, id DESC
             LIMIT ?
             """,
-            (limit,),
+            (*owner_where_params(owner_user_id), limit),
         ).fetchall()
     return [_row_to_archive(row) for row in rows]
 
 
-def create_session_archive(payload: SessionArchiveCreate) -> SessionArchiveResponse:
+def create_session_archive(
+    payload: SessionArchiveCreate, owner_user_id: int | None = None
+) -> SessionArchiveResponse:
     _ensure_store()
     values = _payload_to_row(payload)
+    values[ARCHIVE_OWNER_COLUMN] = owner_user_id
     now = _now_iso()
     values["created_at"] = now
     values["updated_at"] = now
@@ -72,14 +80,14 @@ def create_session_archive(payload: SessionArchiveCreate) -> SessionArchiveRespo
         connection.commit()
         archive_id = int(cursor.lastrowid)
 
-    archive = get_session_archive(archive_id)
+    archive = get_session_archive(archive_id, owner_user_id)
     if archive is None:
         raise RuntimeError("Session archive was not persisted")
     return archive
 
 
 def update_session_archive(
-    archive_id: int, payload: SessionArchiveUpdate
+    archive_id: int, payload: SessionArchiveUpdate, owner_user_id: int | None = None
 ) -> SessionArchiveResponse | None:
     _ensure_store()
     values = _payload_to_row(payload)
@@ -88,29 +96,42 @@ def update_session_archive(
 
     with _connect() as connection:
         cursor = connection.execute(
-            f"UPDATE session_archives SET {assignments} WHERE id = ?",
-            [*values.values(), archive_id],
+            f"""
+            UPDATE session_archives
+            SET {assignments}
+            WHERE id = ? AND {owner_where_clause(owner_user_id)}
+            """,
+            [*values.values(), archive_id, *owner_where_params(owner_user_id)],
         )
         connection.commit()
         if cursor.rowcount == 0:
             return None
-    return get_session_archive(archive_id)
+    return get_session_archive(archive_id, owner_user_id)
 
 
-def delete_session_archive(archive_id: int) -> bool:
+def delete_session_archive(archive_id: int, owner_user_id: int | None = None) -> bool:
     _ensure_store()
     with _connect() as connection:
-        cursor = connection.execute("DELETE FROM session_archives WHERE id = ?", (archive_id,))
+        cursor = connection.execute(
+            f"DELETE FROM session_archives WHERE id = ? AND {owner_where_clause(owner_user_id)}",
+            (archive_id, *owner_where_params(owner_user_id)),
+        )
         connection.commit()
     return cursor.rowcount > 0
 
 
-def get_session_archive(archive_id: int) -> SessionArchiveResponse | None:
+def get_session_archive(
+    archive_id: int, owner_user_id: int | None = None
+) -> SessionArchiveResponse | None:
     _ensure_store()
     with _connect() as connection:
         row = connection.execute(
-            f"SELECT {', '.join(ARCHIVE_COLUMNS)} FROM session_archives WHERE id = ?",
-            (archive_id,),
+            f"""
+            SELECT {', '.join(ARCHIVE_COLUMNS)}
+            FROM session_archives
+            WHERE id = ? AND {owner_where_clause(owner_user_id)}
+            """,
+            (archive_id, *owner_where_params(owner_user_id)),
         ).fetchone()
     return _row_to_archive(row) if row else None
 
@@ -121,6 +142,7 @@ def _ensure_store() -> None:
             """
             CREATE TABLE IF NOT EXISTS session_archives (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                owner_user_id INTEGER,
                 target_id TEXT NOT NULL,
                 target_name TEXT NOT NULL,
                 session_date TEXT NOT NULL,
@@ -150,7 +172,16 @@ def _ensure_store() -> None:
             )
             """
         )
+        _ensure_columns(connection)
         connection.commit()
+
+
+def _ensure_columns(connection: sqlite3.Connection) -> None:
+    existing_columns = {
+        row["name"] for row in connection.execute("PRAGMA table_info(session_archives)")
+    }
+    if ARCHIVE_OWNER_COLUMN not in existing_columns:
+        connection.execute(f"ALTER TABLE session_archives ADD COLUMN {ARCHIVE_OWNER_COLUMN} INTEGER")
 
 
 def _payload_to_row(payload: SessionArchiveCreate | SessionArchiveUpdate) -> dict[str, Any]:
@@ -186,6 +217,14 @@ def _row_to_archive(row: sqlite3.Row) -> SessionArchiveResponse:
     data["filter_names"] = json.loads(data["filter_names"])
     data["white_night"] = bool(data["white_night"])
     return SessionArchiveResponse(**data)
+
+
+def owner_where_clause(owner_user_id: int | None) -> str:
+    return "owner_user_id IS NULL" if owner_user_id is None else "owner_user_id = ?"
+
+
+def owner_where_params(owner_user_id: int | None) -> tuple[int, ...]:
+    return () if owner_user_id is None else (owner_user_id,)
 
 
 def _now_iso() -> str:

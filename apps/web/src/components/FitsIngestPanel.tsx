@@ -43,6 +43,7 @@ type FitsIngestPanelProps = {
   fov: FovResult;
   calibrationLibrary: CalibrationLibraryResult | null;
   language: SupportedLanguage;
+  authToken?: string;
   onArchiveCreated: (archive: SessionArchiveEntry) => void;
 };
 
@@ -53,6 +54,7 @@ export function FitsIngestPanel({
   fov,
   calibrationLibrary,
   language,
+  authToken,
   onArchiveCreated
 }: FitsIngestPanelProps) {
   const text = translations[language].fitsIngest;
@@ -98,7 +100,7 @@ export function FitsIngestPanel({
     if (!importDraft) return;
     setImportState("saving");
     try {
-      const archive = await saveSessionArchive(importDraft.payload);
+      const archive = await saveSessionArchive(importDraft.payload, authToken);
       onArchiveCreated(archive);
       setImportState("saved");
       window.setTimeout(() => setImportState("idle"), 1600);

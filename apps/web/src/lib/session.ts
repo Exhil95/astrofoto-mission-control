@@ -850,8 +850,13 @@ export async function fetchCalibrationLibrary({
   return normalizeCalibrationLibrary((await response.json()) as ApiCalibrationLibraryResult);
 }
 
-export async function fetchSessionArchive(limit = 5): Promise<SessionArchiveEntry[]> {
-  const response = await fetch(`${apiBaseUrl}/api/session/archive?limit=${limit}`);
+export async function fetchSessionArchive(
+  limit = 5,
+  authToken?: string
+): Promise<SessionArchiveEntry[]> {
+  const response = await fetch(`${apiBaseUrl}/api/session/archive?limit=${limit}`, {
+    headers: authHeaders(authToken)
+  });
 
   if (!response.ok) {
     throw new Error(`Session archive failed with ${response.status}`);
@@ -861,11 +866,12 @@ export async function fetchSessionArchive(limit = 5): Promise<SessionArchiveEntr
 }
 
 export async function saveSessionArchive(
-  payload: SessionArchivePayload
+  payload: SessionArchivePayload,
+  authToken?: string
 ): Promise<SessionArchiveEntry> {
   const response = await fetch(`${apiBaseUrl}/api/session/archive`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
     body: JSON.stringify(toApiSessionArchive(payload))
   });
 
@@ -874,6 +880,10 @@ export async function saveSessionArchive(
   }
 
   return normalizeSessionArchive((await response.json()) as ApiSessionArchive);
+}
+
+function authHeaders(authToken?: string): Record<string, string> {
+  return authToken ? { Authorization: `Bearer ${authToken}` } : {};
 }
 
 export function createFallbackSessionPlan(target: Target, settings?: SessionSettings): SessionPlan {

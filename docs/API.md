@@ -182,6 +182,14 @@ Możliwe błędy:
 
 ## Profiles
 
+Wszystkie endpointy profili wymagaja:
+
+```http
+Authorization: Bearer <access_token>
+```
+
+Profile sa izolowane po aktualnym operatorze. Pierwsze pobranie profili dla nowego operatora tworzy jego prywatna kopie domyslnych profili sprzetu.
+
 ### `GET /api/profiles`
 
 Lista profili sprzętu.
@@ -431,6 +439,14 @@ Response:
 - warnings o brakujących flatach, darkach albo biasach.
 
 ## Session Archive
+
+Wszystkie endpointy archiwum wymagaja:
+
+```http
+Authorization: Bearer <access_token>
+```
+
+Wpisy archiwum sa izolowane po aktualnym operatorze. Obcy wpis zwraca `404`, a brak albo wygasly token zwraca `401`.
 
 ### `GET /api/session/archive?limit=12`
 

@@ -37,7 +37,10 @@ PROFILE_COLUMNS = [
     "updated_at",
 ]
 
+PROFILE_OWNER_COLUMN = "owner_user_id"
+
 PROFILE_COLUMN_MIGRATIONS = {
+    PROFILE_OWNER_COLUMN: "INTEGER",
     "telescope_type": "TEXT NOT NULL DEFAULT 'Refractor'",
     "aperture_mm": "REAL NOT NULL DEFAULT 80",
     "reducer_name": "TEXT NOT NULL DEFAULT 'None'",
@@ -132,18 +135,28 @@ DEFAULT_PROFILES = [
 ]
 
 
-def list_profiles() -> list[ProfileResponse]:
+def list_profiles(owner_user_id: int | None = None) -> list[ProfileResponse]:
     _ensure_store()
     with _connect() as connection:
+        if owner_user_id is not None:
+            _ensure_user_profiles(connection, owner_user_id)
         rows = connection.execute(
-            f"SELECT {', '.join(PROFILE_COLUMNS)} FROM equipment_profiles ORDER BY id"
+            f"""
+            SELECT {', '.join(PROFILE_COLUMNS)}
+            FROM equipment_profiles
+            WHERE {owner_where_clause(owner_user_id)}
+            ORDER BY id
+            """,
+            owner_where_params(owner_user_id),
         ).fetchall()
+        connection.commit()
     return [_row_to_profile(row) for row in rows]
 
 
-def create_profile(payload: ProfileCreate) -> ProfileResponse:
+def create_profile(payload: ProfileCreate, owner_user_id: int | None = None) -> ProfileResponse:
     _ensure_store()
     values = payload.model_dump()
+    values[PROFILE_OWNER_COLUMN] = owner_user_id
     values["updated_at"] = _now_iso()
     fields = list(values)
     placeholders = ", ".join("?" for _ in fields)
@@ -155,13 +168,15 @@ def create_profile(payload: ProfileCreate) -> ProfileResponse:
         )
         connection.commit()
         profile_id = int(cursor.lastrowid)
-    profile = get_profile(profile_id)
+    profile = get_profile(profile_id, owner_user_id)
     if profile is None:
         raise RuntimeError("Profile was not persisted")
     return profile
 
 
-def update_profile(profile_id: int, payload: ProfileUpdate) -> ProfileResponse | None:
+def update_profile(
+    profile_id: int, payload: ProfileUpdate, owner_user_id: int | None = None
+) -> ProfileResponse | None:
     _ensure_store()
     values = payload.model_dump()
     values["updated_at"] = _now_iso()
@@ -169,29 +184,40 @@ def update_profile(profile_id: int, payload: ProfileUpdate) -> ProfileResponse |
 
     with _connect() as connection:
         cursor = connection.execute(
-            f"UPDATE equipment_profiles SET {assignments} WHERE id = ?",
-            [*values.values(), profile_id],
+            f"""
+            UPDATE equipment_profiles
+            SET {assignments}
+            WHERE id = ? AND {owner_where_clause(owner_user_id)}
+            """,
+            [*values.values(), profile_id, *owner_where_params(owner_user_id)],
         )
         connection.commit()
         if cursor.rowcount == 0:
             return None
-    return get_profile(profile_id)
+    return get_profile(profile_id, owner_user_id)
 
 
-def delete_profile(profile_id: int) -> bool:
+def delete_profile(profile_id: int, owner_user_id: int | None = None) -> bool:
     _ensure_store()
     with _connect() as connection:
-        cursor = connection.execute("DELETE FROM equipment_profiles WHERE id = ?", (profile_id,))
+        cursor = connection.execute(
+            f"DELETE FROM equipment_profiles WHERE id = ? AND {owner_where_clause(owner_user_id)}",
+            (profile_id, *owner_where_params(owner_user_id)),
+        )
         connection.commit()
     return cursor.rowcount > 0
 
 
-def get_profile(profile_id: int) -> ProfileResponse | None:
+def get_profile(profile_id: int, owner_user_id: int | None = None) -> ProfileResponse | None:
     _ensure_store()
     with _connect() as connection:
         row = connection.execute(
-            f"SELECT {', '.join(PROFILE_COLUMNS)} FROM equipment_profiles WHERE id = ?",
-            (profile_id,),
+            f"""
+            SELECT {', '.join(PROFILE_COLUMNS)}
+            FROM equipment_profiles
+            WHERE id = ? AND {owner_where_clause(owner_user_id)}
+            """,
+            (profile_id, *owner_where_params(owner_user_id)),
         ).fetchone()
     return _row_to_profile(row) if row else None
 
@@ -202,6 +228,7 @@ def _ensure_store() -> None:
             """
             CREATE TABLE IF NOT EXISTS equipment_profiles (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                owner_user_id INTEGER,
                 name TEXT NOT NULL,
                 site_name TEXT NOT NULL,
                 latitude_deg REAL NOT NULL,
@@ -231,9 +258,11 @@ def _ensure_store() -> None:
             """
         )
         _ensure_columns(connection)
-        count = connection.execute("SELECT COUNT(*) FROM equipment_profiles").fetchone()[0]
+        count = connection.execute(
+            "SELECT COUNT(*) FROM equipment_profiles WHERE owner_user_id IS NULL"
+        ).fetchone()[0]
         if count == 0:
-            _seed_defaults(connection)
+            _seed_defaults(connection, owner_user_id=None)
         connection.commit()
 
 
@@ -246,9 +275,18 @@ def _ensure_columns(connection: sqlite3.Connection) -> None:
             connection.execute(f"ALTER TABLE equipment_profiles ADD COLUMN {column} {definition}")
 
 
-def _seed_defaults(connection: sqlite3.Connection) -> None:
+def _ensure_user_profiles(connection: sqlite3.Connection, owner_user_id: int) -> None:
+    count = connection.execute(
+        "SELECT COUNT(*) FROM equipment_profiles WHERE owner_user_id = ?",
+        (owner_user_id,),
+    ).fetchone()[0]
+    if count == 0:
+        _seed_defaults(connection, owner_user_id=owner_user_id)
+
+
+def _seed_defaults(connection: sqlite3.Connection, owner_user_id: int | None) -> None:
     for profile in DEFAULT_PROFILES:
-        values = {**profile, "updated_at": _now_iso()}
+        values = {**profile, PROFILE_OWNER_COLUMN: owner_user_id, "updated_at": _now_iso()}
         fields = list(values)
         placeholders = ", ".join("?" for _ in fields)
         connection.execute(
@@ -280,6 +318,14 @@ def _database_path() -> str:
 def _row_to_profile(row: sqlite3.Row) -> ProfileResponse:
     data: dict[str, Any] = {column: row[column] for column in PROFILE_COLUMNS}
     return ProfileResponse(**data)
+
+
+def owner_where_clause(owner_user_id: int | None) -> str:
+    return "owner_user_id IS NULL" if owner_user_id is None else "owner_user_id = ?"
+
+
+def owner_where_params(owner_user_id: int | None) -> tuple[int, ...]:
+    return () if owner_user_id is None else (owner_user_id,)
 
 
 def _now_iso() -> str:

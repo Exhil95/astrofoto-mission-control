@@ -315,7 +315,8 @@ function MissionControlApp({
           settings: sessionSettings,
           fov,
           language
-        })
+        }),
+        authSession.accessToken
       );
       setSessionArchives((items) =>
         [savedArchive, ...items.filter((archive) => archive.id !== savedArchive.id)].slice(0, 5)
@@ -422,7 +423,7 @@ function MissionControlApp({
     const payload = createPayloadFromCurrentSetup();
     setIsProfileSaving(true);
     try {
-      const profile = await createProfile(payload);
+      const profile = await createProfile(payload, authSession.accessToken);
       setProfiles((items) => [...items, profile]);
       applyProfile(profile);
     } catch {
@@ -441,7 +442,11 @@ function MissionControlApp({
   const updateExistingProfile = async (profileId: number, payload: ProfilePayload) => {
     setIsProfileSaving(true);
     try {
-      const updatedProfile = await updateStoredProfile(profileId, payload);
+      const updatedProfile = await updateStoredProfile(
+        profileId,
+        payload,
+        authSession.accessToken
+      );
       setProfiles((items) =>
         items.map((profile) => (profile.id === profileId ? updatedProfile : profile))
       );
@@ -471,7 +476,7 @@ function MissionControlApp({
 
     setIsProfileSaving(true);
     try {
-      const profile = await createProfile(payload);
+      const profile = await createProfile(payload, authSession.accessToken);
       setProfiles((items) => [...items, profile]);
       applyProfile(profile);
     } catch {
@@ -494,7 +499,7 @@ function MissionControlApp({
 
     setIsProfileSaving(true);
     try {
-      await deleteStoredProfile(profileId);
+      await deleteStoredProfile(profileId, authSession.accessToken);
     } catch {
       // Local fallback profiles can be removed even when no persisted row exists.
     } finally {
@@ -517,7 +522,7 @@ function MissionControlApp({
     });
 
     try {
-      const savedArchive = await saveSessionArchive(payload);
+      const savedArchive = await saveSessionArchive(payload, authSession.accessToken);
       setSessionArchives((items) =>
         [savedArchive, ...items.filter((item) => item.id !== savedArchive.id)].slice(0, 5)
       );
@@ -598,7 +603,7 @@ function MissionControlApp({
   useEffect(() => {
     let ignore = false;
 
-    fetchSessionArchive(5)
+    fetchSessionArchive(5, authSession.accessToken)
       .then((archives) => {
         if (!ignore) setSessionArchives(archives);
       })
@@ -609,12 +614,12 @@ function MissionControlApp({
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [authSession.accessToken]);
 
   useEffect(() => {
     let ignore = false;
 
-    fetchProfiles()
+    fetchProfiles(authSession.accessToken)
       .then((loadedProfiles) => {
         if (ignore || !loadedProfiles.length) return;
         setProfiles(loadedProfiles);
@@ -627,7 +632,7 @@ function MissionControlApp({
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [authSession.accessToken]);
 
   useEffect(() => {
     let ignore = false;
@@ -1194,6 +1199,7 @@ function MissionControlApp({
             fov={fov}
             calibrationLibrary={calibrationLibrary}
             language={language}
+            authToken={authSession.accessToken}
             onArchiveCreated={addSessionArchive}
           />
 

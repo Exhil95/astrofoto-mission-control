@@ -121,6 +121,14 @@ def auth_logout(authorization: str | None = Header(default=None)) -> Response:
     return Response(status_code=204)
 
 
+def require_auth_user(authorization: str | None) -> AuthUserResponse:
+    try:
+        token = extract_bearer_token(authorization)
+        return get_user_for_token(token)
+    except AuthInvalidTokenError as exc:
+        raise HTTPException(status_code=401, detail="Invalid or expired token") from exc
+
+
 @app.post("/api/fov", response_model=FovResponse)
 def fov(payload: FovRequest) -> FovResponse:
     return calculate_fov(payload)
@@ -151,26 +159,34 @@ def target_image(target_id: str) -> Response:
 
 
 @app.get("/api/profiles", response_model=list[ProfileResponse])
-def profiles() -> list[ProfileResponse]:
-    return list_profiles()
+def profiles(authorization: str | None = Header(default=None)) -> list[ProfileResponse]:
+    user = require_auth_user(authorization)
+    return list_profiles(owner_user_id=user.id)
 
 
 @app.post("/api/profiles", response_model=ProfileResponse)
-def profile_create(payload: ProfileCreate) -> ProfileResponse:
-    return create_profile(payload)
+def profile_create(
+    payload: ProfileCreate, authorization: str | None = Header(default=None)
+) -> ProfileResponse:
+    user = require_auth_user(authorization)
+    return create_profile(payload, owner_user_id=user.id)
 
 
 @app.put("/api/profiles/{profile_id}", response_model=ProfileResponse)
-def profile_update(profile_id: int, payload: ProfileUpdate) -> ProfileResponse:
-    profile = update_profile(profile_id, payload)
+def profile_update(
+    profile_id: int, payload: ProfileUpdate, authorization: str | None = Header(default=None)
+) -> ProfileResponse:
+    user = require_auth_user(authorization)
+    profile = update_profile(profile_id, payload, owner_user_id=user.id)
     if profile is None:
         raise HTTPException(status_code=404, detail="Profile not found")
     return profile
 
 
 @app.delete("/api/profiles/{profile_id}", status_code=204)
-def profile_delete(profile_id: int) -> Response:
-    if not delete_profile(profile_id):
+def profile_delete(profile_id: int, authorization: str | None = Header(default=None)) -> Response:
+    user = require_auth_user(authorization)
+    if not delete_profile(profile_id, owner_user_id=user.id):
         raise HTTPException(status_code=404, detail="Profile not found")
     return Response(status_code=204)
 
@@ -218,29 +234,40 @@ def multi_session_plan(payload: MultiSessionPlanRequest) -> MultiSessionPlanResp
 
 @app.get("/api/session/archive", response_model=list[SessionArchiveResponse])
 def session_archive_list(
-    limit: int = Query(default=12, ge=1, le=50)
+    limit: int = Query(default=12, ge=1, le=50),
+    authorization: str | None = Header(default=None),
 ) -> list[SessionArchiveResponse]:
-    return list_session_archives(limit=limit)
+    user = require_auth_user(authorization)
+    return list_session_archives(limit=limit, owner_user_id=user.id)
 
 
 @app.post("/api/session/archive", response_model=SessionArchiveResponse)
-def session_archive_create(payload: SessionArchiveCreate) -> SessionArchiveResponse:
-    return create_session_archive(payload)
+def session_archive_create(
+    payload: SessionArchiveCreate, authorization: str | None = Header(default=None)
+) -> SessionArchiveResponse:
+    user = require_auth_user(authorization)
+    return create_session_archive(payload, owner_user_id=user.id)
 
 
 @app.put("/api/session/archive/{archive_id}", response_model=SessionArchiveResponse)
 def session_archive_update(
-    archive_id: int, payload: SessionArchiveUpdate
+    archive_id: int,
+    payload: SessionArchiveUpdate,
+    authorization: str | None = Header(default=None),
 ) -> SessionArchiveResponse:
-    archive = update_session_archive(archive_id, payload)
+    user = require_auth_user(authorization)
+    archive = update_session_archive(archive_id, payload, owner_user_id=user.id)
     if archive is None:
         raise HTTPException(status_code=404, detail="Session archive not found")
     return archive
 
 
 @app.delete("/api/session/archive/{archive_id}", status_code=204)
-def session_archive_delete(archive_id: int) -> Response:
-    if not delete_session_archive(archive_id):
+def session_archive_delete(
+    archive_id: int, authorization: str | None = Header(default=None)
+) -> Response:
+    user = require_auth_user(authorization)
+    if not delete_session_archive(archive_id, owner_user_id=user.id):
         raise HTTPException(status_code=404, detail="Session archive not found")
     return Response(status_code=204)
 

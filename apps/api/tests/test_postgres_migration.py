@@ -44,8 +44,10 @@ def test_read_sqlite_snapshot_normalizes_profiles_and_session_archives(tmp_path)
     snapshot = read_sqlite_snapshot(f"sqlite:///{database_path}")
 
     assert snapshot.total_rows == 2
+    assert snapshot.profiles[0]["owner_user_id"] is None
     assert snapshot.profiles[0]["name"] == "Backyard APS-C"
     assert snapshot.session_archives[0]["target_name"] == "North America"
+    assert snapshot.session_archives[0]["owner_user_id"] is None
     assert snapshot.session_archives[0]["filter_names"] == ["Ha", "OIII", "SII"]
     assert snapshot.session_archives[0]["white_night"] is False
 

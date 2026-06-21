@@ -62,16 +62,21 @@ type ApiProfile = {
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
 
-export async function fetchProfiles(): Promise<EquipmentProfile[]> {
-  const response = await fetch(`${apiBaseUrl}/api/profiles`);
+export async function fetchProfiles(authToken?: string): Promise<EquipmentProfile[]> {
+  const response = await fetch(`${apiBaseUrl}/api/profiles`, {
+    headers: authHeaders(authToken)
+  });
   if (!response.ok) throw new Error(`Profile list failed with ${response.status}`);
   return ((await response.json()) as ApiProfile[]).map(normalizeProfile);
 }
 
-export async function createProfile(payload: ProfilePayload): Promise<EquipmentProfile> {
+export async function createProfile(
+  payload: ProfilePayload,
+  authToken?: string
+): Promise<EquipmentProfile> {
   const response = await fetch(`${apiBaseUrl}/api/profiles`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
     body: JSON.stringify(toApiPayload(payload))
   });
   if (!response.ok) throw new Error(`Profile create failed with ${response.status}`);
@@ -80,20 +85,22 @@ export async function createProfile(payload: ProfilePayload): Promise<EquipmentP
 
 export async function updateProfile(
   profileId: number,
-  payload: ProfilePayload
+  payload: ProfilePayload,
+  authToken?: string
 ): Promise<EquipmentProfile> {
   const response = await fetch(`${apiBaseUrl}/api/profiles/${profileId}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
     body: JSON.stringify(toApiPayload(payload))
   });
   if (!response.ok) throw new Error(`Profile update failed with ${response.status}`);
   return normalizeProfile((await response.json()) as ApiProfile);
 }
 
-export async function deleteProfile(profileId: number): Promise<void> {
+export async function deleteProfile(profileId: number, authToken?: string): Promise<void> {
   const response = await fetch(`${apiBaseUrl}/api/profiles/${profileId}`, {
-    method: "DELETE"
+    method: "DELETE",
+    headers: authHeaders(authToken)
   });
   if (!response.ok) throw new Error(`Profile delete failed with ${response.status}`);
 }
@@ -284,4 +291,8 @@ function toApiPayload(profile: ProfilePayload) {
     focuser_name: profile.focuserName,
     mount_name: profile.mountName
   };
+}
+
+function authHeaders(authToken?: string): Record<string, string> {
+  return authToken ? { Authorization: `Bearer ${authToken}` } : {};
 }
