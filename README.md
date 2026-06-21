@@ -22,7 +22,7 @@ Astrofoto Mission Control to lokalna aplikacja do planowania sesji astrofotograf
 - API: FastAPI, Pydantic, Astropy/Astroplan, NumPy.
 - Dane: JSON target catalog, SQLite dla profili i archiwum sesji.
 - Homelab: Docker Compose, Caddy, Valkey, PostgreSQL, MinIO.
-- Quality gates: pytest, ruff, TypeScript build, ESLint.
+- Quality gates: pytest, ruff, TypeScript build, Vitest unit tests, ESLint.
 
 ## Szybki Start
 
@@ -71,6 +71,7 @@ Skrypt uruchamia:
 - API pytest
 - API ruff
 - web TypeScript build
+- web Vitest unit tests
 - web ESLint, jeśli zależności są zainstalowane
 
 Opcjonalnie:

@@ -52,6 +52,7 @@ Co robi skrypt:
 - `pytest` w `apps/api`,
 - `ruff check .` w `apps/api`,
 - `npm run build` w `apps/web`,
+- `npm run test:unit` w `apps/web`, jeśli Vitest jest zainstalowany,
 - `npm run lint` w `apps/web`, jeśli ESLint jest zainstalowany.
 
 Szybkie uruchomienia:
@@ -78,6 +79,7 @@ Najważniejsze pliki:
 - `src/lib/profiles.ts`: klient API i mapping profili.
 - `src/lib/forecast.ts`: klient prognozy.
 - `src/lib/fov.ts`: lokalne obliczenia FOV.
+- `src/lib/exports/*`: buildery Markdown, ICS i wspolny downloader plikow.
 - `src/lib/targets.ts`: fallback target catalog z JSON API.
 - `src/lib/sky.ts`: reguły sceny, filtrowanie targetów, FOV-fit.
 - `src/lib/i18n.ts`: słowniki i helpery tłumaczeń.
@@ -89,6 +91,7 @@ Komendy:
 cd apps\web
 npm run dev
 npm run build
+npm run test:unit
 npm run lint
 ```
 

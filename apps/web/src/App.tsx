@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+﻿import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   Aperture,
@@ -27,6 +27,14 @@ import { SessionControl } from "./components/SessionControl";
 import { SessionTimeline } from "./components/SessionTimeline";
 import { SkyConditions } from "./components/SkyConditions";
 import { TonightBoard } from "./components/TonightBoard";
+import { createMultiSessionCalendar } from "./lib/exports/calendar";
+import { downloadTextFile } from "./lib/exports/download";
+import {
+  createCaptureMarkdown,
+  createMultiSessionMarkdown,
+  createMultiSessionNotes,
+  createSessionArchiveNotes
+} from "./lib/exports/markdown";
 import {
   createFallbackSkyForecast,
   fetchSkyForecast,
@@ -39,10 +47,7 @@ import {
   languageStorageKey,
   loadInitialLanguage,
   translateArchiveStatus,
-  translateFovFit,
-  translateKnownText,
   translateSeason,
-  translateTargetFraming,
   translateTargetType,
   translations,
   type SupportedLanguage
@@ -1287,8 +1292,12 @@ function createArchivePayload({
     weatherScore: sessionPlan.weatherScore,
     moonIlluminationPercent: sessionPlan.moonIlluminationPercent,
     whiteNight: sessionPlan.whiteNight,
-    notes: createArchiveNotes(sessionPlan, selectedProfile, language),
-    captureMarkdown: createArchiveCaptureMarkdown(capturePlan, language)
+    notes: createSessionArchiveNotes({
+      sessionPlan,
+      profile: selectedProfile,
+      language
+    }),
+    captureMarkdown: createCaptureMarkdown(capturePlan, language)
   };
 }
 
@@ -1339,7 +1348,12 @@ function createMultiSessionArchivePayload({
     weatherScore: item.weatherScore,
     moonIlluminationPercent: item.moonIlluminationPercent,
     whiteNight: item.whiteNight,
-    notes: createMultiSessionNotes(item, target, selectedProfile, language),
+    notes: createMultiSessionNotes({
+      item,
+      target,
+      profile: selectedProfile,
+      language
+    }),
     captureMarkdown: createMultiSessionMarkdown({
       item,
       target,
@@ -1352,317 +1366,6 @@ function createMultiSessionArchivePayload({
       language
     })
   };
-}
-
-function createArchiveNotes(
-  sessionPlan: SessionPlan,
-  profile: EquipmentProfile | null,
-  language: SupportedLanguage
-) {
-  return [
-    translateKnownText(language, sessionPlan.recommendation),
-    sessionPlan.whiteNight
-      ? `${translateKnownText(language, "White night")}: ${narrowbandFallbackLabel(language)}`
-      : translateKnownText(language, "Astronomical darkness available"),
-    `${weatherLabel(language)} ${sessionPlan.weatherScore}/100: ${translateKnownText(language, sessionPlan.weatherSummary)}`,
-    `${profileLabel(language)}: ${profile?.name ?? customSetupLabel(language)}`
-  ].join("\n");
-}
-
-function createMultiSessionNotes(
-  item: MultiSessionPlanItem,
-  target: Target,
-  profile: EquipmentProfile | null,
-  language: SupportedLanguage
-) {
-  return [
-    translateKnownText(language, item.reason),
-    `${modeLabel(language)}: ${translateKnownText(language, item.recommendedMode)}`,
-    `FOV: ${translateFovFit(language, item.fovFit)}, ${target.angularWidthArcmin} x ${target.angularHeightArcmin} arcmin`,
-    `${weatherLabel(language)} ${item.weatherScore}/100, ${moonLabel(language)} ${item.moonIlluminationPercent}%`,
-    item.whiteNight
-      ? `${translateKnownText(language, "White night")}: ${narrowbandFallbackLabel(language)}`
-      : translateKnownText(language, "Astronomical darkness available"),
-    `${profileLabel(language)}: ${profile?.name ?? customSetupLabel(language)}`
-  ].join("\n");
-}
-
-function createMultiSessionMarkdown({
-  item,
-  target,
-  filterNames,
-  totalIntegrationMinutes,
-  plannedFrames,
-  exposureSeconds,
-  selectedProfile,
-  fov,
-  language
-}: {
-  item: MultiSessionPlanItem;
-  target: Target;
-  filterNames: string[];
-  totalIntegrationMinutes: number;
-  plannedFrames: number;
-  exposureSeconds: number;
-  selectedProfile: EquipmentProfile | null;
-  fov: FovResult;
-  language: SupportedLanguage;
-}) {
-  const labels = markdownLabels(language);
-  const framesPerFilter = Math.max(1, Math.round(plannedFrames / Math.max(1, filterNames.length)));
-  const lights = filterNames
-    .map((filterName) => `- ${filterName}: ${framesPerFilter} x ${exposureSeconds}s`)
-    .join("\n");
-
-  return [
-    `# ${labels.multiSessionPlan}: ${item.targetName}`,
-    "",
-    `- ${labels.date}: ${item.date}`,
-    `- ${labels.window}: ${item.startTime} - ${item.endTime}`,
-    `- ${labels.mode}: ${translateKnownText(language, item.recommendedMode)}`,
-    `- ${labels.score}: ${item.score}/100`,
-    `- ${labels.weather}: ${item.weatherScore}/100`,
-    `- ${labels.moon}: ${item.moonIlluminationPercent}%`,
-    `- FOV: ${fov.horizontalDeg.toFixed(2)} x ${fov.verticalDeg.toFixed(2)} deg`,
-    `- ${labels.framing}: ${translateFovFit(language, item.fovFit)}; ${translateTargetFraming(language, target.framing)}`,
-    `- ${labels.profile}: ${selectedProfile?.name ?? customSetupLabel(language)}`,
-    "",
-    `## ${labels.lights}`,
-    lights,
-    "",
-    `${labels.totalPlannedIntegration}: ${totalIntegrationMinutes} min`,
-    "",
-    `## ${labels.notes}`,
-    `- ${translateKnownText(language, item.reason)}`,
-    `- ${labels.peakAltitude}: ${item.maxAltitudeDeg} deg ${labels.at} ${item.bestTime}`,
-    item.whiteNight ? `- ${translateKnownText(language, "White night")}: ${broadbandBackupLabel(language)}` : `- ${astronomicalDarknessCheckPassedLabel(language)}`,
-    `- ${confirmWeatherPlateSolveLabel(language)}`
-  ].join("\n");
-}
-
-function createArchiveCaptureMarkdown(plan: CapturePlanModel, language: SupportedLanguage) {
-  const labels = markdownLabels(language);
-  const exposureLines = plan.exposureSteps
-    .map(
-      (step) =>
-        `- ${step.filterName}: ${step.frames} x ${step.exposureSeconds}s (${step.integrationMinutes} min) - ${translateKnownText(
-          language,
-          step.note
-        )}`
-    )
-    .join("\n");
-  const calibrationLines = plan.calibrationFrames
-    .map(
-      (step) =>
-        `- ${step.frameType}: ${step.frames} x ${step.exposure} - ${translateKnownText(language, step.note)}`
-    )
-    .join("\n");
-  const checklistLines = plan.checklist
-    .map((item) => `- [ ] ${translateKnownText(language, item)}`)
-    .join("\n");
-
-  return [
-    `# ${labels.capturePlan}: ${plan.targetName}`,
-    "",
-    `- ${labels.date}: ${plan.date}`,
-    `- ${labels.window}: ${plan.windowStart} - ${plan.windowEnd}`,
-    `- ${labels.mode}: ${translateKnownText(language, plan.imagingMode)}`,
-    `- ${labels.integration}: ${plan.totalIntegrationMinutes} min`,
-    "",
-    `## ${labels.lights}`,
-    exposureLines,
-    "",
-    `## ${labels.calibration}`,
-    calibrationLines,
-    "",
-    `## ${labels.checklist}`,
-    checklistLines
-  ].join("\n");
-}
-
-function markdownLabels(language: SupportedLanguage) {
-  return {
-    en: {
-      capturePlan: "Capture Plan",
-      multiSessionPlan: "Multi-session Plan",
-      date: "Date",
-      window: "Window",
-      mode: "Mode",
-      integration: "Integration",
-      score: "Score",
-      weather: "Weather",
-      moon: "Moon",
-      framing: "Framing",
-      profile: "Profile",
-      lights: "Lights",
-      calibration: "Calibration",
-      checklist: "Checklist",
-      notes: "Notes",
-      totalPlannedIntegration: "Total planned integration",
-      peakAltitude: "Peak altitude",
-      at: "at"
-    },
-    pl: {
-      capturePlan: "Plan sesji",
-      multiSessionPlan: "Plan multi-session",
-      date: "Data",
-      window: "Okno",
-      mode: "Tryb",
-      integration: "Integracja",
-      score: "Ocena",
-      weather: "Pogoda",
-      moon: "Księżyc",
-      framing: "Kadrowanie",
-      profile: "Profil",
-      lights: "Lighty",
-      calibration: "Kalibracja",
-      checklist: "Checklist",
-      notes: "Notatki",
-      totalPlannedIntegration: "Łączna planowana integracja",
-      peakAltitude: "Maks. wysokość",
-      at: "o"
-    },
-    de: {
-      capturePlan: "Aufnahmeplan",
-      multiSessionPlan: "Multi-Session-Plan",
-      date: "Datum",
-      window: "Fenster",
-      mode: "Modus",
-      integration: "Integration",
-      score: "Wertung",
-      weather: "Wetter",
-      moon: "Mond",
-      framing: "Framing",
-      profile: "Profil",
-      lights: "Lights",
-      calibration: "Kalibrierung",
-      checklist: "Checkliste",
-      notes: "Notizen",
-      totalPlannedIntegration: "Geplante Gesamtintegration",
-      peakAltitude: "Maximale Höhe",
-      at: "um"
-    },
-    it: {
-      capturePlan: "Piano di cattura",
-      multiSessionPlan: "Piano multi-sessione",
-      date: "Data",
-      window: "Finestra",
-      mode: "Modo",
-      integration: "Integrazione",
-      score: "Punteggio",
-      weather: "Meteo",
-      moon: "Luna",
-      framing: "Inquadratura",
-      profile: "Profilo",
-      lights: "Light",
-      calibration: "Calibrazione",
-      checklist: "Checklist",
-      notes: "Note",
-      totalPlannedIntegration: "Integrazione totale pianificata",
-      peakAltitude: "Altitudine massima",
-      at: "alle"
-    },
-    es: {
-      capturePlan: "Plan de captura",
-      multiSessionPlan: "Plan multisesión",
-      date: "Fecha",
-      window: "Ventana",
-      mode: "Modo",
-      integration: "Integración",
-      score: "Puntuación",
-      weather: "Tiempo",
-      moon: "Luna",
-      framing: "Encuadre",
-      profile: "Perfil",
-      lights: "Lights",
-      calibration: "Calibración",
-      checklist: "Checklist",
-      notes: "Notas",
-      totalPlannedIntegration: "Integración total planificada",
-      peakAltitude: "Altitud máxima",
-      at: "a las"
-    }
-  }[language];
-}
-
-function weatherLabel(language: SupportedLanguage) {
-  return markdownLabels(language).weather;
-}
-
-function moonLabel(language: SupportedLanguage) {
-  return markdownLabels(language).moon;
-}
-
-function modeLabel(language: SupportedLanguage) {
-  return markdownLabels(language).mode;
-}
-
-function profileLabel(language: SupportedLanguage) {
-  return markdownLabels(language).profile;
-}
-
-function scoreLabel(language: SupportedLanguage) {
-  return markdownLabels(language).score;
-}
-
-function customSetupLabel(language: SupportedLanguage) {
-  return {
-    en: "Custom setup",
-    pl: "Własny setup",
-    de: "Eigenes Setup",
-    it: "Setup custom",
-    es: "Setup personalizado"
-  }[language];
-}
-
-function narrowbandFallbackLabel(language: SupportedLanguage) {
-  return {
-    en: "favor narrowband and brighter structures",
-    pl: "preferuj narrowband i jaśniejsze struktury",
-    de: "Schmalband und hellere Strukturen bevorzugen",
-    it: "preferisci narrowband e strutture più luminose",
-    es: "favorece narrowband y estructuras brillantes"
-  }[language];
-}
-
-function broadbandBackupLabel(language: SupportedLanguage) {
-  return {
-    en: "keep broadband as backup only",
-    pl: "broadband zostaw tylko jako backup",
-    de: "Broadband nur als Backup behalten",
-    it: "tieni broadband solo come backup",
-    es: "deja broadband solo como respaldo"
-  }[language];
-}
-
-function astronomicalDarknessCheckPassedLabel(language: SupportedLanguage) {
-  return {
-    en: "Astronomical darkness check passed",
-    pl: "Kontrola ciemności astronomicznej zaliczona",
-    de: "Astronomische Dunkelheit geprüft",
-    it: "Controllo buio astronomico superato",
-    es: "Control de oscuridad astronómica superado"
-  }[language];
-}
-
-function confirmWeatherPlateSolveLabel(language: SupportedLanguage) {
-  return {
-    en: "Confirm weather trend and first-frame plate solve before committing the full run",
-    pl: "Potwierdź trend pogody i plate solve pierwszej klatki przed pełnym przebiegiem",
-    de: "Wettertrend und Plate-Solve des ersten Frames vor dem kompletten Run prüfen",
-    it: "Conferma trend meteo e plate solve del primo frame prima della sessione completa",
-    es: "Confirma tendencia meteorológica y plate solve del primer frame antes de toda la sesión"
-  }[language];
-}
-
-function calendarNameLabel(language: SupportedLanguage) {
-  return {
-    en: "Astrofoto Mission Plan",
-    pl: "Plan misji astrofoto",
-    de: "Astrofoto-Missionsplan",
-    it: "Piano missione astrofoto",
-    es: "Plan de misión astrofoto"
-  }[language];
 }
 
 function filtersForMultiSessionItem(item: MultiSessionPlanItem, target: Target) {
@@ -1717,67 +1420,6 @@ function bestMultiSessionItemsByNight(plan: MultiSessionPlanModel) {
     .sort((left, right) => left.date.localeCompare(right.date));
 }
 
-function createMultiSessionCalendar({
-  items,
-  selectedProfile,
-  settings,
-  fov,
-  language
-}: {
-  items: MultiSessionPlanItem[];
-  selectedProfile: EquipmentProfile | null;
-  settings: SessionSettings;
-  fov: FovResult;
-  language: SupportedLanguage;
-}) {
-  const timezone = settings.timezone || "Europe/Warsaw";
-  const createdAt = toIcsUtc(new Date());
-  const events = items.map((item) =>
-    [
-      "BEGIN:VEVENT",
-      `UID:${icsSafeId(`${item.date}-${item.targetId}`)}@astrofoto-mission-control`,
-      `DTSTAMP:${createdAt}`,
-      `DTSTART;TZID=${timezone}:${toIcsLocal(item.date, item.startTime)}`,
-      `DTEND;TZID=${timezone}:${toIcsLocal(eventEndDate(item.date, item.startTime, item.endTime), item.endTime)}`,
-      `SUMMARY:${escapeIcsText(`${item.targetName} - ${translateKnownText(language, item.recommendedMode)}`)}`,
-      `LOCATION:${escapeIcsText(selectedProfile?.siteName ?? timezone)}`,
-      `DESCRIPTION:${escapeIcsText(
-        [
-          translateKnownText(language, item.reason),
-          `${scoreLabel(language)} ${item.score}/100`,
-          `${weatherLabel(language)} ${item.weatherScore}/100`,
-          `${moonLabel(language)} ${item.moonIlluminationPercent}%`,
-          `FOV ${fov.horizontalDeg.toFixed(2)} x ${fov.verticalDeg.toFixed(2)} deg`,
-          item.whiteNight ? translateKnownText(language, "White night") : translateKnownText(language, "Darkness available")
-        ].join("\n")
-      )}`,
-      "END:VEVENT"
-    ].join("\r\n")
-  );
-
-  return [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    `PRODID:-//Astrofoto Mission Control//Multi-session Planner//${language.toUpperCase()}`,
-    "CALSCALE:GREGORIAN",
-    "METHOD:PUBLISH",
-    `X-WR-CALNAME:${escapeIcsText(calendarNameLabel(language))}`,
-    `X-WR-TIMEZONE:${timezone}`,
-    ...events,
-    "END:VCALENDAR"
-  ].join("\r\n");
-}
-
-function downloadTextFile(filename: string, content: string, type: string) {
-  const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
-
 function multiSessionItemKey(item: MultiSessionPlanItem) {
   return `${item.date}-${item.targetId}`;
 }
@@ -1789,40 +1431,9 @@ function sessionWindowMinutes(startTime: string, endTime: string) {
   return Math.max(45, end - start);
 }
 
-function eventEndDate(dateIso: string, startTime: string, endTime: string) {
-  return timeToMinutes(endTime) <= timeToMinutes(startTime) ? addDaysIso(dateIso, 1) : dateIso;
-}
-
 function timeToMinutes(value: string) {
   const [hours, minutes] = value.split(":").map((part) => Number(part));
   return hours * 60 + minutes;
-}
-
-function addDaysIso(dateIso: string, days: number) {
-  const nextDate = new Date(`${dateIso}T12:00:00`);
-  nextDate.setDate(nextDate.getDate() + days);
-  return nextDate.toISOString().slice(0, 10);
-}
-
-function toIcsLocal(dateIso: string, time: string) {
-  const [hours, minutes] = time.split(":");
-  return `${dateIso.replace(/-/g, "")}T${hours.padStart(2, "0")}${minutes.padStart(2, "0")}00`;
-}
-
-function toIcsUtc(date: Date) {
-  return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
-}
-
-function escapeIcsText(value: string) {
-  return value
-    .replace(/\\/g, "\\\\")
-    .replace(/\n/g, "\\n")
-    .replace(/,/g, "\\,")
-    .replace(/;/g, "\\;");
-}
-
-function icsSafeId(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9-]+/g, "-");
 }
 
 function isWorkspaceMode(value: string | null): value is WorkspaceMode {
@@ -1854,7 +1465,7 @@ function sceneSummary({
 }) {
   const labels = {
     en: { focus: "Focus", object: "object", objects: "objects", tonight: "Tonight", showcase: "Showcase", filtered: "Filtered", of: "of" },
-    pl: { focus: "Fokus", object: "obiekt", objects: "obiektów", tonight: "Dziś", showcase: "Showcase", filtered: "Filtr", of: "z" },
+    pl: { focus: "Fokus", object: "obiekt", objects: "obiektĂłw", tonight: "DziĹ›", showcase: "Showcase", filtered: "Filtr", of: "z" },
     de: { focus: "Fokus", object: "Objekt", objects: "Objekte", tonight: "Heute", showcase: "Showcase", filtered: "Gefiltert", of: "von" },
     it: { focus: "Focus", object: "oggetto", objects: "oggetti", tonight: "Stasera", showcase: "Showcase", filtered: "Filtrati", of: "di" },
     es: { focus: "Foco", object: "objeto", objects: "objetos", tonight: "Hoy", showcase: "Showcase", filtered: "Filtrado", of: "de" }
@@ -1883,8 +1494,8 @@ function analyzeFraming(target: Target, fov: FovResult, language: SupportedLangu
     const rows = Math.max(1, Math.ceil(target.angularHeightArcmin / (fovHeightArcmin * 0.82)));
     const overlap = {
       en: "mosaic / 18% overlap",
-      pl: "mozaika / 18% zakładki",
-      de: "Mosaik / 18% Überlappung",
+      pl: "mozaika / 18% zakĹ‚adki",
+      de: "Mosaik / 18% Ăśberlappung",
       it: "mosaico / 18% sovrapposizione",
       es: "mosaico / 18% solape"
     }[language];
@@ -1894,19 +1505,19 @@ function analyzeFraming(target: Target, fov: FovResult, language: SupportedLangu
   if (swappedLoad + 0.05 < load) {
     return {
       en: "Rotate 90 deg for better margin",
-      pl: "Obróć 90 deg dla lepszego marginesu",
-      de: "90 deg drehen für besseren Rand",
-      it: "Ruota 90 deg per più margine",
+      pl: "ObrĂłÄ‡ 90 deg dla lepszego marginesu",
+      de: "90 deg drehen fĂĽr besseren Rand",
+      it: "Ruota 90 deg per piĂą margine",
       es: "Gira 90 deg para mejor margen"
     }[language];
   }
   if (load > 0.78) {
     return {
       en: "Tight frame / check rotation",
-      pl: "Ciasny kadr / sprawdź rotację",
-      de: "Knappes Bildfeld / Rotation prüfen",
+      pl: "Ciasny kadr / sprawdĹş rotacjÄ™",
+      de: "Knappes Bildfeld / Rotation prĂĽfen",
       it: "Inquadratura stretta / controlla rotazione",
-      es: "Encuadre justo / revisa rotación"
+      es: "Encuadre justo / revisa rotaciĂłn"
     }[language];
   }
 
@@ -1923,7 +1534,7 @@ function analyzeFraming(target: Target, fov: FovResult, language: SupportedLangu
     pl: "pojedynczy panel",
     de: "Einzelpanel",
     it: "pannello singolo",
-    es: "panel único"
+    es: "panel Ăşnico"
   }[language];
   return `${marginLabel} +${marginPercent}% / ${singlePanel}`;
 }

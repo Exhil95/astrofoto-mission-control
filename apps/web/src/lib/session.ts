@@ -1,5 +1,6 @@
 import type { FovResult } from "./fov";
 import type { Target } from "./targets";
+import { createCaptureMarkdown } from "./exports/markdown";
 
 export type SessionSlot = {
   time: string;
@@ -1553,36 +1554,6 @@ function fallbackCaptureFilters(imagingMode: string) {
   if (imagingMode === "RGB") return ["R", "G", "B"];
   if (imagingMode.includes("Narrowband")) return ["Ha", "OIII", "SII"];
   return ["Luminance"];
-}
-
-function createCaptureMarkdown(plan: CapturePlan) {
-  const exposureLines = plan.exposureSteps
-    .map(
-      (step) =>
-        `- ${step.filterName}: ${step.frames} x ${step.exposureSeconds}s (${step.integrationMinutes} min)`
-    )
-    .join("\n");
-  const calibrationLines = plan.calibrationFrames
-    .map((step) => `- ${step.frameType}: ${step.frames} x ${step.exposure} - ${step.note}`)
-    .join("\n");
-  const checklistLines = plan.checklist.map((item) => `- [ ] ${item}`).join("\n");
-  return [
-    `# Capture Plan: ${plan.targetName}`,
-    "",
-    `- Date: ${plan.date}`,
-    `- Window: ${plan.windowStart} - ${plan.windowEnd}`,
-    `- Mode: ${plan.imagingMode}`,
-    `- Integration: ${plan.totalIntegrationMinutes} min`,
-    "",
-    "## Lights",
-    exposureLines,
-    "",
-    "## Calibration",
-    calibrationLines,
-    "",
-    "## Checklist",
-    checklistLines
-  ].join("\n");
 }
 
 function seasonForDate(dateIso: string) {

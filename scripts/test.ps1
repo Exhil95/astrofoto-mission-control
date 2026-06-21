@@ -38,6 +38,17 @@ if (-not $SkipWeb) {
     Pop-Location
   }
 
+  $vitestCmd = Join-Path $webDir "node_modules\.bin\vitest.cmd"
+  if (Test-Path $vitestCmd) {
+    Invoke-Checked "Web unit tests" {
+      Push-Location $webDir
+      & npm run test:unit
+      Pop-Location
+    }
+  } else {
+    Write-Warning "Skipping web unit tests: vitest is not installed in apps\web\node_modules."
+  }
+
   $eslintCmd = Join-Path $webDir "node_modules\.bin\eslint.cmd"
   if (-not $SkipLint -and (Test-Path $eslintCmd)) {
     Invoke-Checked "Web lint" {

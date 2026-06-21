@@ -2,10 +2,11 @@ import { Archive, CheckSquare, Clipboard, Download, TimerReset } from "lucide-re
 import { useMemo, useState } from "react";
 import {
   translateArchiveStatus,
-  translateKnownText,
   translations,
   type SupportedLanguage
 } from "../lib/i18n";
+import { downloadTextFile, slugifyFilename } from "../lib/exports/download";
+import { createCaptureMarkdown } from "../lib/exports/markdown";
 import type { CapturePlan as CapturePlanModel, SessionArchiveEntry } from "../lib/session";
 
 type CapturePlanProps = {
@@ -27,9 +28,9 @@ export function CapturePlan({
 }: CapturePlanProps) {
   const [copyState, setCopyState] = useState<"idle" | "done" | "failed">("idle");
   const text = translations[language].capturePlan;
-  const markdown = useMemo(() => createLocalizedCaptureMarkdown(plan, language), [plan, language]);
+  const markdown = useMemo(() => createCaptureMarkdown(plan, language), [plan, language]);
   const filename = useMemo(
-    () => `${plan.date}-${plan.targetName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.md`,
+    () => `${plan.date}-${slugifyFilename(plan.targetName)}.md`,
     [plan.date, plan.targetName]
   );
 
@@ -45,13 +46,7 @@ export function CapturePlan({
   };
 
   const downloadMarkdown = () => {
-    const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = filename;
-    anchor.click();
-    URL.revokeObjectURL(url);
+    downloadTextFile(filename, markdown, "text/markdown;charset=utf-8");
   };
 
   return (
@@ -120,8 +115,7 @@ export function CapturePlan({
               <span>{translateArchiveStatus(language, archive.status)}</span>
               <strong>{archive.targetName}</strong>
               <em>
-                {archive.sessionDate} / {archive.totalIntegrationMinutes}m /{" "}
-                {archive.filterNames.join("+")}
+                {archive.sessionDate} / {archive.totalIntegrationMinutes}m / {archive.filterNames.join("+")}
               </em>
             </div>
           ))}
@@ -139,96 +133,4 @@ function archiveLabel(
   if (state === "saved") return text.saved;
   if (state === "failed") return text.retry;
   return text.log;
-}
-
-function createLocalizedCaptureMarkdown(plan: CapturePlanModel, language: SupportedLanguage) {
-  const labels = {
-    en: {
-      title: "Capture Plan",
-      date: "Date",
-      window: "Window",
-      mode: "Mode",
-      integration: "Integration",
-      lights: "Lights",
-      calibration: "Calibration",
-      checklist: "Checklist"
-    },
-    pl: {
-      title: "Plan sesji",
-      date: "Data",
-      window: "Okno",
-      mode: "Tryb",
-      integration: "Integracja",
-      lights: "Lighty",
-      calibration: "Kalibracja",
-      checklist: "Checklist"
-    },
-    de: {
-      title: "Aufnahmeplan",
-      date: "Datum",
-      window: "Fenster",
-      mode: "Modus",
-      integration: "Integration",
-      lights: "Lights",
-      calibration: "Kalibrierung",
-      checklist: "Checkliste"
-    },
-    it: {
-      title: "Piano di cattura",
-      date: "Data",
-      window: "Finestra",
-      mode: "Modo",
-      integration: "Integrazione",
-      lights: "Light",
-      calibration: "Calibrazione",
-      checklist: "Checklist"
-    },
-    es: {
-      title: "Plan de captura",
-      date: "Fecha",
-      window: "Ventana",
-      mode: "Modo",
-      integration: "Integración",
-      lights: "Lights",
-      calibration: "Calibración",
-      checklist: "Checklist"
-    }
-  }[language];
-
-  const exposureLines = plan.exposureSteps
-    .map(
-      (step) =>
-        `- ${step.filterName}: ${step.frames} x ${step.exposureSeconds}s (${step.integrationMinutes} min) - ${translateKnownText(
-          language,
-          step.note
-        )}`
-    )
-    .join("\n");
-  const calibrationLines = plan.calibrationFrames
-    .map(
-      (step) =>
-        `- ${step.frameType}: ${step.frames} x ${step.exposure} - ${translateKnownText(language, step.note)}`
-    )
-    .join("\n");
-  const checklistLines = plan.checklist
-    .map((item) => `- [ ] ${translateKnownText(language, item)}`)
-    .join("\n");
-
-  return [
-    `# ${labels.title}: ${plan.targetName}`,
-    "",
-    `- ${labels.date}: ${plan.date}`,
-    `- ${labels.window}: ${plan.windowStart} - ${plan.windowEnd}`,
-    `- ${labels.mode}: ${translateKnownText(language, plan.imagingMode)}`,
-    `- ${labels.integration}: ${plan.totalIntegrationMinutes} min`,
-    "",
-    `## ${labels.lights}`,
-    exposureLines,
-    "",
-    `## ${labels.calibration}`,
-    calibrationLines,
-    "",
-    `## ${labels.checklist}`,
-    checklistLines
-  ].join("\n");
 }
