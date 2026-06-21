@@ -41,6 +41,7 @@ import {
 import {
   clearAuthSession,
   loadAuthSession,
+  logoutSession,
   saveAuthSession,
   type AuthSession
 } from "./lib/auth";
@@ -133,14 +134,15 @@ export function App() {
     setAuthSession(session);
   }
 
-  function leaveApp() {
+  function leaveApp(session: AuthSession) {
+    void logoutSession(session);
     clearAuthSession();
     setAuthSession(null);
   }
 
   if (!authSession) return <AuthLanding onComplete={enterApp} />;
 
-  return <MissionControlApp authSession={authSession} onLogout={leaveApp} />;
+  return <MissionControlApp authSession={authSession} onLogout={() => leaveApp(authSession)} />;
 }
 
 function MissionControlApp({

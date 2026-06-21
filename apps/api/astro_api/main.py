@@ -1,6 +1,16 @@
-from fastapi import FastAPI, HTTPException, Query, Response
+from fastapi import FastAPI, Header, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 
+from .auth import (
+    AuthEmailExistsError,
+    AuthInvalidCredentialsError,
+    AuthInvalidTokenError,
+    extract_bearer_token,
+    get_user_for_token,
+    login_user,
+    register_user,
+    revoke_token,
+)
 from .catalog import TARGETS
 from .forecast import get_sky_forecast
 from .fits_ingest import FitsIngestError, build_calibration_library, scan_fits_metadata
@@ -11,6 +21,10 @@ from .image_cache import (
 )
 from .profiles import create_profile, delete_profile, list_profiles, update_profile
 from .schemas import (
+    AuthLoginRequest,
+    AuthRegisterRequest,
+    AuthSessionResponse,
+    AuthUserResponse,
     CalibrationLibraryRequest,
     CalibrationLibraryResponse,
     CapturePlanRequest,
@@ -69,6 +83,42 @@ app.add_middleware(
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.post("/api/auth/register", response_model=AuthSessionResponse)
+def auth_register(payload: AuthRegisterRequest) -> AuthSessionResponse:
+    try:
+        return register_user(payload)
+    except AuthEmailExistsError as exc:
+        raise HTTPException(status_code=409, detail="Email already registered") from exc
+
+
+@app.post("/api/auth/login", response_model=AuthSessionResponse)
+def auth_login(payload: AuthLoginRequest) -> AuthSessionResponse:
+    try:
+        return login_user(payload)
+    except AuthInvalidCredentialsError as exc:
+        raise HTTPException(status_code=401, detail="Invalid email or password") from exc
+
+
+@app.get("/api/auth/me", response_model=AuthUserResponse)
+def auth_me(authorization: str | None = Header(default=None)) -> AuthUserResponse:
+    try:
+        token = extract_bearer_token(authorization)
+        return get_user_for_token(token)
+    except AuthInvalidTokenError as exc:
+        raise HTTPException(status_code=401, detail="Invalid or expired token") from exc
+
+
+@app.post("/api/auth/logout", status_code=204)
+def auth_logout(authorization: str | None = Header(default=None)) -> Response:
+    try:
+        token = extract_bearer_token(authorization)
+    except AuthInvalidTokenError as exc:
+        raise HTTPException(status_code=401, detail="Invalid or expired token") from exc
+
+    revoke_token(token)
+    return Response(status_code=204)
 
 
 @app.post("/api/fov", response_model=FovResponse)

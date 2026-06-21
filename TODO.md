@@ -54,6 +54,16 @@
 - [x] Add Playwright smoke tests for Planner, Session, Frames, and Multi workflows.
 - [x] Document and prototype SQLite-to-Postgres migration path for profiles and session archive.
 
+## Auth & Beta Hardening
+
+- [x] Frontend start screen with login, registration, demo entry, and program teaser.
+- [x] Backend auth foundation: users table, password hashing, session tokens, and `/api/auth/*` endpoints.
+- [x] Connect start screen login/register to backend auth with clear offline/demo fallback.
+- [ ] Scope profiles and session archive by authenticated user before exposing outside LAN.
+- [ ] Add auth and ownership tests for profiles, archive, and FITS handoff workflows.
+- [ ] Add homelab auth notes: password policy, token lifetime, backup/restore, and reverse proxy headers.
+- [ ] Fix mojibake in Polish documentation and keep all docs UTF-8 clean.
+
 ## Release Roadmap
 
 - [x] After Quality Roadmap is complete, start semantic prerelease versioning at `0.1.0-alpha.0`.

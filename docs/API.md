@@ -35,6 +35,78 @@ Zwraca:
 
 Używane przez healthchecki i Caddy.
 
+## Auth
+
+### `POST /api/auth/register`
+
+Tworzy lokalnego operatora i od razu zwraca sesje bearer.
+
+Request:
+
+```json
+{
+  "email": "operator@example.com",
+  "display_name": "Backyard Operator",
+  "password": "minimum-eight-chars"
+}
+```
+
+Response:
+
+```json
+{
+  "access_token": "opaque-token",
+  "token_type": "bearer",
+  "expires_at": "2026-07-21T20:00:00Z",
+  "user": {
+    "id": 1,
+    "email": "operator@example.com",
+    "display_name": "Backyard Operator",
+    "created_at": "2026-06-21T20:00:00Z"
+  }
+}
+```
+
+Mozliwe bledy:
+
+- `409`: e-mail jest juz zarejestrowany,
+- `422`: payload nie przechodzi walidacji.
+
+### `POST /api/auth/login`
+
+Loguje operatora i zwraca nowa sesje bearer.
+
+Request:
+
+```json
+{
+  "email": "operator@example.com",
+  "password": "minimum-eight-chars"
+}
+```
+
+Mozliwe bledy:
+
+- `401`: niepoprawny e-mail albo haslo.
+
+### `GET /api/auth/me`
+
+Zwraca aktualnego operatora dla naglowka:
+
+```http
+Authorization: Bearer <access_token>
+```
+
+Mozliwe bledy:
+
+- `401`: brak tokenu, niepoprawny token albo token wygasl.
+
+### `POST /api/auth/logout`
+
+Uniewaznia aktualny token bearer. Zwraca `204`.
+
+Hasla sa hashowane przez PBKDF2-SHA256, a tokeny sesji sa przechowywane w bazie jako SHA-256. TTL sesji ustawia `AUTH_SESSION_TTL_HOURS`.
+
 ## FOV
 
 ### `POST /api/fov`

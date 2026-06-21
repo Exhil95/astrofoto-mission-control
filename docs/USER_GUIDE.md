@@ -5,11 +5,11 @@
 Pierwszy ekran jest bramka operatora. Pozwala:
 
 - wejsc do aplikacji w trybie demo bez konfiguracji konta,
-- zalogowac sie lokalna sesja frontendu,
-- zalozyc podstawowy profil operatora,
+- zalogowac sie przez backendowa sesje bearer,
+- zalozyc podstawowe konto operatora,
 - szybko zobaczyc, ze aplikacja obejmuje Tonight Board, FOV Console, Capture Runbook, Multi-session Planner i FITS Review.
 
-Sesja startowa jest zapisywana w `localStorage` pod kluczem `astrofoto-auth-session`. To jest warstwa UX przygotowana pod docelowe backendowe konta i uprawnienia.
+Sesja startowa jest zapisywana w `localStorage` pod kluczem `astrofoto-auth-session`. Login i rejestracja uzywaja backendu, a tryb demo zostaje lokalnym fallbackiem, gdy API jest offline.
 
 Ten dokument opisuje aplikację z perspektywy osoby planującej i prowadzącej sesję astrofoto.
 

@@ -1,6 +1,6 @@
 from datetime import date as Date
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class FovRequest(BaseModel):
@@ -40,6 +40,52 @@ class TargetResponse(BaseModel):
     image_url: str | None = None
     image_credit: str | None = None
     image_source_url: str | None = None
+
+
+class AuthUserResponse(BaseModel):
+    id: int
+    email: str
+    display_name: str
+    created_at: str
+
+
+class AuthRegisterRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+    display_name: str = Field(min_length=1, max_length=80)
+    password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if "@" not in normalized or "." not in normalized.rsplit("@", maxsplit=1)[-1]:
+            raise ValueError("Invalid email address")
+        return normalized
+
+    @field_validator("display_name")
+    @classmethod
+    def normalize_display_name(cls, value: str) -> str:
+        normalized = " ".join(value.strip().split())
+        if not normalized:
+            raise ValueError("Display name is required")
+        return normalized
+
+
+class AuthLoginRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+    password: str = Field(min_length=1, max_length=128)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        return value.strip().lower()
+
+
+class AuthSessionResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_at: str
+    user: AuthUserResponse
 
 
 class ProfileBase(BaseModel):

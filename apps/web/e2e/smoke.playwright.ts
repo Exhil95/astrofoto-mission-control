@@ -10,7 +10,7 @@ const smokeAuthSession = {
 };
 
 test.beforeEach(async ({ page }) => {
-  await page.route(/http:\/\/127\.0\.0\.1:5174\/api\/.*/, (route) => route.abort());
+  await page.route(/http:\/\/127\.0\.0\.1:5174\/api\/(?!auth\/).*/, (route) => route.abort());
 });
 
 test("start screen offers login, registration, and demo entry", async ({ page }) => {
@@ -23,6 +23,63 @@ test("start screen offers login, registration, and demo entry", async ({ page })
 
   await page.getByRole("button", { name: "Wejdz demo bez konta" }).click();
   await expect(page.getByRole("navigation", { name: "Workspace modes" })).toBeVisible();
+});
+
+test("registration stores backend bearer session", async ({ page }) => {
+  await page.route(/http:\/\/127\.0\.0\.1:5174\/api\/auth\/register/, async (route) => {
+    const payload = route.request().postDataJSON() as {
+      display_name: string;
+      email: string;
+      password: string;
+    };
+    expect(payload).toMatchObject({
+      display_name: "Backyard Observatory",
+      email: "operator@example.com",
+      password: "correct-horse-battery"
+    });
+
+    await route.fulfill({
+      contentType: "application/json",
+      status: 200,
+      body: JSON.stringify({
+        access_token: "mock-bearer-token",
+        token_type: "bearer",
+        expires_at: "2026-07-21T20:00:00Z",
+        user: {
+          id: 7,
+          email: "operator@example.com",
+          display_name: "Backyard Observatory",
+          created_at: "2026-06-21T20:00:00Z"
+        }
+      })
+    });
+  });
+
+  await openApp(page, { withAuth: false });
+  await page.getByRole("tab", { name: "Rejestracja" }).click();
+  await page.getByLabel("Nazwa profilu").fill("Backyard Observatory");
+  await page.getByLabel("E-mail").fill("operator@example.com");
+  await page.getByPlaceholder("Minimum 8 znakow").fill("correct-horse-battery");
+  await page.getByRole("button", { name: "Utworz konto" }).click();
+
+  await expect(page.getByRole("navigation", { name: "Workspace modes" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Log out Backyard Observatory" })).toBeVisible();
+
+  const storedSession = await page.evaluate((storageKey) => {
+    return JSON.parse(window.localStorage.getItem(storageKey) ?? "{}") as {
+      accessToken?: string;
+      displayName?: string;
+      mode?: string;
+      userId?: number;
+    };
+  }, authStorageKey);
+
+  expect(storedSession).toMatchObject({
+    accessToken: "mock-bearer-token",
+    displayName: "Backyard Observatory",
+    mode: "register",
+    userId: 7
+  });
 });
 
 test("planner workflow renders the target selector, sky map, and session controls", async ({ page }) => {

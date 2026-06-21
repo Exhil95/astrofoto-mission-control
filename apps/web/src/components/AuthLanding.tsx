@@ -15,7 +15,12 @@ import {
   UserPlus,
   type LucideIcon
 } from "lucide-react";
-import { createAuthSession, type AuthMode, type AuthSession } from "../lib/auth";
+import {
+  authenticateWithPassword,
+  createAuthSession,
+  type AuthMode,
+  type AuthSession
+} from "../lib/auth";
 import { fallbackTargets, type Target } from "../lib/targets";
 
 type AuthLandingProps = {
@@ -67,6 +72,7 @@ export function AuthLanding({ onComplete }: AuthLandingProps) {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const featuredTargets = useMemo(() => selectFeaturedTargets(), []);
 
@@ -80,7 +86,7 @@ export function AuthLanding({ onComplete }: AuthLandingProps) {
     onComplete(session);
   }
 
-  function submitAuth(event: FormEvent<HTMLFormElement>) {
+  async function submitAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (!email.includes("@") || !email.includes(".")) {
@@ -88,13 +94,31 @@ export function AuthLanding({ onComplete }: AuthLandingProps) {
       return;
     }
 
-    if (password.length < 6) {
-      setError("Haslo musi miec minimum 6 znakow.");
+    if (password.length < 8) {
+      setError("Haslo musi miec minimum 8 znakow.");
       return;
     }
 
     setError(null);
-    completeSession(mode);
+    setIsSubmitting(true);
+
+    try {
+      const session = await authenticateWithPassword({
+        displayName,
+        email,
+        mode,
+        password
+      });
+      onComplete(session);
+    } catch (authError) {
+      setError(
+        authError instanceof Error
+          ? authError.message
+          : "Auth API jest niedostepne. Uruchom backend albo wejdz w trybie demo."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -209,7 +233,7 @@ export function AuthLanding({ onComplete }: AuthLandingProps) {
                 <Lock size={16} aria-hidden="true" />
                 <input
                   autoComplete={mode === "login" ? "current-password" : "new-password"}
-                  placeholder="Minimum 6 znakow"
+                  placeholder="Minimum 8 znakow"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
@@ -227,9 +251,13 @@ export function AuthLanding({ onComplete }: AuthLandingProps) {
 
             {error && <p className="auth-error">{error}</p>}
 
-            <button className="auth-submit" type="submit">
+            <button className="auth-submit" type="submit" disabled={isSubmitting}>
               {mode === "login" ? <LogIn size={17} /> : <UserPlus size={17} />}
-              {mode === "login" ? "Wejdz do kokpitu" : "Utworz konto"}
+              {isSubmitting
+                ? "Laczenie..."
+                : mode === "login"
+                  ? "Wejdz do kokpitu"
+                  : "Utworz konto"}
             </button>
           </form>
 
@@ -239,8 +267,7 @@ export function AuthLanding({ onComplete }: AuthLandingProps) {
           </button>
 
           <p className="auth-note">
-            Frontowa bramka zapisuje sesje lokalnie. Backendowe konta i uprawnienia sa gotowe jako
-            nastepny krok architektury.
+            Login i rejestracja uzywaja backendu. Tryb demo dziala lokalnie, gdy API jest offline.
           </p>
         </aside>
       </section>
