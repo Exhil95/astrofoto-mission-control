@@ -59,6 +59,36 @@ Efekt:
 - reguły FOV-fit i kuracji targetów mają własne miejsce,
 - łatwiej testować i rozbudowywać mapę nieba.
 
+### FITS Frontend Split
+
+Dodano:
+
+- `apps/web/src/lib/fitsArchive.ts`,
+- `apps/web/src/lib/fitsUi.ts`,
+- `apps/web/src/components/fits/FitsPresentation.tsx`.
+
+Efekt:
+
+- `FitsIngestPanel.tsx` steruje już głównie stanem skanu, importem i pobieraniem handoffu,
+- draft importu do Session Archive jest logiką domenową w `lib/fitsArchive.ts`,
+- prezentacja grup, klatek i statusów skanu jest w osobnym komponencie,
+- eksporty Markdown pozostają w `lib/exports/fits.ts`.
+
+### Playwright Smoke Tests
+
+Dodano:
+
+- `apps/web/playwright.config.ts`,
+- `apps/web/e2e/smoke.playwright.ts`,
+- `npm run test:smoke`,
+- `scripts/test.ps1 -SkipSmoke`.
+
+Efekt:
+
+- smoke testy przechodzą przez Planner, Session/Capture, Frames i Multi,
+- testy blokują regresje top bara, przełączania workspace i podstawowych paneli,
+- requesty `/api/` są abortowane w testach, więc frontend smoke działa na fallbackach bez backendu.
+
 ### React Hooks
 
 Poprawiono:
@@ -87,7 +117,6 @@ Największe pliki:
 | `apps/web/src/styles.css` | globalny CSS, duże ryzyko przypadkowych regresji layoutu |
 | `apps/web/src/App.tsx` | orkiestruje wiele workflow |
 | `apps/web/src/lib/session.ts` | klient API, typy i fallbacki w jednym module |
-| `apps/web/src/components/FitsIngestPanel.tsx` | UI, scan flow i archive import draft razem |
 | `apps/api/astro_api/fits_ingest.py` | parser, scoring i calibration matching razem |
 
 ## Ocena Ryzyk
@@ -106,32 +135,20 @@ Rekomendacja: wyciągać kolejne moduły nie-UI do `src/lib`.
 
 ### Wysokie
 
-`i18n.ts` jest bardzo duży. Przy pięciu językach łatwo o konflikt albo niepełny mapping.
+`apps/web/src/lib/session.ts` nadal łączy typy API, normalizację payloadów, klienta HTTP i fallbacki offline.
 
-Rekomendacja: podzielić na:
-
-```text
-src/lib/i18n/
-  index.ts
-  types.ts
-  common.ts
-  en.ts
-  pl.ts
-  de.ts
-  it.ts
-  es.ts
-  dynamic.ts
-```
+Rekomendacja: rozdzielić klienta API, typy kontraktów i fallbacki planowania dopiero po dodaniu smoke testów UI.
 
 ### Średnie
 
-`FitsIngestPanel.tsx` ma zbyt wiele odpowiedzialności.
+`apps/api/astro_api/fits_ingest.py` łączy skan plików FITS, parsing nagłówków, quality scoring i calibration matching.
 
 Rekomendacja:
 
-- `lib/fitsExport.ts`,
-- `lib/archiveDrafts.ts`,
-- UI zostawić w komponencie.
+- `fits_parser.py`,
+- `fits_quality.py`,
+- `calibration_matching.py`,
+- `fits_ingest.py` jako fasada use-case.
 
 ### Średnie
 
@@ -190,15 +207,13 @@ Braki:
 - testy web unit/component,
 - testy eksportów Markdown/ICS,
 - testy i18n completeness,
-- test e2e głównych ścieżek UI,
 - test Docker Compose w CI/local smoke.
 
 ## Priorytet Następnych Refaktorów
 
-1. Rozbic `FitsIngestPanel.tsx` na UI + export helpers + archive draft helpers.
-2. Dodac Playwright smoke dla trybow Planner/Sesja/Klatki/Multi.
-3. Dodac dokument migracji SQLite -> Postgres.
-4. Podzielic `styles.css` na warstwy po stabilizacji designu.
+1. Dodac dokument migracji SQLite -> Postgres.
+2. Rozbic backendowy `fits_ingest.py` na parser, scoring i calibration matching.
+3. Podzielic `styles.css` na warstwy po stabilizacji designu.
 
 ## Kryterium Done Dla Obecnego Passa
 

@@ -192,6 +192,8 @@ button {
 }
 
 .mode-tabs {
+  position: relative;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -225,6 +227,8 @@ button {
 }
 
 .top-actions {
+  position: relative;
+  z-index: 1;
   min-width: 0;
   display: flex;
   align-items: center;
@@ -277,6 +281,27 @@ button {
   grid-template-columns: minmax(230px, 280px) minmax(380px, 1fr) minmax(280px, 340px);
   gap: 10px;
   overflow: hidden;
+}
+
+@media (max-width: 1320px) {
+  .top-bar {
+    grid-template-columns: minmax(190px, 0.8fr) auto minmax(0, 0.8fr);
+    gap: 10px;
+  }
+
+  .mode-tabs {
+    gap: 6px;
+  }
+
+  .mode-tabs button,
+  .signal-strip span {
+    gap: 6px;
+    padding: 0 10px;
+  }
+
+  .language-switcher span {
+    display: none;
+  }
 }
 
 .left-stack {

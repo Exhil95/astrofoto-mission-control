@@ -50,8 +50,8 @@
 - [x] Split `i18n.ts` into per-language dictionaries plus dynamic translation helpers.
 - [x] Add unit tests for sky target filtering, FOV-fit labels, Markdown exports, and ICS output.
 - [x] Split backend planning services by use case: session, capture, processing, tonight board, and multi-session.
-- [ ] Split FITS ingest UI into presentation, archive-draft, and export helpers.
-- [ ] Add Playwright smoke tests for Planner, Session, Frames, and Multi workflows.
+- [x] Split FITS ingest UI into presentation, archive-draft, and export helpers.
+- [x] Add Playwright smoke tests for Planner, Session, Frames, and Multi workflows.
 - [ ] Document and prototype SQLite-to-Postgres migration path for profiles and session archive.
 
 ## Release Roadmap

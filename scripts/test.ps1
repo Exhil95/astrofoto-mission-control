@@ -1,7 +1,8 @@
 param(
   [switch]$SkipBackend,
   [switch]$SkipWeb,
-  [switch]$SkipLint
+  [switch]$SkipLint,
+  [switch]$SkipSmoke
 )
 
 . "$PSScriptRoot\lib.ps1"
@@ -58,6 +59,17 @@ if (-not $SkipWeb) {
     }
   } elseif (-not $SkipLint) {
     Write-Warning "Skipping web lint: eslint is not installed in apps\web\node_modules."
+  }
+
+  $playwrightCmd = Join-Path $webDir "node_modules\.bin\playwright.cmd"
+  if (-not $SkipSmoke -and (Test-Path $playwrightCmd)) {
+    Invoke-Checked "Web smoke tests" {
+      Push-Location $webDir
+      & npm run test:smoke
+      Pop-Location
+    }
+  } elseif (-not $SkipSmoke) {
+    Write-Warning "Skipping web smoke tests: Playwright is not installed in apps\web\node_modules."
   }
 }
 

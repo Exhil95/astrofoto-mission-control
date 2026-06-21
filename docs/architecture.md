@@ -38,13 +38,19 @@ Odpowiedzialności:
 Najważniejsze warstwy:
 
 - `components`: panele i widoki.
+- `components/fits/FitsPresentation.tsx`: prezentacyjne elementy skanu FITS.
 - `lib/session.ts`: klient API dla planów, archive, FITS i fallbacki.
 - `lib/profiles.ts`: profile sprzętu.
 - `lib/forecast.ts`: prognoza i cache controls.
 - `lib/fov.ts`: obliczenia FOV używane w UI.
+- `lib/exports/*`: buildery Markdown, ICS i downloader plików.
+- `lib/fitsArchive.ts`: draft importu FITS do Session Archive.
+- `lib/fitsUi.ts`: drobne helpery stanu UI dla FITS.
 - `lib/targets.ts`: target catalog fallback.
 - `lib/sky.ts`: reguły sceny, filtrowanie i FOV-fit.
-- `lib/i18n.ts`: słowniki EN/PL/DE/IT/ES i dynamiczne tłumaczenia.
+- `lib/i18n.ts`: publiczna fasada i dynamiczne tłumaczenia.
+- `lib/i18n/*.ts`: słowniki per język dla EN/PL/DE/IT/ES.
+- `e2e/smoke.playwright.ts`: Playwright smoke dla głównych workflow.
 
 ## Backend
 
@@ -161,7 +167,8 @@ TARGET_IMAGE_CACHE_TTL_SECONDS=604800
 1. UI wysyła ścieżkę względną do `FITS_LIBRARY_ROOT`.
 2. API wymusza, żeby ścieżka została wewnątrz root.
 3. API parsuje nagłówki FITS i liczy quality score.
-4. UI pokazuje manifest i pozwala utworzyć archive entry.
+4. `lib/fitsArchive.ts` dopasowuje target, datę, filtry, tryb i payload archiwum.
+5. UI pokazuje manifest i pozwala utworzyć archive entry.
 
 ### Calibration Library
 
@@ -190,6 +197,7 @@ Docelowo:
 - `App.tsx` ma być orkiestratorem, nie miejscem logiki domenowej.
 - eksporty Markdown/ICS sa w `lib/exports`.
 - `i18n.ts` jest fasada, a slowniki sa w plikach per jezyk.
+- FITS frontend dzieli flow panelu, prezentacje i draft archiwum na osobne moduly.
 - backendowe planowanie jest rozbite wedlug use case z `services.py` jako fasada.
 - FITS ingest powinien mieć osobne moduły dla parsera, scoringu i calibration matching.
 

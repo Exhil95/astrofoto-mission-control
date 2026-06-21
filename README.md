@@ -22,7 +22,7 @@ Astrofoto Mission Control to lokalna aplikacja do planowania sesji astrofotograf
 - API: FastAPI, Pydantic, Astropy/Astroplan, NumPy.
 - Dane: JSON target catalog, SQLite dla profili i archiwum sesji.
 - Homelab: Docker Compose, Caddy, Valkey, PostgreSQL, MinIO.
-- Quality gates: pytest, ruff, TypeScript build, Vitest unit tests, ESLint.
+- Quality gates: pytest, ruff, TypeScript build, Vitest unit tests, ESLint, Playwright smoke tests.
 
 ## Szybki Start
 
@@ -145,8 +145,12 @@ Aktualny audyt dodał:
 Największe świadome hot spoty do dalszej redukcji:
 
 - `apps/web/src/App.tsx` nadal jest glownym orkiestratorem wielu workflow,
-- `apps/web/src/components/FitsIngestPanel.tsx` laczy UI, skan FITS i draft archiwum,
+- `apps/web/src/lib/session.ts` nadal laczy klienta API, typy i fallbacki frontendu,
 - `apps/api/astro_api/fits_ingest.py` laczy parser FITS, scoring i calibration matching,
 - `apps/web/src/styles.css` jest nadal globalnym arkuszem dla calej aplikacji.
+
+FITS ingest po refaktorze ma czystszy podzial: `FitsIngestPanel.tsx` steruje skanem i akcjami,
+`components/fits/FitsPresentation.tsx` renderuje widoki klatek, a `lib/fitsArchive.ts` buduje
+draft importu do Session Archive.
 
 Te miejsca są opisane dokładniej w [docs/AUDIT.md](docs/AUDIT.md).

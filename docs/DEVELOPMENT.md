@@ -54,6 +54,7 @@ Co robi skrypt:
 - `npm run build` w `apps/web`
 - `npm run test:unit` w `apps/web`, jesli Vitest jest zainstalowany
 - `npm run lint` w `apps/web`, jesli ESLint jest zainstalowany
+- `npm run test:smoke` w `apps/web`, jesli Playwright jest zainstalowany
 
 Szybkie uruchomienia:
 
@@ -61,6 +62,7 @@ Szybkie uruchomienia:
 .\scripts\test.ps1 -SkipBackend
 .\scripts\test.ps1 -SkipWeb
 .\scripts\test.ps1 -SkipLint
+.\scripts\test.ps1 -SkipSmoke
 ```
 
 ## Web
@@ -80,10 +82,14 @@ Najwazniejsze pliki:
 - `src/lib/forecast.ts`: klient prognozy.
 - `src/lib/fov.ts`: lokalne obliczenia FOV.
 - `src/lib/exports/*`: buildery Markdown, ICS i wspolny downloader plikow.
+- `src/lib/fitsArchive.ts`: budowanie draftu importu FITS do Session Archive.
+- `src/lib/fitsUi.ts`: drobne helpery stanu UI dla panelu FITS.
 - `src/lib/targets.ts`: fallback target catalog z JSON API.
 - `src/lib/sky.ts`: reguly sceny, filtrowanie targetow, FOV-fit.
 - `src/lib/i18n.ts`: publiczna fasada i dynamiczne helpery tlumaczen.
 - `src/lib/i18n/*.ts`: slowniki per jezyk dla EN/PL/DE/IT/ES.
+- `src/components/fits/FitsPresentation.tsx`: prezentacyjne listy i statusy skanu FITS.
+- `e2e/smoke.playwright.ts`: Playwright smoke dla Planner, Session/Capture, Frames i Multi.
 - `src/styles.css`: globalny system wizualny.
 
 Komendy:
@@ -94,6 +100,14 @@ npm run dev
 npm run build
 npm run test:unit
 npm run lint
+npm run test:smoke
+```
+
+Pierwsze uruchomienie smoke testow po instalacji zaleznosci:
+
+```powershell
+cd apps\web
+npx playwright install chromium
 ```
 
 ## API
@@ -163,17 +177,15 @@ Te pliki sa najwieksze i wymagaja ostroznosci:
 - `apps/web/src/styles.css`: globalny CSS.
 - `apps/web/src/App.tsx`: orkiestracja workflow.
 - `apps/web/src/lib/session.ts`: typy, fallbacki i klient API.
-- `apps/web/src/components/FitsIngestPanel.tsx`: UI, archive import draft i flow skanu.
 - `apps/api/astro_api/fits_ingest.py`: skan FITS, scoring i biblioteka kalibracji.
 
 ## Rekomendowany Refaktor Nastepny
 
 Najbezpieczniejsza kolejnosc:
 
-1. Podzielic `FitsIngestPanel.tsx` na prezentacje, archive-draft i export helpers.
-2. Dodac Playwright smoke tests dla Planner, Session, Frames i Multi.
-3. Udokumentowac i przeprototypowac migracje SQLite -> Postgres.
-4. Podzielic `styles.css` na warstwy albo CSS modules dopiero po ustabilizowaniu designu.
+1. Udokumentowac i przeprototypowac migracje SQLite -> Postgres.
+2. Rozbic `apps/api/astro_api/fits_ingest.py` na parser, scoring i calibration matching.
+3. Podzielic `styles.css` na warstwy albo CSS modules dopiero po ustabilizowaniu designu.
 
 ## Debugging
 
