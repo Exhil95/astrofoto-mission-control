@@ -27,3 +27,11 @@ Pierwsza alpha Astrofoto Mission Control. To build po domknięciu Quality Roadma
 - `apps/web/src/styles.css` jest globalnym arkuszem i będzie wymagał dalszego porządkowania po stabilizacji designu.
 - Brak auth/access control przed wystawieniem poza LAN.
 - FITS scan jest synchroniczny i powinien używać rozsądnego `max_files`.
+
+### Beta Exit Checklist
+
+- `.\scripts\test.ps1` przechodzi.
+- `.\scripts\rehearse-deploy.ps1 -StartStack` przechodzi na homelabie.
+- SQLite backup i restore są sprawdzone na aktualnym wolumenie.
+- Dry-run SQLite -> Postgres pokazuje oczekiwane liczby profili i sesji.
+- Znane ryzyka z alphy są albo naprawione, albo jawnie zaakceptowane w release notes bety.

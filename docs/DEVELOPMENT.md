@@ -156,6 +156,13 @@ Prototyp migracji SQLite -> Postgres w kontenerze homelab:
 
 Szczegoly i ograniczenia sa w `docs/POSTGRES_MIGRATION.md`.
 
+Homelab deploy rehearsal przed releasem:
+
+```powershell
+.\scripts\rehearse-deploy.ps1
+.\scripts\rehearse-deploy.ps1 -StartStack
+```
+
 ## Kontrakty API
 
 Backend zwraca snake_case, frontend mapuje dane na camelCase w `src/lib/*.ts`.

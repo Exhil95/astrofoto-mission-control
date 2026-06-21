@@ -58,4 +58,8 @@
 
 - [x] After Quality Roadmap is complete, start semantic prerelease versioning at `0.1.0-alpha.0`.
 - [ ] Promote to `0.1.0-beta.0` after Playwright smoke tests, homelab deploy rehearsal, and DB migration notes are green.
+  - [x] Playwright smoke tests for Planner, Session, Frames, and Multi are green.
+  - [x] SQLite-to-Postgres migration notes and prototype are green.
+  - [x] Homelab deploy rehearsal script and checklist exist.
+  - [ ] Full `.\scripts\rehearse-deploy.ps1 -StartStack` passes on the homelab stack.
 - [ ] Keep release notes for each alpha/beta with user-facing changes, ops changes, and known risks.

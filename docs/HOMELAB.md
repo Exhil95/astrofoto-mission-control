@@ -30,6 +30,45 @@ Logi po deployu:
 .\scripts\deploy.ps1 -Logs
 ```
 
+## Deploy Rehearsal
+
+Przed betą używaj rehearsal zamiast od razu robić deploy “na czuja”.
+
+Bezpieczny preflight bez startowania stacka:
+
+```powershell
+.\scripts\rehearse-deploy.ps1
+```
+
+Pełna próba homelab:
+
+```powershell
+.\scripts\rehearse-deploy.ps1 -StartStack
+```
+
+Co sprawdza:
+
+1. Docker daemon,
+2. obecność albo utworzenie `.env`,
+3. `docker compose config --quiet`,
+4. pełny quality gate, chyba że użyjesz `-SkipTests`,
+5. opcjonalny start stacka,
+6. `http://localhost/health`,
+7. backup SQLite,
+8. dry-run migracji SQLite -> Postgres.
+
+Przy szybkiej próbie bez buildu:
+
+```powershell
+.\scripts\rehearse-deploy.ps1 -StartStack -NoBuild
+```
+
+Gdy chcesz zobaczyć logi API/web/Caddy po próbie:
+
+```powershell
+.\scripts\rehearse-deploy.ps1 -StartStack -Logs
+```
+
 ## `.env` Checklist
 
 Przed zostawieniem stacka na stałe przejrzyj:
