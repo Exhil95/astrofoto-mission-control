@@ -81,6 +81,7 @@ Najważniejsze moduły:
 - `astro_engine.py`: obliczenia astronomiczne.
 - `forecast.py`: Open-Meteo i cache.
 - `fits_ingest.py`: FITS scan, metadata extraction, quality score.
+- `postgres_migration.py`: prototyp kopiowania SQLite profiles/archive do PostgreSQL.
 - `profiles.py`: profile sprzętu.
 - `session_archive.py`: archiwum sesji.
 - `catalog.py`: target catalog validation.
@@ -189,6 +190,8 @@ Docker Compose uruchamia:
 - `minio`: storage obiektowy dla przyszłych dużych assetów.
 
 Obecnie profile i archiwum są w SQLite, mimo że Postgres jest już w stacku. To świadoma decyzja: prosty homelab persistence teraz, gotowa infrastruktura na późniejszą migrację.
+
+Prototyp migracji jest w `astro_api/postgres_migration.py` i opisuje go [POSTGRES_MIGRATION.md](POSTGRES_MIGRATION.md). Kopiuje dane do Postgresa, ale nie przełącza jeszcze runtime storage adaptera.
 
 ## Clean-code Kierunek
 

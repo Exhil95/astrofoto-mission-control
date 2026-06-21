@@ -76,7 +76,7 @@ Rekomendacje:
 
 ### `postgres`
 
-Obecnie zarezerwowany pod przyszłe dane aplikacyjne. SQLite jest nadal systemem zapisu profili i archive.
+Obecnie przygotowany pod migrację profili i archive. SQLite jest nadal domyślnym systemem zapisu runtime, ale repo ma prototyp migracji opisany w [POSTGRES_MIGRATION.md](POSTGRES_MIGRATION.md).
 
 ### `redis`
 
@@ -108,6 +108,22 @@ PROFILE_DATABASE_URL=sqlite:////data/astrofoto.sqlite3
 ```
 
 API automatycznie zapewnia aktualne kolumny profili i archive przy starcie. Nie ma jeszcze pełnego systemu migracji, więc backup SQLite przed dużymi zmianami jest obowiązkowy.
+
+## SQLite -> Postgres Prototype
+
+Dry-run migracji:
+
+```powershell
+.\scripts\migrate-sqlite-to-postgres.ps1 -DryRun
+```
+
+Właściwe kopiowanie danych do Postgresa:
+
+```powershell
+.\scripts\migrate-sqlite-to-postgres.ps1
+```
+
+Na tym etapie nie zmieniaj produkcyjnego `PROFILE_DATABASE_URL` na Postgres, bo runtime profili i archive nadal używa adaptera SQLite. Szczegóły i weryfikacja są w [POSTGRES_MIGRATION.md](POSTGRES_MIGRATION.md).
 
 ## Backup
 

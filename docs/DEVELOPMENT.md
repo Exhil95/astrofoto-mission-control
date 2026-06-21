@@ -132,6 +132,7 @@ Najwazniejsze pliki:
 - `astro_api/astro_engine.py`: astronomia, Slonce, Ksiezyc, wysokosc targetow.
 - `astro_api/forecast.py`: Open-Meteo i cache prognozy.
 - `astro_api/fits_ingest.py`: skan FITS i quality scoring.
+- `astro_api/postgres_migration.py`: prototyp migracji SQLite profiles/archive do Postgresa.
 - `astro_api/profiles.py`: SQLite profile sprzetu.
 - `astro_api/session_archive.py`: SQLite archiwum sesji.
 - `astro_api/catalog.py`: walidacja target catalog.
@@ -146,6 +147,15 @@ cd apps\api
 .\.venv\Scripts\python.exe -m uvicorn astro_api.main:app --reload
 ```
 
+Prototyp migracji SQLite -> Postgres w kontenerze homelab:
+
+```powershell
+.\scripts\migrate-sqlite-to-postgres.ps1 -DryRun
+.\scripts\migrate-sqlite-to-postgres.ps1
+```
+
+Szczegoly i ograniczenia sa w `docs/POSTGRES_MIGRATION.md`.
+
 ## Kontrakty API
 
 Backend zwraca snake_case, frontend mapuje dane na camelCase w `src/lib/*.ts`.
@@ -155,6 +165,15 @@ Zasada:
 - Pydantic schemas sa zrodlem prawdy dla API.
 - Frontendowe typy sa adapterem UI.
 - Nowe pola dodawaj jednoczesnie w schema, mapperze i testach.
+
+## Versioning
+
+Aktualna alpha jest zapisana w:
+
+- `VERSION`: semver projektu, np. `0.1.0-alpha.0`,
+- `apps/web/package.json`: semver frontendu,
+- `apps/api/pyproject.toml`: wersja PEP 440 API, np. `0.1.0a0` dla `0.1.0-alpha.0`,
+- `docs/RELEASES.md`: release notes.
 
 ## Clean Code Rules
 
@@ -183,9 +202,8 @@ Te pliki sa najwieksze i wymagaja ostroznosci:
 
 Najbezpieczniejsza kolejnosc:
 
-1. Udokumentowac i przeprototypowac migracje SQLite -> Postgres.
-2. Rozbic `apps/api/astro_api/fits_ingest.py` na parser, scoring i calibration matching.
-3. Podzielic `styles.css` na warstwy albo CSS modules dopiero po ustabilizowaniu designu.
+1. Rozbic `apps/api/astro_api/fits_ingest.py` na parser, scoring i calibration matching.
+2. Podzielic `styles.css` na warstwy albo CSS modules dopiero po ustabilizowaniu designu.
 
 ## Debugging
 

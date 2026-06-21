@@ -1,6 +1,6 @@
 [project]
 name = "astrofoto-mission-control-api"
-version = "0.1.0"
+version = "0.1.0a0"
 description = "FastAPI services for astrophotography planning and calculations."
 requires-python = ">=3.13"
 dependencies = [
@@ -27,4 +27,3 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 100
 target-version = "py313"
-

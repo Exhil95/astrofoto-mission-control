@@ -1,5 +1,7 @@
 # Astrofoto Mission Control
 
+Aktualna wersja: `0.1.0-alpha.0`.
+
 Astrofoto Mission Control to lokalna aplikacja do planowania sesji astrofotograficznych, kontroli pola widzenia, wyboru targetów, przygotowania runbooków akwizycji, analizy klatek FITS i organizacji archiwum sesji. Projekt jest budowany z myślą o homelabie: działa lokalnie, obsługuje foldery z klatkami zamontowane read-only i ma gotowy stack Docker Compose z Caddy jako wejściem.
 
 ## Co Jest W Aplikacji
@@ -111,6 +113,8 @@ Szczegóły są w [docs/HOMELAB.md](docs/HOMELAB.md).
 - [API](docs/API.md): endpointy, payloady, odpowiedzialność backendu.
 - [Architecture](docs/architecture.md): granice modułów i przepływy danych.
 - [Homelab](docs/HOMELAB.md): deploy, storage, backup, restore, FITS library.
+- [SQLite -> Postgres](docs/POSTGRES_MIGRATION.md): prototyp migracji profili i Session Archive.
+- [Releases](docs/RELEASES.md): alpha/beta release notes, ryzyka i zmiany operacyjne.
 - [Audit](docs/AUDIT.md): wynik aktualnego audytu jakości, ryzyka i następne kroki.
 - [TODO](TODO.md): roadmapa produktu.
 

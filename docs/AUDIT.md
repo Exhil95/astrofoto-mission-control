@@ -89,6 +89,22 @@ Efekt:
 - testy blokują regresje top bara, przełączania workspace i podstawowych paneli,
 - requesty `/api/` są abortowane w testach, więc frontend smoke działa na fallbackach bez backendu.
 
+### SQLite -> Postgres Migration Prototype
+
+Dodano:
+
+- `apps/api/astro_api/postgres_migration.py`,
+- `apps/api/tests/test_postgres_migration.py`,
+- `scripts/migrate-sqlite-to-postgres.ps1`,
+- `docs/POSTGRES_MIGRATION.md`.
+
+Efekt:
+
+- migrator tworzy docelowe tabele `equipment_profiles` i `session_archives` w Postgresie,
+- kopiuje dane z SQLite z zachowaniem `id`,
+- normalizuje `filter_names` do JSONB i `white_night` do boolean,
+- ma dry-run oraz testy bez wymagania żywego Postgresa.
+
 ### React Hooks
 
 Poprawiono:
@@ -164,9 +180,9 @@ Rekomendacja:
 
 ### Średnie
 
-Docker Compose ma Postgres i MinIO, ale app data nadal jest w SQLite.
+Docker Compose ma Postgres i MinIO, a migrator do Postgresa istnieje, ale runtime app data nadal jest w SQLite.
 
-Rekomendacja: zostawić SQLite jako default homelab, ale opisać przyszłą migrację do Postgres zanim archive/profile urosną.
+Rekomendacja: zostawić SQLite jako default homelab do alphy, a przed betą dodać runtime storage adapter dla Postgresa.
 
 ### Niskie
 
@@ -211,8 +227,8 @@ Braki:
 
 ## Priorytet Następnych Refaktorów
 
-1. Dodac dokument migracji SQLite -> Postgres.
-2. Rozbic backendowy `fits_ingest.py` na parser, scoring i calibration matching.
+1. Rozbic backendowy `fits_ingest.py` na parser, scoring i calibration matching.
+2. Dodac runtime storage adapter dla Postgresa przed betą.
 3. Podzielic `styles.css` na warstwy po stabilizacji designu.
 
 ## Kryterium Done Dla Obecnego Passa
